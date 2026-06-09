@@ -78,12 +78,8 @@ tag = "v2"
 deleted_classes = ["SignalRoom"]
 
 [[migrations]]
-tag = "v3"
-new_sqlite_classes = ["SignalRoom"]
-
-[[migrations]]
-tag = "v4"
-new_sqlite_classes = ["BusPulseSegment"]
+tag = "v-uniti-1"
+new_sqlite_classes = ["SignalRoom", "BusPulseSegment"]
 
 [[durable_objects.bindings]]
 name = "SIGNAL_ROOM"

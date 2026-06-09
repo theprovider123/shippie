@@ -1,245 +1,266 @@
-/**
- * Coffee persistence — beans + brews + tasting notes. localStorage-backed
- * (rows are tiny + a handful per day). The Shippie runtime watches storage
- * writes via the patina/proof spine; each finished brew also broadcasts
- * coffee-brewed + caffeine-logged.
- *
- * Schema is intentionally flat: one `Bean`, many `Brew` (joined by bean_id),
- * many `TastingNote` (joined by bean_id). Migration from v1 (which only had
- * Beans + Brews and lacked roast_date / origin / process / cupping_score) is
- * lossy-tolerant: missing fields fall back to sensible defaults.
- */
-const STORAGE_KEY = 'shippie.coffee.v2';
-const LEGACY_KEY = 'shippie.coffee.v1';
+// lot. local-first persistence.
+//
+// Everything lives in one localStorage blob (rows are tiny and there are a
+// handful per day). The store is intentionally flat — Bag, Recipe, BrewLog,
+// CupScore, Grinder, plus a SyncQueue of pending publishes. Nothing here
+// touches the network; publishing happens explicitly via lib/sync.
+//
+// v3 (lot.) supersedes the old "Coffee Calculator" v2 (beans + brews). The
+// migration is lossy-tolerant: a v2 bean becomes a lot. Bag, a v2 brew
+// becomes a BrewLog, and anything missing falls back to a sensible default.
 
-export type RoastLevel = 'light' | 'medium' | 'dark';
-export type BrewMethod = 'v60' | 'aeropress' | 'chemex' | 'french-press' | 'espresso';
-export type Process = 'washed' | 'natural' | 'honey' | 'other';
-export type TastingKind = 'sweet' | 'acidity' | 'body' | 'aftertaste' | 'general';
+import type {
+  Bag,
+  BrewLog,
+  CupScore,
+  Grinder,
+  Recipe,
+  RoastLevel,
+  SyncItem,
+} from './types.ts';
 
-export interface Bean {
-  id: string;
-  name: string;
-  roaster?: string;
-  /** Country, ideally with region/farm. e.g. "Ethiopia · Yirgacheffe / Konga". */
-  origin?: string;
-  process?: Process;
-  roast: RoastLevel;
-  /** ISO date (YYYY-MM-DD). Load-bearing for the freshness chart. */
-  roast_date?: string;
-  /** SCA cupping score 1–100. Optional — coffee-nerd domain. */
-  cupping_score?: number;
-  /** Free-text grind setting — "Comandante 18 clicks", "Niche 12", etc. */
-  grind: string;
-  method: BrewMethod;
-  /** 1:N water-to-bean ratio. Typical V60 = 16, espresso = 2. */
-  ratio: number;
-  /** Comma-tolerant free-text tasting impression. Chips suggested in UI. */
-  notes?: string;
-  /** Optional photo URL. Inline data: URLs are accepted but discouraged. */
-  photo_url?: string;
-  created_at?: string;
+const STORAGE_KEY = 'shippie.coffee.v3';
+const LEGACY_V2 = 'shippie.coffee.v2';
+
+export interface Store {
+  bags: Bag[];
+  recipes: Recipe[];
+  brewLogs: BrewLog[];
+  cupScores: CupScore[];
+  grinders: Grinder[];
+  syncQueue: SyncItem[];
 }
 
-export interface Brew {
-  id: string;
-  bean_id: string | null;
-  bean_name: string;
-  weight_g: number;
-  water_g: number;
-  ratio: number;
-  method: BrewMethod;
-  brew_seconds: number;
-  taste_rating: number | null;
-  /** Short journal — "best yet, more bloom next time". */
-  note?: string;
-  brewed_at: string;
+// ─── id + date helpers ────────────────────────────────────────
+export function newId(prefix: string): string {
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export interface TastingNote {
-  id: string;
-  bean_id: string;
-  kind: TastingKind;
-  note: string;
-  created_at: string;
+export function isoNow(): string {
+  return new Date().toISOString();
 }
 
-interface Persisted {
-  beans: Bean[];
-  brews: Brew[];
-  tasting_notes: TastingNote[];
+export function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
-export const METHOD_LABEL: Record<BrewMethod, string> = {
-  v60: 'V60',
-  aeropress: 'AeroPress',
-  chemex: 'Chemex',
-  'french-press': 'French Press',
-  espresso: 'Espresso',
-};
-
-export const PROCESS_LABEL: Record<Process, string> = {
-  washed: 'Washed',
-  natural: 'Natural',
-  honey: 'Honey',
-  other: 'Other',
-};
-
-/** Caffeine mg estimate per gram of beans by method. Rough but useful
- * for the caffeine-logged broadcast. */
-export const MG_PER_GRAM: Record<BrewMethod, number> = {
-  v60: 4.5,
-  aeropress: 5.0,
-  chemex: 4.0,
-  'french-press': 4.5,
-  espresso: 8.0,
-};
-
-/** Method defaults: ratio + recommended brew time + suggested grind. */
-export const METHOD_DEFAULTS: Record<
-  BrewMethod,
-  { ratio: number; seconds: number; grindHint: string; weightHint: number }
-> = {
-  v60: { ratio: 16, seconds: 180, grindHint: 'medium-fine', weightHint: 15 },
-  aeropress: { ratio: 14, seconds: 90, grindHint: 'medium', weightHint: 14 },
-  chemex: { ratio: 17, seconds: 240, grindHint: 'medium-coarse', weightHint: 30 },
-  'french-press': { ratio: 15, seconds: 240, grindHint: 'coarse', weightHint: 30 },
-  espresso: { ratio: 2, seconds: 28, grindHint: 'fine', weightHint: 18 },
-};
-
-/** Filter brews vs espresso scope different ratio ranges on the dial. */
-export const RATIO_RANGE: Record<'filter' | 'espresso', { min: number; max: number; step: number }> = {
-  filter: { min: 12, max: 20, step: 0.5 },
-  espresso: { min: 1, max: 3, step: 0.1 },
-};
-
-export function modeForMethod(m: BrewMethod): 'filter' | 'espresso' {
-  return m === 'espresso' ? 'espresso' : 'filter';
-}
-
-const TODAY = (): string => new Date().toISOString().slice(0, 10);
-const DAYS_AGO = (n: number): string => {
+function daysAgoIso(n: number): string {
   const d = new Date();
   d.setDate(d.getDate() - n);
   return d.toISOString().slice(0, 10);
-};
+}
 
-const SEED_BEANS: Bean[] = [
-  {
-    id: 'seed-1',
-    name: 'Cult of Done',
-    roaster: 'Workshop Coffee',
-    origin: 'Ethiopia · Yirgacheffe / Konga',
-    process: 'washed',
-    roast: 'medium',
-    roast_date: DAYS_AGO(10),
-    cupping_score: 87,
-    grind: 'Comandante 22',
-    method: 'v60',
-    ratio: 16,
-    notes: 'plum, cocoa, soft acidity',
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'seed-2',
-    name: 'Red Brick',
-    roaster: 'Square Mile',
-    origin: 'Brazil + Honduras blend',
-    process: 'natural',
-    roast: 'medium',
-    roast_date: DAYS_AGO(18),
-    cupping_score: 84,
-    grind: 'Niche 14',
+// ─── Seed ─────────────────────────────────────────────────────
+// Mirrors the Claude Design handoff data so a fresh install opens onto the
+// exact screens in the mock, but as real, editable, persisted records.
+function seed(): Store {
+  const now = isoNow();
+  const mk = (
+    id: string,
+    name: string,
+    roasterName: string,
+    roasterSlug: string,
+    originCountry: string,
+    originRegion: string,
+    process: string,
+    variety: string,
+    roastLevel: RoastLevel,
+    daysOff: number,
+    gramsRemaining: number,
+    worldNodeSlug: string,
+    status: Bag['status'] = 'active',
+  ): Bag => ({
+    id,
+    name,
+    roasterName,
+    roasterSlug,
+    originCountry,
+    originRegion,
+    process,
+    variety,
+    roastLevel,
+    roastDate: daysAgoIso(daysOff),
+    openedDate: daysAgoIso(Math.max(0, daysOff - 2)),
+    purchaseDate: daysAgoIso(daysOff),
+    gramsRemaining,
+    gramsOriginal: 250,
+    status,
+    worldNodeSlug,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  const kochere = mk('seed-kochere', 'Kochere Lot 42', 'Square Mile', 'square-mile', 'Ethiopia', 'Yirgacheffe', 'Natural', 'Heirloom', 'medium', 12, 142, 'yirgacheffe');
+  const finca = mk('seed-finca', 'Finca El Paraíso', 'Onyx Coffee Lab', 'onyx', 'Colombia', 'Huila', 'Anaerobic Natural', 'Castillo', 'light', 3, 250, 'huila');
+  const gesha = mk('seed-gesha', 'Gesha Village Lot 22', 'Heart Coffee', 'heart', 'Ethiopia', 'Bench Maji', 'Washed', 'Gesha', 'medium', 24, 38, 'bench-maji');
+
+  const guji: Bag = { ...mk('seed-guji', 'Guji Natural Gr.1', 'Has Bean', 'has-bean', 'Ethiopia', 'Guji', 'Natural', 'Heirloom', 'medium', 90, 0, 'guji', 'finished') };
+  const lapalma: Bag = { ...mk('seed-lapalma', 'La Palma y El Tucán', 'Nomad Coffee', 'nomad', 'Colombia', 'Cundinamarca', 'Washed', 'Castillo', 'light', 120, 0, 'cundinamarca', 'finished') };
+
+  const espressoRecipe: Recipe = {
+    id: 'seed-recipe-kochere',
+    bagId: kochere.id,
     method: 'espresso',
-    ratio: 2,
-    notes: 'dark chocolate, raisin',
-    created_at: new Date().toISOString(),
-  },
-];
+    dose: 18,
+    yield: 36,
+    ratio: '1:2',
+    grindSetting: '15.5',
+    waterTemp: 93,
+    totalTime: 28,
+    steps: [
+      { label: 'Pre-infuse', targetTime: 5, targetVolume: 4, notes: 'gentle ramp' },
+      { label: 'Bloom', targetTime: 10, targetVolume: 12, notes: 'first drops' },
+      { label: 'Extract', targetTime: 28, targetVolume: 36, notes: 'hold the flow' },
+    ],
+    isActive: true,
+    isDialled: true,
+    createdAt: now,
+    updatedAt: now,
+  };
 
-interface LegacyV1Bean {
+  // A spread of cup scores so the palate radar lands near the design profile
+  // (Brightness 3.8 · Body 3.2 · Sweetness 4.1 · Complexity 3.6 · Clean 4.3,
+  // on the 0–5 radar = ~7.6/6.4/8.2/7.2/8.6 on the stored 1–10 axes).
+  const cupSeeds: Array<[string, number, number, number, number, number, number, string[]]> = [
+    [kochere.id, 14, 8, 6, 8, 7, 9, ['floral', 'citric', 'tea-like']],
+    [kochere.id, 8, 7, 7, 8, 7, 8, ['stone fruit', 'jasmine']],
+    [finca.id, 5, 8, 6, 9, 8, 9, ['tropical', 'winey', 'complex']],
+    [gesha.id, 20, 7, 6, 8, 7, 9, ['bergamot', 'honey']],
+    [guji.id, 60, 8, 7, 8, 7, 8, ['blueberry', 'cocoa']],
+    [lapalma.id, 80, 7, 6, 8, 7, 9, ['red apple', 'caramel']],
+  ];
+  const cupScores: CupScore[] = cupSeeds.map(([bagId, daysOff, b, body, sw, cx, cl, notes], i) => ({
+    id: `seed-cup-${i}`,
+    bagId,
+    brightness: b,
+    body,
+    sweetness: sw,
+    complexity: cx,
+    clean: cl,
+    tasteNotes: notes,
+    published: i % 2 === 0,
+    publishedAt: i % 2 === 0 ? daysAgoIso(daysOff) : undefined,
+    createdAt: daysAgoIso(daysOff),
+  }));
+
+  // Brew history feeding the "N brews" counter.
+  const brewLogs: BrewLog[] = cupSeeds.map(([bagId, daysOff], i) => ({
+    id: `seed-brew-${i}`,
+    bagId,
+    recipeId: bagId === kochere.id ? espressoRecipe.id : undefined,
+    actualDose: 18,
+    actualYield: 36,
+    actualTime: 28 + (i % 3),
+    stepTimings: [],
+    published: false,
+    createdAt: daysAgoIso(daysOff),
+  }));
+
+  return {
+    bags: [kochere, finca, gesha, guji, lapalma],
+    recipes: [espressoRecipe],
+    brewLogs,
+    cupScores,
+    grinders: [{ id: 'seed-grinder', name: 'Niche Zero', type: 'burr', createdAt: now }],
+    syncQueue: [],
+  };
+}
+
+// ─── Load / save ──────────────────────────────────────────────
+function coerce(parsed: Partial<Store> | null): Store {
+  if (!parsed) return seed();
+  const hasBags = Array.isArray(parsed.bags) && parsed.bags.length > 0;
+  if (!hasBags) return seed();
+  return {
+    bags: parsed.bags ?? [],
+    recipes: Array.isArray(parsed.recipes) ? parsed.recipes : [],
+    brewLogs: Array.isArray(parsed.brewLogs) ? parsed.brewLogs : [],
+    cupScores: Array.isArray(parsed.cupScores) ? parsed.cupScores : [],
+    grinders: Array.isArray(parsed.grinders) ? parsed.grinders : [],
+    syncQueue: Array.isArray(parsed.syncQueue) ? parsed.syncQueue : [],
+  };
+}
+
+interface LegacyV2Bean {
   id: string;
   name: string;
   roaster?: string;
-  roast: RoastLevel;
-  grind: string;
-  method: BrewMethod;
-  ratio: number;
+  origin?: string;
+  process?: string;
+  roast?: RoastLevel;
+  roast_date?: string;
+  grind?: string;
+  method?: string;
+  ratio?: number;
   notes?: string;
 }
-
-interface LegacyV1 {
-  beans?: LegacyV1Bean[];
-  brews?: Brew[];
+interface LegacyV2 {
+  beans?: LegacyV2Bean[];
 }
 
-function migrateLegacy(raw: string): Persisted | null {
+function migrateV2(raw: string): Store | null {
   try {
-    const parsed = JSON.parse(raw) as LegacyV1;
-    const beans: Bean[] = (parsed.beans ?? []).map((b) => ({
-      id: b.id,
+    const v2 = JSON.parse(raw) as LegacyV2;
+    if (!Array.isArray(v2.beans) || v2.beans.length === 0) return null;
+    const now = isoNow();
+    const bags: Bag[] = v2.beans.map((b) => ({
+      id: b.id || newId('bag'),
       name: b.name,
-      roaster: b.roaster,
-      roast: b.roast,
-      grind: b.grind,
-      method: b.method,
-      ratio: b.ratio,
+      roasterName: b.roaster ?? 'Unknown roaster',
+      originCountry: b.origin,
+      process: b.process,
+      roastLevel: b.roast ?? 'medium',
+      roastDate: b.roast_date,
+      gramsRemaining: 250,
+      gramsOriginal: 250,
+      status: 'active',
       notes: b.notes,
-      created_at: new Date().toISOString(),
+      createdAt: now,
+      updatedAt: now,
     }));
-    return {
-      beans: beans.length > 0 ? beans : SEED_BEANS,
-      brews: parsed.brews ?? [],
-      tasting_notes: [],
-    };
+    const base = seed();
+    return { ...base, bags: [...bags, ...base.bags.filter((s) => s.status === 'finished')] };
   } catch {
     return null;
   }
 }
 
-export function load(): Persisted {
+export function load(): Store {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<Persisted>;
-      return {
-        beans:
-          Array.isArray(parsed.beans) && parsed.beans.length > 0 ? parsed.beans : SEED_BEANS,
-        brews: Array.isArray(parsed.brews) ? parsed.brews : [],
-        tasting_notes: Array.isArray(parsed.tasting_notes) ? parsed.tasting_notes : [],
-      };
-    }
-    // Migrate from v1 if present.
-    const legacy = localStorage.getItem(LEGACY_KEY);
+    if (raw) return coerce(JSON.parse(raw) as Partial<Store>);
+    const legacy = localStorage.getItem(LEGACY_V2);
     if (legacy) {
-      const migrated = migrateLegacy(legacy);
+      const migrated = migrateV2(legacy);
       if (migrated) return migrated;
     }
   } catch {
-    /* fall through */
+    /* fall through to seed */
   }
-  return { beans: SEED_BEANS, brews: [], tasting_notes: [] };
+  return seed();
 }
 
-export function save(state: Persisted): void {
+export function save(store: Store): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
   } catch {
-    /* best-effort */
+    /* best-effort; quota errors are non-fatal */
   }
 }
 
-export function newId(prefix: string): string {
-  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-}
+// ─── Selectors (no query logic in components) ─────────────────
+export const bagsByStatus = (s: Store, status: Bag['status']): Bag[] =>
+  s.bags.filter((b) => b.status === status);
 
-/** Round to one decimal — water/bean grams display as "18.0g". */
-export function round1(n: number): number {
-  return Math.round(n * 10) / 10;
-}
+export const activeRecipeForBag = (s: Store, bagId: string): Recipe | undefined =>
+  s.recipes.find((r) => r.bagId === bagId && r.isActive) ??
+  s.recipes.find((r) => r.bagId === bagId);
 
-export function todayIso(): string {
-  return TODAY();
-}
+export const brewsForBag = (s: Store, bagId: string): BrewLog[] =>
+  s.brewLogs.filter((b) => b.bagId === bagId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-export type { Persisted };
+export const scoresForBag = (s: Store, bagId: string): CupScore[] =>
+  s.cupScores.filter((c) => c.bagId === bagId);
+
+export const distinctOrigins = (s: Store): number =>
+  new Set(s.bags.map((b) => b.originCountry).filter(Boolean)).size;

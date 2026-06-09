@@ -163,6 +163,17 @@ import { handleScheduled } from './_cron.js';
 export { SignalRoom } from './_proximity.js';
 export { BusPulseSegment } from './_parade.js';
 
+export class SchoolWorkspace {
+  constructor(state, env) {
+    this.state = state;
+    this.env = env;
+  }
+
+  async fetch() {
+    return new Response('SchoolWorkspace Durable Object is no longer active.', { status: 410 });
+  }
+}
+
 export default {
   fetch: (req, env, ctx) => sveltekit.fetch(req, env, ctx),
   scheduled: (controller, env, ctx) => {

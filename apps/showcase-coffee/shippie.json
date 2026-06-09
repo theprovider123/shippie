@@ -2,10 +2,10 @@
   "$schema": "https://shippie.app/schemas/app.json",
   "name": "Coffee",
   "slug": "coffee",
-  "description": "Ratio dial, saved bean presets with grind settings, brew timer. Provides coffee-brewed (consumed by sleep-logger, daily-briefing) and caffeine-logged (subsumes part of sip-log for V60 obsessives).",
+  "description": "lot. — a local-first coffee companion: brew timer with a pour arc, a cellar that tracks freshness and your palate, and a knowledge graph of origins, varieties and processes. Provides coffee-brewed (consumed by sleep-logger, daily-briefing) and caffeine-logged (subsumes part of sip-log for V60 obsessives).",
   "icon": "/icon.svg",
-  "theme_color": "#8B5A3C",
-  "background_color": "#14120F",
+  "theme_color": "#C4633A",
+  "background_color": "#F4EFE3",
   "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
@@ -16,26 +16,38 @@
     ]
   },
   "data_schemas": {
-    "beans": {
+    "bags": {
       "id": "text primary key",
       "name": "text not null",
-      "roaster": "text",
+      "roaster_name": "text",
+      "origin_country": "text",
+      "variety": "text",
+      "process": "text",
       "roast_level": "text",
-      "method": "text",
-      "preferred_ratio": "real",
-      "grind_setting": "text",
-      "tasting_notes": "text"
+      "roast_date": "text",
+      "grams_remaining": "real",
+      "status": "text",
+      "world_node_slug": "text"
     },
     "brews": {
       "id": "text primary key",
-      "bean_id": "text",
-      "weight_g": "real",
-      "water_g": "real",
-      "ratio": "real",
-      "method": "text",
-      "brew_seconds": "integer",
-      "taste_rating": "integer",
+      "bag_id": "text",
+      "recipe_id": "text",
+      "actual_dose": "real",
+      "actual_yield": "real",
+      "actual_time": "integer",
       "brewed_at": "datetime"
+    },
+    "cup_scores": {
+      "id": "text primary key",
+      "bag_id": "text",
+      "brightness": "integer",
+      "body": "integer",
+      "sweetness": "integer",
+      "complexity": "integer",
+      "clean": "integer",
+      "taste_notes": "text",
+      "published": "integer"
     }
   },
   "curation": {

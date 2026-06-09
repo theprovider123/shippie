@@ -1,99 +1,101 @@
-/**
- * Roast-date freshness math.
- *
- * Filter coffee peaks roughly 7–14 days after roast and is meaningfully
- * fading by ~3 weeks. Espresso is denser, develops longer in the bag, and
- * holds up to ~6 weeks. These thresholds are folklore-grade — every bean
- * is different — but they're the right shape for a "where is this bean
- * on the curve" visualisation.
- *
- * The bands intentionally overlap visually on the chart (rest → peak →
- * good → fading → stale) but the band returned here is one-of, snapping
- * to whichever the bean falls into right now.
- */
-import type { BrewMethod } from '../db.ts';
+// Flavour-window calculations.
+//
+// Peak windows are off-roast, by roast level:
+//   light  → 10–28 days
+//   medium →  7–21 days
+//   dark   →  5–14 days
+// Espresso is denser and develops longer in the bag, so it adds 5 days to
+// both ends of whichever window applies.
+//
+// These are folklore-grade thresholds — every coffee is different — but
+// they're the right shape for a "where is this bag on the curve" read.
 
-export type FreshnessBand = 'rest' | 'peak' | 'good' | 'fading' | 'stale';
+import type { BrewMethod, RoastLevel } from '../types.ts';
 
-export interface FreshnessReading {
-  daysSinceRoast: number;
-  band: FreshnessBand;
-  /** 0..1 position within the lifecycle, useful for chart bar fill. */
-  position: number;
-  /** "peak" / "good" / "fading" / "stale" / "rest". One word. */
+export type FreshnessStatus = 'too-fresh' | 'approaching-peak' | 'at-peak' | 'past-peak';
+
+export interface Freshness {
+  /** Whole days since the roast date (0 if undated or future-dated). */
+  daysOffRoast: number;
+  status: FreshnessStatus;
+  /** Short display word the UI shows: Resting / Almost / At peak / Fading. */
   label: string;
-  /** Long-form, e.g. "drink it now". */
-  hint: string;
+  peakWindowStart: number;
+  peakWindowEnd: number;
+  /** Convenience tuple for <FreshnessBar window={…} />. */
+  window: [number, number];
+  /** Alias of daysOffRoast for the bar's marker. */
+  day: number;
+  /** Whether a roast date was available at all. */
+  dated: boolean;
 }
 
-interface BandThresholds {
-  /** How many days of off-gassing before the bean is ready to drink. */
-  rest: number;
-  /** End of the peak window (inclusive). */
-  peak: number;
-  /** End of the "good" window. */
-  good: number;
-  /** End of the "fading" window — beyond this is stale. */
-  fading: number;
-}
-
-/** Per-mode thresholds in days. Espresso holds longer. */
-export const FRESHNESS_THRESHOLDS: Record<'filter' | 'espresso', BandThresholds> = {
-  filter: { rest: 4, peak: 14, good: 21, fading: 35 },
-  espresso: { rest: 7, peak: 21, good: 35, fading: 56 },
+const WINDOWS: Record<RoastLevel, [number, number]> = {
+  light: [10, 28],
+  medium: [7, 21],
+  dark: [5, 14],
 };
 
-export function modeFor(method: BrewMethod): 'filter' | 'espresso' {
-  return method === 'espresso' ? 'espresso' : 'filter';
+const ESPRESSO_SHIFT = 5;
+
+export function peakWindow(roastLevel: RoastLevel, method?: BrewMethod): [number, number] {
+  const [start, end] = WINDOWS[roastLevel];
+  if (method === 'espresso') return [start + ESPRESSO_SHIFT, end + ESPRESSO_SHIFT];
+  return [start, end];
 }
 
-/** Day-difference floor between two ISO dates (YYYY-MM-DD). Returns 0
- * for "today" and a positive integer for past roast dates. Future-dated
- * roasts (clock skew, typo) clamp to 0. */
-export function daysSince(roastDate: string, now: Date = new Date()): number {
-  const roast = new Date(`${roastDate}T00:00:00Z`).getTime();
+/** Whole days between an ISO roast date and `now`, floored, clamped at 0. */
+export function daysSince(isoDate: string, now: Date = new Date()): number {
+  const then = new Date(`${isoDate}T00:00:00Z`).getTime();
+  if (Number.isNaN(then)) return 0;
   const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  if (Number.isNaN(roast)) return 0;
-  const diff = Math.floor((today - roast) / 86_400_000);
+  const diff = Math.floor((today - then) / 86_400_000);
   return diff < 0 ? 0 : diff;
 }
 
-const LABEL: Record<FreshnessBand, string> = {
-  rest: 'rest',
-  peak: 'peak',
-  good: 'good',
-  fading: 'fading',
-  stale: 'stale',
-};
-
-const HINT: Record<FreshnessBand, string> = {
-  rest: 'still off-gassing — give it a few days',
-  peak: 'drink it now',
-  good: 'still tasty',
-  fading: 'use it up soon',
-  stale: 'past it — make cold brew or compost',
-};
-
-export function band(method: BrewMethod, days: number): FreshnessBand {
-  const t = FRESHNESS_THRESHOLDS[modeFor(method)];
-  if (days < t.rest) return 'rest';
-  if (days <= t.peak) return 'peak';
-  if (days <= t.good) return 'good';
-  if (days <= t.fading) return 'fading';
-  return 'stale';
+function classify(day: number, start: number, end: number): { status: FreshnessStatus; label: string } {
+  if (day < start) {
+    // Within ~2 days of opening peak reads as "almost there".
+    return start - day <= 2
+      ? { status: 'approaching-peak', label: 'Almost' }
+      : { status: 'too-fresh', label: 'Resting' };
+  }
+  if (day <= end) return { status: 'at-peak', label: 'At peak' };
+  return { status: 'past-peak', label: 'Fading' };
 }
 
-export function reading(method: BrewMethod, roastDate: string | undefined, now: Date = new Date()): FreshnessReading | null {
-  if (!roastDate) return null;
-  const days = daysSince(roastDate, now);
-  const t = FRESHNESS_THRESHOLDS[modeFor(method)];
-  const b = band(method, days);
-  const position = Math.min(1, days / t.fading);
+export interface FreshnessInput {
+  roastDate?: string;
+  roastLevel: RoastLevel;
+  /** When brewing as espresso the window shifts later. */
+  method?: BrewMethod;
+  now?: Date;
+}
+
+export function freshness({ roastDate, roastLevel, method, now }: FreshnessInput): Freshness {
+  const [start, end] = peakWindow(roastLevel, method);
+  if (!roastDate) {
+    return {
+      daysOffRoast: 0,
+      status: 'too-fresh',
+      label: 'No date',
+      peakWindowStart: start,
+      peakWindowEnd: end,
+      window: [start, end],
+      day: 0,
+      dated: false,
+    };
+  }
+  const day = daysSince(roastDate, now ?? new Date());
+  const { status, label } = classify(day, start, end);
   return {
-    daysSinceRoast: days,
-    band: b,
-    position,
-    label: LABEL[b],
-    hint: HINT[b],
+    daysOffRoast: day,
+    status,
+    label,
+    peakWindowStart: start,
+    peakWindowEnd: end,
+    window: [start, end],
+    day,
+    dated: true,
   };
 }
