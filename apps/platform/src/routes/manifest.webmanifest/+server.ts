@@ -68,6 +68,11 @@ export const GET: RequestHandler = async ({ url }) => {
       { origin: 'https://www.shippie.app' },
     ],
     protocol_handlers: [{ protocol: 'web+shippie', url: '/dock?open=%s' }],
+    prefer_related_applications: false,
+    screenshots: [
+      { src: '/__shippie-pwa/screenshot-narrow.png', sizes: '390x844', type: 'image/png', form_factor: 'narrow', label: 'Shippie Dock — saved tools, offline-ready' },
+      { src: '/__shippie-pwa/screenshot-wide.png', sizes: '1280x800', type: 'image/png', form_factor: 'wide', label: 'Shippie Tools — browse and save' },
+    ],
   };
 
   return new Response(JSON.stringify(manifest), {

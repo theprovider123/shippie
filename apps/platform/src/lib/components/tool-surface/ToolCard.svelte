@@ -19,6 +19,7 @@
   import { createToolLaunch, addPrefetchLink } from './use-tool-launch';
   import { saveActionLabel } from './labels';
   import type { ToolDisplay, ToolState } from './types';
+  import { isOnline } from '$lib/stores/network-status';
 
   interface Props {
     app: ToolDisplay;
@@ -44,6 +45,7 @@
   const isRepair = $derived(state.offlineState === 'needs-refresh' || state.offlineState === 'failed');
   const offlineReady = $derived(state.offlineState === 'ready');
   const isSaving = $derived(state.offlineState === 'saving');
+  const offlineSubLabel = $derived(!$isOnline ? (offlineReady ? '● ready offline' : '● not saved') : '');
   const showSave = $derived(state.actions.save && !!onSave);
   const showInfo = $derived(state.actions.info && !!onInfo);
 
@@ -88,7 +90,7 @@
         {#if app.firstPartySigned}
           <span class="dot dot-signed" aria-hidden="true" title="Shippie-signed"></span>
         {/if}
-        {#if offlineReady}
+        {#if offlineReady && $isOnline}
           <span class="dot dot-offline" aria-hidden="true" title="Saved offline"></span>
         {/if}
       </span>
@@ -100,6 +102,7 @@
           {/each}
         </span>
         <span class="card-name">{safeName}</span>
+        {#if !$isOnline}<span class="card-offline-label" class:ready={offlineReady}>{offlineSubLabel}</span>{/if}
         <span class="card-blurb">{blurb}</span>
         <span class="card-badge-row">
           <CapabilityBadges badges={app.badges ?? []} max={2} compact />
@@ -119,13 +122,14 @@
         {#if app.firstPartySigned}
           <span class="dot dot-signed" aria-hidden="true" title="Shippie-signed"></span>
         {/if}
-        {#if offlineReady}
+        {#if offlineReady && $isOnline}
           <span class="dot dot-offline" aria-hidden="true" title="Saved offline"></span>
         {/if}
       </span>
       <span class="card-body">
         <span class="card-eyebrow"><span class="category">{categoryLabel}</span></span>
         <span class="card-name">{safeName}</span>
+        {#if !$isOnline}<span class="card-offline-label" class:ready={offlineReady}>{offlineSubLabel}</span>{/if}
         <span class="card-blurb">{blurb}</span>
         <span class="card-badge-row">
           <CapabilityBadges badges={app.badges ?? []} max={2} compact />
@@ -215,6 +219,8 @@
   }
   .dot-signed { top: -3px; right: -3px; background: var(--sage-leaf); }
   .dot-offline { bottom: -3px; right: -3px; background: var(--text-secondary); }
+  .card-offline-label { font-family: var(--font-mono); font-size: var(--text-caption); color: var(--text-secondary); white-space: nowrap; display: block; }
+  .card-offline-label.ready { color: var(--amber, #f5a623); }
 
   .card-body { min-width: 0; display: grid; gap: 4px; align-content: start; }
   .card-eyebrow {

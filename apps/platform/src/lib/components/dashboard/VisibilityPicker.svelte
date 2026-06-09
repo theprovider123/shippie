@@ -42,8 +42,13 @@
       toast.push({ kind: 'error', message: error });
       return;
     }
-    scope = next;
-    toast.push({ kind: 'success', message: `Visibility set to ${next}.` });
+    const j = await res.json().catch(() => ({ metadata_synced: true })) as { metadata_synced?: boolean; visibility_scope?: string };
+    scope = (j.visibility_scope as typeof scope) ?? next;
+    if (j.metadata_synced === false) {
+      toast.push({ kind: 'warning', message: `Visibility set to ${next}. May take 30 s to go live.` });
+    } else {
+      toast.push({ kind: 'success', message: `Visibility set to ${next}.` });
+    }
     // In-tab invalidate only — cross-tab marketplace updates would need
     // BroadcastChannel, which conflicts with the iframe-fanout decision
     // recorded in project_open_unification memory. Don't reach for it here.

@@ -116,14 +116,15 @@
 </script>
 
 <svelte:head>
-  <title>{data.app.name} — Shippie</title>
+  <title>{data.app.name}</title>
   <meta name="description" content={data.app.tagline ?? data.app.description ?? `${data.app.name} on Shippie`} />
-  <!-- App-specific share card — the shared link shows THIS tool, not generic Shippie. -->
-  <meta property="og:title" content={`${data.app.name} — Shippie`} />
+  <!-- App-first share card: the shared link reads as the tool itself, not a Shippie page. -->
+  <meta property="og:title" content={data.app.name} />
+  <meta property="og:site_name" content="Shippie" />
   <meta property="og:description" content={data.app.tagline ?? data.app.description ?? `${data.app.name} on Shippie`} />
   <meta property="og:type" content="website" />
   {#if ogImage}<meta property="og:image" content={ogImage} />{/if}
-  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:card" content={ogImage ? 'summary_large_image' : 'summary'} />
   <meta name="twitter:title" content={data.app.name} />
   <meta name="twitter:description" content={data.app.tagline ?? `${data.app.name} on Shippie`} />
   {#if ogImage}<meta name="twitter:image" content={ogImage} />{/if}

@@ -12,7 +12,7 @@
  */
 import { writable, type Readable } from 'svelte/store';
 
-export type ToastKind = 'success' | 'error' | 'info';
+export type ToastKind = 'success' | 'error' | 'info' | 'warning';
 
 export interface ToastInput {
   kind: ToastKind;

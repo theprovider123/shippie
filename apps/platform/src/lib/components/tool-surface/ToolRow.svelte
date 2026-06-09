@@ -17,6 +17,7 @@
   import IconOrMonogram from '$lib/components/marketplace/IconOrMonogram.svelte';
   import ToolGlyph from './ToolGlyph.svelte';
   import { recordAppLaunch } from '$lib/stores/launcher-memory';
+  import { isOnline } from '$lib/stores/network-status';
   import { titleCap } from '$lib/marketplace/display-text';
   import { createToolLaunch, addPrefetchLink } from './use-tool-launch';
   import { relationshipLabel, updateChipLabel, saveActionLabel } from './labels';
@@ -73,7 +74,9 @@
   const isSaving = $derived(state.offlineState === 'saving');
   // Show the secondary line only when it has content, so name-only rows stay centered.
   const showCaption = $derived(!showRel && caption !== '');
-  const hasStatus = $derived(showRel || isSaving || showCaption);
+  const offlineSubLabel = $derived(!$isOnline ? (offlineReady ? '● ready offline' : '● not saved') : '');
+  const showOfflineLabel = $derived(!$isOnline);
+  const hasStatus = $derived(showRel || isSaving || showCaption || showOfflineLabel);
 
   // Render a button only when applicable AND the surface wired a handler.
   const showReview = $derived(state.actions.review && !!onReview);
@@ -112,9 +115,6 @@
     {#if app.firstPartySigned}
       <span class="dot dot-signed" aria-hidden="true" title="Shippie-signed"></span>
     {/if}
-    {#if offlineReady}
-      <span class="dot dot-offline" aria-hidden="true" title="Saved offline"></span>
-    {/if}
   </span>
   <span class="row-body">
     <span class="row-name">{safeName}</span>
@@ -123,6 +123,7 @@
         {#if showRel}<span class="row-rel">{relLabel}</span>{/if}
         {#if isSaving}<span class="chip chip-saving">Saving</span>{/if}
         {#if showCaption}<span class="row-caption">{caption}</span>{/if}
+        {#if showOfflineLabel}<span class="row-offline-label" class:ready={offlineReady}>{offlineSubLabel}</span>{/if}
       </span>
     {/if}
   </span>
@@ -291,6 +292,8 @@
   }
   .dot-signed { top: -3px; right: -3px; background: var(--sage-leaf); }
   .dot-offline { bottom: -3px; right: -3px; background: var(--text-secondary); }
+  .row-offline-label { font-family: var(--font-mono); font-size: var(--text-caption); color: var(--text-secondary); white-space: nowrap; }
+  .row-offline-label.ready { color: var(--amber, #f5a623); }
 
   .row-body { min-width: 0; display: grid; gap: 2px; }
   .row-name {
