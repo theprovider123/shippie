@@ -2,7 +2,7 @@
 
 **Local tools that know each other.**
 
-Draft v3 · 2026-05-30 · Devante Providence
+Devante Providence · June 2026
 
 ---
 
@@ -28,56 +28,68 @@ For the world:
 >
 > Some things should just be tools.
 > Local. Private. Connected to each other. Yours.
->
-> Build on Shippie.
 
 ---
 
 ## The Category
 
-Cloud platforms deploy cloud apps.
-
-Netlify deploys static sites.
-
-Shippie deploys local tools.
+Cloud platforms deploy cloud apps. Netlify deploys static sites. Shippie deploys local tools.
 
 A Shippie tool runs on the user's device, stores its data locally by default, works offline for its core workflow where possible, prefers local or private AI when it needs intelligence, and shares useful signals with other Shippie tools through user-controlled primitives.
 
-The old web default was: create an account, send your data to a server, hope the company behaves.
+The old web default: create an account, send your data to a server, hope the company behaves.
 
-The Shippie default is: tap a tool, use it immediately, keep data on your device, and see clearly when a tool connects outside.
+The Shippie default: tap a tool, use it immediately, keep data on your device, and see clearly when a tool connects outside.
 
 ---
 
 ## The Rule
 
-Local by default. Open by design. No hidden data movement.
+**Local by default. Open by design. No hidden data movement.**
 
 Allowed:
 
-- weather forecasts, exchange rates, public sports scores, public reference data,
-- encrypted Shippie backup chosen by the user,
-- encrypted Shippie relay for live rooms that Shippie cannot read,
-- external AI and service APIs when disclosed to the user,
-- third-party resources that are not tracking or ad infrastructure,
-- explicit user exports such as CSV, ZIP, PDF, or share sheets.
+- Weather forecasts, exchange rates, public sports scores, public reference data
+- Encrypted Shippie backup chosen by the user
+- Encrypted Shippie relay for live rooms that Shippie cannot read
+- External AI and service APIs when disclosed to the user
+- Third-party resources that are not tracking or ad infrastructure
+- Explicit user exports: CSV, ZIP, PDF, share sheets
 
 Blocked:
 
-- hosted user databases,
-- external auth required for core use,
-- trackers, ads, analytics pixels,
-- insecure external connections,
-- leaked API keys or secrets,
-- cloud apps reverse-proxied into a Shippie costume.
+- Hosted user databases
+- External auth required for core use
+- Trackers, ads, analytics pixels
+- Insecure external connections
+- Leaked API keys or secrets
+- Cloud apps reverse-proxied into a Shippie costume
 
 This is not purity for its own sake. It is the product. The value is that a user should not have to inspect code to know what a Shippie tool can connect to.
 
 ---
 
+## The Platform Today (June 2026)
+
+**Nav:** Dock (your apps + recent) / Tools (discover + search) / You (identity + data + settings)
+
+**Maker backend:** App Health, Dock feedback, identity and reply history, Your Data — all live.
+
+**Upload to deploy to serve flow:** zip upload to policy scan to R2 store to subdomain serve. Makers get a real-time health panel and per-app feedback thread.
+
+**Safety enforcement:** Kill switch (KV-backed, immediate per-isolate), user reports, behavior delta monitoring, and transparency badges are all running in production.
+
+**Feed Protocol:** Public feeds per app slug and feed ID are available to makers today.
+
+**Showcase apps:** Coffee (Brew/Cellar/World) and Golazo (FreeKick/Penalty with leaderboards) are live first-party examples of what the SDK can do.
+
+**Isolation model:** Every maker app is served from its own subdomain. `HTMLRewriter` injects the SDK wrapper and CSP headers on every HTML response. No cross-origin data access between tools except through declared Intents.
+
+---
+
 ## The Maker Surface
 
-The maker entry point is deliberately small:
+The entry point is deliberately small:
 
 ```ts
 import { shippie } from '@shippie/sdk';
@@ -103,42 +115,62 @@ No database provisioning. No auth flow. No server bill for the default local pat
 
 ## What Shippie Provides
 
-**Local database.** A device-local database API backed by browser storage and the Shippie runtime.
+**Local database.** A device-local database API backed by browser storage and the Shippie runtime. No provisioning, no credentials.
 
 **Local files.** Photos, exports, and attachments stay on the user's device unless exported or backed up as sealed data.
 
-**Local AI.** Classification, embeddings, sentiment, and vision tasks run locally when available.
+**Local AI.** Classification, embeddings, sentiment, and vision tasks run locally when available. External AI calls are disclosed.
 
 **Intents.** Tools can declare what they provide and consume. A receipt tool can emit expenses. A weekly summary can combine receipts, movement, sleep, and habits without sending those records to a server.
 
 **Secure backup.** Optional encrypted continuity. Backup is not identity. The local copy is canonical.
 
-**Private relay.** Live rooms and multiplayer can use Shippie's relay only when payloads are encrypted and opaque to the platform.
+**Private relay.** Live rooms and multiplayer use Shippie's relay only when payloads are encrypted and opaque to the platform.
 
-**Proof.** Runtime events can prove that a tool works offline, used local storage, ran local AI, wrote backup, or joined a private relay.
+**Feed Protocol.** Public feeds per app slug and feed ID — structured data a tool can publish or subscribe to without a bespoke backend. Used by Golazo leaderboards, showcase apps, and real-time surfaces today.
+
+**Proof.** Runtime events prove that a tool works offline, used local storage, ran local AI, wrote backup, or joined a private relay.
 
 ---
 
 ## Enforcement
 
-Shippie is not relying on a checkbox.
+Shippie does not rely on a checkbox.
 
-Every browser zip upload, trial upload, CLI deploy, MCP deploy, and workspace deploy runs the same Local Tool policy scanner before the bundle is published.
+Every upload — browser zip, trial, CLI, MCP, or workspace deploy — runs the same Local Tool policy scanner before the bundle is published. The scanner is live today.
 
 The scanner blocks common violations:
 
-- Supabase, Firebase, Appwrite, PocketBase, Neon, Planetscale, and similar third-party stores,
-- Auth0, Clerk, Firebase Auth, Supabase Auth, NextAuth, and similar auth dependencies,
-- Google Analytics, Tag Manager, Mixpanel, PostHog, Segment, Meta Pixel, and ad SDKs,
-- insecure transports and bundled secrets.
+- Supabase, Firebase, Appwrite, PocketBase, Neon, Planetscale, and similar third-party stores
+- Auth0, Clerk, Firebase Auth, Supabase Auth, NextAuth, and similar auth dependencies
+- Google Analytics, Tag Manager, Mixpanel, PostHog, Segment, Meta Pixel, and ad SDKs
+- Insecure transports and bundled secrets
 
-It allows public reference data, external AI, service writes, and third-party resources with disclosure. Quiet local/default tools stay visually quiet; Shippie adds labels only when something extra is happening. High-risk connections are visible at runtime and in Your Data; suspicious query strings are flagged for review.
+It allows public reference data, external AI, service writes, and third-party resources with disclosure. Quiet local tools stay visually quiet — labels appear only when something extra is happening. High-risk connections are visible at runtime and in Your Data. Suspicious patterns are flagged for review.
 
-Hosted URL wrapping is retired for marketplace publishing because a reverse proxy cannot prove the local-tool promise.
+Beyond static scanning, Shippie runs:
+
+- A kill switch for published apps (KV-backed, immediate effect per isolate)
+- User reports via the app detail card (`app_reports` table in D1)
+- Runtime behavior delta monitoring between versions
+- Transparency badges shown per-tool based on what the scanner found
+
+Hosted URL wrapping is retired for marketplace publishing. A reverse proxy cannot prove the local-tool promise.
 
 ---
 
-## Data Continuity Without Migration Fatigue
+## How Tools Are Isolated
+
+Each published app is served from its own subdomain. The platform enforces:
+
+- `HTMLRewriter` injects the SDK wrapper and CSP headers on every HTML response
+- `frame-ancestors` CSP so apps cannot escape their iframe context
+- No cross-origin data access between tools except through declared Intents
+- Maker-visible audit trail in the App Health panel
+
+---
+
+## Data Continuity
 
 If tools continuously improve, users should not keep manually migrating.
 
@@ -153,9 +185,9 @@ Shippie starts with Data Passport v0:
 }
 ```
 
-This is not a full migration system yet. It is the first honest step: tools declare the family of data they own. Remixes and successors can declare compatibility with that family. Later phases add install-time compatibility checks, migration runners, and rollback.
+Tools declare the family of data they own. Remixes and successors can declare compatibility with that family. Later phases add install-time compatibility checks, migration runners, and rollback.
 
-The long-term goal is simple: a better tool can inherit the user's old data because both tools speak the same local data passport.
+The long-term goal: a better tool can inherit the user's old data because both tools speak the same local data passport. v0 is metadata only — compatibility checks and migration runners come in a later phase.
 
 ---
 
@@ -175,11 +207,13 @@ The narrower marketplace is the moat. Fewer tools, clearer claims, deeper trust.
 
 ## Honest Limitations
 
-Static scanning cannot perfectly prove privacy. It catches common cloud patterns and obvious egress, but the wrapper also records runtime-created external hosts locally on the user's device. Runtime proof, package review, and user reporting still matter.
+Static scanning cannot perfectly prove privacy. It catches common cloud patterns and obvious egress, but it can miss runtime-created external hosts. Runtime proof, package review, and user reporting are all live — and all three matter.
 
 Local AI depends on device capability and model availability. Some tasks will need explicit user-approved external calls until local models are good enough.
 
-Data Passport v0 is metadata, not migration magic. Compatibility checks and migration runners come later.
+Data Passport v0 is metadata, not migration magic. Compatibility checks and migration runners come in a later phase.
+
+The kill switch takes effect immediately in KV, but in-process isolate caches at CF edge regions take up to 30 seconds to clear. This is a known trade-off of the edge-first architecture.
 
 The policy will reject some apps that could technically be useful. That is the trade. Shippie is not trying to be a worse cloud platform. Shippie is trying to make local tools a category of their own.
 

@@ -6,147 +6,102 @@ Zero external accounts. Everything runs on your laptop.
 
 | Tool | Version | Install |
 |------|---------|---------|
-| macOS | Any recent | — |
-| [Homebrew](https://brew.sh) | Any | `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"` |
-| [Bun](https://bun.sh) | ≥ 1.3 | `curl -fsSL https://bun.sh/install \| bash` |
-| Node | ≥ 20 | `brew install node@20` or use `nvm` |
-| Postgres 16 | 16.x | `brew install postgresql@16` |
-
-Windows / Linux: swap Homebrew for your package manager. The rest is the same.
+| Bun | >= 1.3 | `curl -fsSL https://bun.sh/install \| bash` |
+| Node | >= 20 | `brew install node@20` or `nvm` |
+| Wrangler | latest | bundled — `bun install` brings it in |
 
 ## First-time setup
 
 ```bash
-# 1. Clone and install
-git clone <repo-url> shippie
-cd shippie
+git clone <repo-url> shippie && cd shippie
 bun install
 
-# 2. Start Postgres
-brew services start postgresql@16
+# Apply local D1 migrations (required before /apps loads)
+cd apps/platform && bun run db:migrate:local && cd ../..
 
-# 3. Create the dev database
-/opt/homebrew/opt/postgresql@16/bin/createdb shippie_dev
-
-# 4. Create apps/web/.env.local
-cat > apps/web/.env.local <<EOF
-DATABASE_URL="postgres://$(whoami)@localhost:5432/shippie_dev"
-AUTH_SECRET="$(openssl rand -hex 32)"
-AUTH_TRUST_HOST="true"
-NEXTAUTH_URL="http://localhost:4100"
-EOF
-
-# 5. Apply migrations
-cd packages/db && bun run db:push && cd ../..
-
-# 6. Start the dev server
-cd apps/web && bun run dev
+# Start the dev server
+cd apps/platform && bunx wrangler dev --local
 ```
 
-Visit http://localhost:4100.
+Visit http://localhost:4101.
+
+Sign in at `/auth/signin` — the magic link prints to `/tmp/main-dev.log`:
+
+```bash
+tail -f /tmp/main-dev.log
+```
+
+To grant yourself admin in the local D1:
+
+```bash
+# Run the local admin-grant command from apps/platform
+bun run db:admin:local
+```
 
 ## Daily dev loop
 
 ```bash
-# Postgres keeps running as a background service — no action needed
-# If you rebooted and it's not up:
-brew services start postgresql@16
-
-# From repo root
-cd apps/web && bun run dev
+cd apps/platform && bunx wrangler dev --local
+tail -f /tmp/main-dev.log   # in a second pane for magic links
 ```
-
-Visit http://localhost:4100. Sign in at `/auth/signin` — the magic link
-prints to the terminal.
 
 ## Running tests
 
 ```bash
-# Full test suite (PGlite in-memory + Web Crypto primitives)
-cd packages/db && bun test
-cd ../session-crypto && bun test
-```
+# Platform (vitest)
+cd apps/platform && bun run test
 
-## Resetting the database
+# Type checking
+cd apps/platform && bun run svelte-check
 
-```bash
-/opt/homebrew/opt/postgresql@16/bin/dropdb shippie_dev
-/opt/homebrew/opt/postgresql@16/bin/createdb shippie_dev
-cd packages/db && bun run db:push
+# Full health check from repo root
+bun run health   # typecheck + test + build
 ```
 
 ## Port reference
 
 | Port | Service |
 |------|---------|
-| 4101 | SvelteKit dev server with Cloudflare platform proxy |
+| 4101 | SvelteKit + Cloudflare platform proxy (wrangler dev --local) |
 | 8787 | Wrangler preview when needed |
 
 ## What's stubbed vs live
 
-All external integrations are intentionally stubbed in dev:
-
 | Service | Dev | Live |
 |---------|-----|------|
-| Database | Local D1 via platform proxy/migrations | Cloudflare D1 |
-| Email | Magic link prints to terminal | Cloudflare Email binding |
+| Database | Local D1 via wrangler | Cloudflare D1 |
+| Email | Magic link -> `/tmp/main-dev.log` | Cloudflare Email binding |
 | Storage | Local proxy binding | Cloudflare R2 |
-| Build runner | Local zip/build flow | GitHub Actions for repo-based deploys |
+| Build runner | Local zip/build flow | GitHub Actions |
 | Runtime | Local Worker preview | Cloudflare Workers |
-| GitHub integration | OAuth test app or disabled | GitHub App |
-| Billing | — (not wired yet) | Stripe |
-| OpenAI (auto-packaging) | — (not wired yet) | OpenAI API |
-| Observability | — (not wired yet) | Sentry |
-
-Each adapter lands in its own week of the v6 build plan. You don't need
-any external accounts to run Shippie in dev until a feature specifically
-calls for one.
+| Billing | Not wired | Stripe |
+| AI (auto-packaging) | Not wired | OpenAI API |
+| Observability | Not wired | Sentry |
 
 ## Troubleshooting
 
-### `next dev` fails with `EADDRINUSE :4100`
-
-Another process is on port 4100. Kill it or change the port:
-
+**`/apps` returns 500 on fresh checkout** — migrations haven't run yet:
 ```bash
-lsof -iTCP:4100 -sTCP:LISTEN
+cd apps/platform && bun run db:migrate:local
+```
+
+**Port 4101 already in use:**
+```bash
+lsof -iTCP:4101 -sTCP:LISTEN
 kill <pid>
 ```
 
-### `psql: connection refused`
-
-Postgres isn't running:
-
+**Magic link never appears** — check the log file, not the terminal:
 ```bash
-brew services list | grep postgres
-brew services start postgresql@16
+tail -f /tmp/main-dev.log
 ```
 
-### Migrations fail with `relation already exists`
-
-The migrations ledger is out of sync with the DB. Reset:
-
+**`@shippie/db` import not found after pulling** — rebuild workspace packages:
 ```bash
-/opt/homebrew/opt/postgresql@16/bin/dropdb shippie_dev
-/opt/homebrew/opt/postgresql@16/bin/createdb shippie_dev
-cd packages/db && bun run db:push
+bun run dev   # from repo root; Turbo builds deps first
 ```
 
-### Auth.js errors with `Configuration` / `AdapterError`
-
-Usually means `.env.local` is missing or `AUTH_SECRET` is unset. Re-run the
-setup cat command above.
-
-### `@shippie/db` import not found after pulling changes
-
-Rebuild the workspace package:
-
+**Migrations fail with `relation already exists`** — reset local D1:
 ```bash
-cd packages/db && bun run build
-```
-
-Or let Turbo do it for you (dev task depends on `^build`):
-
-```bash
-bun run dev  # from repo root; builds deps first
+cd apps/platform && bun run db:migrate:local --reset
 ```

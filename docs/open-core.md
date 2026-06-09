@@ -1,54 +1,40 @@
-# What's open source here
+# Open Source Boundaries
 
-Shippie is a source-available monorepo. This page draws the boundary the README
-references: which parts are the **open-source core** you can build tools against,
-which are **internal platform code**, and which are **examples**. The goal is
-legibility — a stranger should be able to tell, in one read, what they can depend on.
+Shippie is a source-available monorepo. This page explains what you can build against, what is platform-internal, and what is just an example.
 
-> Licensing (see [`LICENSE`](../LICENSE) / [`LICENSE-MIT`](../LICENSE-MIT)):
-> the **platform** is AGPL-3.0; the **SDK, CLI, MCP server, and templates** are MIT
-> so you can build and ship tools without the AGPL reaching your app code.
+## Licensing
 
-## The five buckets
+- **Platform** (`apps/platform`, server-only packages) — AGPL-3.0. Network-accessible modifications must be shared back.
+- **SDK, CLI, MCP server, templates** — MIT. You can build and ship tools without the AGPL reaching your app code.
 
-### 1. Open-source core — the contracts + the tool-facing surface
-The stable surface a maker or another implementation builds against. Documented in
-[`docs/contracts/`](contracts/) and the JSON Schema at
-[`/schemas/app.json`](../apps/platform/static/schemas/app.json).
+## What is open-source (MIT)
 
-- **`shippie.json` manifest** — identity, capabilities, data, source/provenance.
-- **Intent catalog** — `@shippie/intents` (`CANONICAL_INTENTS`).
-- **Runtime contract** — `@shippie/local-runtime-contract` (capabilities, availability).
-- **App package contract** — `@shippie/app-package-contract` (permissions, trust, portable package).
-- **Deploy / remix / lineage flow** — CLI deploy, `--remix`, source-repo normalization, lineage.
+The stable surface that makers and tool implementations build against:
 
-### 2. Publishable packages (MIT)
-Meant to be consumed outside this repo — built output (`dist`) is legitimate here.
+- `shippie.json` manifest — identity, capabilities, data, provenance
+- Intent catalog — `@shippie/intents`
+- Runtime contract — `@shippie/local-runtime-contract`
+- App package contract — `@shippie/app-package-contract`
+- Deploy / remix / lineage flow
 
-- `@shippie/sdk` — the tool-side SDK.
-- `@shippie/cli` — `shippie deploy` / `remix`.
-- `@shippie/mcp-server` — deploy/remix tools for agents.
-- `templates/` — starter showcases.
+Published packages (built output is intentional):
 
-### 3. Internal platform code (AGPL)
-The hosted runtime + marketplace. `private: true` in `package.json` here means
-**"not npm-published,"** not "closed" — the source is in this repo. Network-accessible
-modifications must be shared back (AGPL).
+- `@shippie/sdk` — tool-side SDK
+- `@shippie/cli` — `shippie deploy` and `remix`
+- `@shippie/mcp-server` — deploy/remix tools for agents
+- `templates/` — starter showcases
 
-- `apps/platform` — SvelteKit + Cloudflare Workers + D1/R2/KV/DO.
-- Server-only packages: deploy pipeline, analyse, trust-ledger, proximity host, etc.
+## What is platform-internal (AGPL)
 
-### 4. Private / user apps
-Sensitive or personal tools are **not** part of the open-source identity. A tool can be
-private and still live in the marketplace; provenance fields simply say less about it.
+The hosted runtime and marketplace. `private: true` in `package.json` means not npm-published, not closed — source is in this repo.
 
-### 5. Examples / showcases
-`apps/showcase-*` — first-party demos of the contracts above. Useful as references,
-not part of the dependable API surface.
+- `apps/platform` — SvelteKit + Cloudflare Workers + D1/R2/KV/DO
+- Server-only packages: deploy pipeline, policy scanner, trust ledger, proximity host
 
-## How a tool connects (deploy-neutral)
+## What is neither (examples)
 
-A tool can come from **CLI, zip/upload, a local folder, a GitHub repo, a remix, or a
-trial** (`apps.source_type` records which). GitHub is a first-class *source* — it gives
-the cleanest provenance (source, license, lineage, remix) — but it is never required.
-See [`docs/contracts/provenance.md`](contracts/provenance.md).
+`apps/showcase-*` are first-party demos. Useful as references; not part of the dependable API surface.
+
+## How a tool connects
+
+A tool can arrive via CLI, zip upload, local folder, GitHub repo, remix, or trial. GitHub is a first-class source — it gives the cleanest provenance — but it is never required. See `docs/contracts/provenance.md`.

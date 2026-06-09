@@ -1,138 +1,155 @@
 # Architecture
 
-Shippie is a platform for **local tools that know each other**.
+Shippie is a marketplace and runtime for **local tools** — apps that run on the user's device, store data locally, work offline, and connect to other Shippie tools through user-controlled primitives.
 
-- **Local** — accepted tools keep user data on the device by default.
-- **Private** — no external login, third-party user-data store, trackers, or ads in the public tool surface.
-- **Connected to each other** — tools share local signals through intents and encrypted Shippie relay when the user chooses live collaboration.
-
-Underneath the public story, the platform is composed of Shell, Boost, Sense, Core, AI, Vault, Pulse, Spark, and Hub. Documentation, the SDK, and the whitepaper map them in detail; product surfaces lead with the Local Tool promise.
+- **Local** — apps keep user data on the device by default.
+- **Private** — no third-party user-data stores, trackers, or ads in the public tool surface.
+- **Connected** — tools share signals through intents and encrypted relay when the user opts in.
 
 ## Stack
 
-The SvelteKit + Cloudflare cutover shipped on 2026-04-26 (commit `56179bf`). The active production architecture is Cloudflare-first: Workers, D1, R2, KV, Durable Objects, Workers Assets, scheduled triggers, and Cloudflare Email.
-
 | Concern | Technology |
 |---|---|
-| Platform app | SvelteKit (`apps/platform/`) on Cloudflare Pages |
-| Wrapper / subdomain routing / SDK injection | Cloudflare Workers via SvelteKit's `hooks.server.ts` |
-| Database | Cloudflare D1 (SQLite at the edge) — schema in `packages/db/` |
-| File storage | Cloudflare R2 (`shippie-apps`, `shippie-public`) |
-| Cache / KV | Cloudflare KV |
-| Real-time signalling | Cloudflare Durable Objects (`SignalRoom`) |
-| Local AI runtime | Container worker (`apps/platform/src/lib/container/ai-worker.ts`) loading the versioned Transformers runtime artifact; `apps/shippie-ai/` remains the older standalone AI surface while the container path matures |
-| Local-runtime engines | wa-sqlite (`packages/local-db/`), OPFS (`packages/local-files/`), Transformers.js / WebNN (`packages/local-ai/` + container worker) |
-| Mesh transport | WebRTC peer-to-peer over Durable Object signalling |
-| Hub (venue) | Bun + Docker (`services/hub/`) — mDNS + WebSocket signal, app/model cache |
-| Build runner | GitHub Actions for repo-based deploys |
+| Platform app | SvelteKit + `adapter-cloudflare-workers` (`apps/platform/`) |
+| Request routing | Single Cloudflare Worker — handles `shippie.app` + `*.shippie.app` |
+| Subdomain isolation | `HTMLRewriter` injects SDK wrapper + CSP headers on every maker-app HTML response |
+| Database | Cloudflare D1 (SQLite via Drizzle ORM) — schema in `packages/db/` |
+| File storage | Cloudflare R2 — maker app zip bundles (versioned) + showcase assets |
+| Cache / KV | Cloudflare KV — rate limiting, app metadata cache, suspension keys, session context |
+| Auth | Lucia (session-based, stored in D1 + KV) |
+| First-party showcases | Bundled into `static/__shippie-run/` at build time, served via ASSETS binding |
+| Build runner | GitHub Actions for repo-connected deploys |
 
-## Repo layout
+## Request routing
 
 ```
-apps/
-  platform/                 SvelteKit + Cloudflare — marketplace, dashboard, deploy API, wrapper (AGPL)
-  shippie-ai/               Cross-origin AI iframe at ai.shippie.app — Vite + Workbox SW (AGPL)
-  showcase-recipe/          Demo: local DB + offline cooking
-  showcase-journal/         Demo: local DB + patina + extractive summaries
-  showcase-whiteboard/      Demo: real-time collaboration (Pulse)
-  showcase-live-room/       Demo: pub-quiz / classroom Live Room (Pulse + Sense)
-
-packages/
-  sdk/                      @shippie/sdk — client SDK for deployed apps (MIT)
-                            subpath exports: ./native, ./wrapper
-  cli/                      @shippie/cli — terminal deploy tool (MIT)
-  mcp-server/               @shippie/mcp — MCP server for AI tools (MIT)
-  pwa-injector/             Manifest + service worker generation
-  local-db/                 wa-sqlite + IndexedDB fallback
-  local-files/              OPFS path abstraction
-  local-ai/                 LocalAI bridge spec (consumed by sdk)
-  local-runtime/            DB + telemetry orchestration
-  local-runtime-contract/   Shared local-runtime types
-  ambient/                  Background analysis scheduler + insight surfacing
-  intelligence/             Spatial memory, pattern tracking, predictive preload, recall
-  proximity/                Rooms, WebRTC, gossip, transfer primitives
-  backup-providers/         Encrypted backup adapters (iCloud, Google Drive, Dropbox)
-  session-crypto/           Encryption helpers
-  analyse/                  HTML/CSS/JS scanner → AppProfile + Local Tool policy scan
-  access/                   OAuth + OIDC adapters
-  shared/                   Shared project types
-  db/                       Drizzle schema + D1 migrations
-  dev-storage/              Local dev IndexedDB / KV simulator
-
-services/
-  hub/                      Self-hosted venue device — Bun server + Docker, mDNS + WS signalling
-
-docs/
-  CURRENT_STATE.md          Living truth file — read first
-  architecture.md           This file
-  self-hosting.md           Run your own instance
-  superpowers/plans/        Active and archived design plans
+Browser request
+       |
+       +-- shippie.app/* ---------> SvelteKit routes (platform UI + API)
+       |
+       +-- <slug>.shippie.app/* --> Worker detects subdomain
+                                         |
+                                         +-- slug in KV/D1? --> fetch zip from R2
+                                         |                       HTMLRewriter injects
+                                         |                       wrapper + manifest + SW
+                                         |
+                                         +-- slug in __shippie-run/? --> ASSETS binding
+                                                                         (first-party showcases)
 ```
 
-The umbrella plan and Non-Negotiables live at `/Users/devante/.claude/plans/review-all-of-this-swift-token.md`. The active build roadmap is `docs/superpowers/plans/2026-04-25-intelligence-layer-roadmap.md`.
+## Auth
 
-## Workspace package boundaries
+- Sessions managed by Lucia; session token stored in a cookie.
+- D1 holds `users`, `sessions`, and `oauth_accounts` tables.
+- KV caches session context for hot paths.
+- Magic-link email is the primary auth flow; OAuth adapters in `packages/access/`.
 
-Internal packages (`@shippie/proximity`, `@shippie/local-db`, `@shippie/ambient`, etc.) expose `exports` pointing at TypeScript source, not built `dist/`:
+## Storage layout
 
-```json
-"exports": {
-  ".": {
-    "types": "./src/index.ts",
-    "import": "./src/index.ts"
-  }
-}
+| Store | What lives there |
+|---|---|
+| D1 | Users, sessions, apps, versions, feeds, feedback_items, app_reports, leaderboards |
+| R2 | Versioned maker app zip bundles, extracted static assets |
+| KV | Session context, app metadata cache, suspension keys (`suspend:<slug>`), rate limit counters |
+
+End-user app data lives on the user's device (local SQLite/OPFS). Shippie holds platform metadata only — never per-user app data.
+
+## Maker app lifecycle
+
 ```
-
-This pattern keeps typecheck immune to build state. Vite (used by SvelteKit + the AI iframe) and Bun both transpile TS source natively, so production builds work the same way. Build artifacts are still generated via tsup for any future external consumers; right now every workspace package is `private: true`.
-
-## What runs where
-
-![Shippie architecture diagram](./architecture.svg)
-
-Open [`architecture.svg`](./architecture.svg) for the full diagram. In short:
-
-- **Maker tools** on the left (Claude Code, CLI, MCP, GitHub, web upload) deploy via the Cloudflare platform.
-- **Deploy truth** in the middle (Cloudflare Workers + Pages + D1 + R2 + KV + Durable Objects) handles deploy ingestion, package artifacts, wrapper injection on every `*.shippie.app` HTML response, proof-event ingestion + cron rollup, and the `/__shippie/signal/[roomId]` WebSocket signalling DO.
-- **Portable packages** keep URL ownership, custom-domain metadata, version lineage, app permissions, and the static build together so the same artifact can run on `shippie.app` or a future `hub.local` node.
-- **User device** on the right runs the actual app: standalone URL if opened directly, or the Shippie container if installed. Local SQLite/OPFS, shared AI model cache, Your Data, and cross-app intents live in the container/device boundary; WebRTC connects nearby devices.
-
-Maker code is delivered as static files from R2; the Worker injects the wrapper script + manifest + SW around every HTML response. End-user data lives on the user's device. Shippie holds platform metadata (listings, feedback, room audit, proof events) in D1 — never readable per-user app data.
-
-## Local Tool Policy
-
-The public app kind is now **Local Tool**. Capabilities describe optional
-behavior: works offline, secure backup, reference data, local AI, private
-relay, intents, local DB, and local files.
-
-Every browser zip upload, trial upload, CLI deploy, MCP deploy, and workspace
-deploy runs the same Local Tool policy scanner before publishing. The scanner
-blocks external auth, third-party user-data storage, trackers, ads, insecure
-transports, and bundled secrets. External AI, service writes, and third-party
-resources are allowed by default when disclosed through Connection Guard and
-the runtime Your Data surfaces. Quiet local/default tools do not get extra
-badges; Shippie only labels apps when an outside service, AI provider,
-payment provider, weather/location service, or creator-hosted endpoint is in
-use. URL-wrap deploys are retired for marketplace
-publishing because a reverse-proxied hosted app cannot prove the promise;
-legacy wrapped apps are disclosed as hosted upstream connections.
-
-See [`strategy/local-tools-policy.md`](./strategy/local-tools-policy.md).
+Maker uploads zip (CLI / web / MCP)
+          |
+          v
+  Policy scanner (packages/analyse/)
+  -- blocks: external auth, trackers, bundled secrets, insecure transports
+  -- flags: external AI, third-party services (disclosed via transparency badges)
+          |
+          v
+  Zip stored in R2 (versioned)
+  App record written to D1
+  KV metadata cache populated
+          |
+          v
+  <slug>.shippie.app live
+  Worker serves files from R2 + injects wrapper on HTML responses
+  Suspension: writing suspend:<slug> to KV stops serving immediately
+```
 
 ## Deploy paths
 
 | Path | How | Time-to-URL |
 |---|---|---|
-| **CLI** | `shippie deploy ./dist` | usually under a minute |
-| **Web upload** | drag a built zip at `shippie.app/new` | usually under a minute |
-| **MCP** | "deploy this to Shippie" inside Claude Code / Cursor | usually under a minute |
-| **GitHub** | push to a connected repo | ~10 s to placeholder, ~2–5 min to built (GitHub Actions runner) |
+| **CLI** | `shippie deploy ./dist` | under a minute |
+| **Web upload** | drag a built zip at `shippie.app/new` | under a minute |
+| **MCP** | "deploy this to Shippie" inside Claude Code / Cursor | under a minute |
+| **GitHub** | push to a connected repo | ~10 s placeholder, ~2-5 min built (GitHub Actions) |
 
-Pre-built paths (CLI, web upload, MCP) hit the fast lane. Repo-based deploys go through GitHub Actions; the build runs on GitHub's disposable VMs, never on Shippie infrastructure, so untrusted code never executes inside the platform's blast radius.
+Pre-built paths (CLI, web, MCP) are fast-lane. GitHub deploys build on GitHub's VMs — untrusted code never executes inside Shippie infrastructure.
+
+## Repo layout
+
+```
+apps/
+  platform/          SvelteKit + Cloudflare Worker — marketplace, auth, deploy API,
+                     subdomain wrapper, Feed Protocol, maker backend (AGPL)
+
+packages/
+  sdk/               @shippie/sdk — client SDK for deployed apps (MIT)
+  cli/               @shippie/cli — terminal deploy tool (MIT)
+  mcp-server/        @shippie/mcp — MCP server for AI-editor deploys (MIT)
+  db/                Drizzle schema + D1 migrations
+  analyse/           Policy scanner — HTML/CSS/JS -> AppProfile + Local Tool verdict
+  access/            OAuth + OIDC adapters
+  pwa-injector/      Manifest + service worker generation
+  local-db/          wa-sqlite + IndexedDB fallback
+  local-files/       OPFS path abstraction
+  local-ai/          LocalAI bridge spec
+  proximity/         Rooms, WebRTC, gossip, transfer primitives
+  session-crypto/    Encryption helpers
+  shared/            Shared project types
+
+docs/
+  CURRENT_STATE.md   Living truth file — read first
+  architecture.md    This file
+  self-hosting.md    Run your own instance
+  superpowers/plans/ Active and archived design plans
+```
+
+## Platform nav (June 2026)
+
+Three primary routes — no separate Create or Access nav items:
+
+- **Dock** — your installed apps, recents, pending updates
+- **Tools** — marketplace discovery and search
+- **You** — identity, your data, settings, help
+
+## Safety
+
+- Policy scanner runs at every upload (CLI, web, MCP, GitHub).
+- Suspension: set `suspend:<slug>` in KV to stop serving a maker app immediately.
+- `app_reports` table in D1 receives user reports; maker is notified.
+- Behavior delta monitoring flags unexpected permission changes between versions.
+- Transparency badges surface when an app uses an external service, AI provider, or creator-hosted endpoint.
+
+## Feed Protocol
+
+D1-backed public feeds per app, addressed by `slug/feedId`. Apps write events via the platform API; consumers poll or subscribe. Used by Golazo leaderboards, showcase apps, and future real-time surfaces.
+
+## Workspace package boundaries
+
+Internal packages expose `exports` pointing at TypeScript source, not built `dist/`:
+
+```json
+"exports": {
+  ".": { "types": "./src/index.ts", "import": "./src/index.ts" }
+}
+```
+
+Typecheck is immune to build state. Vite (SvelteKit) and Bun both transpile TS source natively. Every workspace package is `private: true`.
 
 ## Licensing
 
-- **Platform** (`apps/platform`, `apps/shippie-ai`, `services/hub`, `packages/pwa-injector`, `packages/db`): [AGPL-3.0](../LICENSE). Fork and self-host freely; network-accessible modifications must publish under the same licence.
-- **SDK / CLI / MCP server / shared / templates**: [MIT](../LICENSE-MIT). Link into your apps without constraint.
+- **Platform** (`apps/platform`, `packages/db`, `packages/pwa-injector`): AGPL-3.0.
+- **SDK / CLI / MCP / shared**: MIT.
 
-See [self-hosting.md](./self-hosting.md) for running your own instance.
+See `docs/self-hosting.md` for running your own instance.
