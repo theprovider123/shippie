@@ -67,6 +67,10 @@ export class Keeper {
   diving = false;
   /** 0 = on the line, 1 = full-stretch airborne dive. Drives the dive animation. */
   dive = 0;
+  /** Pre-shot drift direction: -1 left, 0 centre, 1 right. Set by prepareRound(). */
+  preDriftDir = 0;
+  /** Whether the keeper will snap back the other way (feint) on dive commit. */
+  preDriftFake = false;
   private patrolDir = 1;
   private wait = 0; // reaction-delay frames remaining before the dive commits
 
@@ -77,6 +81,12 @@ export class Keeper {
 
   setBounds(x0: number, x1: number): void {
     this.x0 = x0; this.x1 = x1;
+  }
+
+  /** Call before each round. Sets the keeper's pre-shot preference for mind games. */
+  prepareRound(rng: () => number = Math.random): void {
+    this.preDriftDir = rng() < 0.4 ? 0 : rng() < 0.5 ? -1 : 1;
+    this.preDriftFake = this.preDriftDir !== 0 && rng() < 0.3;
   }
 
   /** Commit a dive toward where the ball will cross, with difficulty-scaled error.

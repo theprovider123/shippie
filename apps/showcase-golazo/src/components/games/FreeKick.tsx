@@ -67,17 +67,17 @@ export function FreeKick({ onGameOver, target, difficulty = 0.35 }: { onGameOver
     // Daily mode draws every random from a seeded stream so the run is identical for all.
     const rng = mode === "daily" ? seededRng(dailySeed()) : Math.random;
 
-    const goalY = () => H * 0.15;
-    const goalL = () => W * 0.18;
-    const goalR = () => W * 0.82;
-    const barH = () => H * 0.18;
+    const goalY = () => H * 0.12;
+    const goalL = () => W * 0.04;
+    const goalR = () => W * 0.96;
+    const barH = () => H * 0.34;
     const goalBottom = () => goalY() + barH();
     const clamp = (n: number, lo: number, hi: number) => (n < lo ? lo : n > hi ? hi : n);
     // Wall edges in toward the spot and rises as the rounds climb.
     const roundOf = () => Math.floor(attemptsRef.current / 3) + 1;
     const wallDepth = () => H * (0.58 - Math.min(0.14, (roundOf() - 1) * 0.025));
     const wallTall = () => H * (0.10 + Math.min(0.06, (roundOf() - 1) * 0.012));
-    const spot = () => ({ x: W / 2, y: H * 0.9 });
+    const spot = () => ({ x: W / 2, y: H * 0.88 });
     const freshBall = (): Ball => ({ ...spot(), depthY: spot().y, height: 0, vx: 0, vDepth: 0, vz: 0, curl: 0, spin: 0, flying: false, r: Math.min(W, H) * 0.045 });
     const screenY = (b = ball) => b.depthY - b.height;
 
@@ -354,7 +354,7 @@ export function FreeKick({ onGameOver, target, difficulty = 0.35 }: { onGameOver
       drawStadium(ctx, W, H, now - startT, { pitchTop: 0.42 });
       drawGoalFrame();
       const gy = goalY(), bh = barH();
-      drawKeeper(ctx, keeper.x, gy + bh * 0.6, keeper.reachPx(), keeper.lean, bh, keeper.dive);
+      drawKeeper(ctx, keeper.x, gy + bh * 0.6, keeper.reachPx() * 1.17, keeper.lean, bh * 0.44, keeper.dive);
       if (ripple) { drawNetRipple(ctx, ripple.x, ripple.y, ripple.age, "rgba(120,240,170,"); ripple.age += ts; }
       drawWind();
       drawWallAt(wallX);

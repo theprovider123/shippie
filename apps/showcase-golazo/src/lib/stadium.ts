@@ -240,10 +240,10 @@ function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
 }
 
 /**
- * A proper goalkeeper: head, jersey, two arms spread to gloves at the edge of the
- * save zone, and legs — tilting into the dive with `lean`. `reachPx` is the save
- * half-width (so the gloves mark exactly what they can reach); `scale` ≈ goal-mouth
- * height. Amber kit by default so the keeper reads as the opponent.
+ * Detailed goalkeeper: cap, eyes, jersey number "1", wristband gloves with finger lines,
+ * shin pads and boots. First-person penalty view — keeper appears small relative to the
+ * full-width goal. `reachPx` is save half-width; `scale` ≈ 44% of goal height.
+ * Amber kit by default so the keeper reads as the opponent.
  */
 export function drawKeeper(
   ctx: CanvasRenderingContext2D,
@@ -255,47 +255,106 @@ export function drawKeeper(
   dive = 0,
   kit = "#f5a623",
 ): void {
-  const dark = "#2a1f12";
-  const glove = "#fff7e6";
+  const dark = "#1a1208";
+  const gloveCol = "#fff7e6";
   const skin = "#e8c9a0";
-  const bodyW = Math.max(13, scale * 0.3);
-  const bodyH = scale * 0.5;
-  const headR = scale * 0.15;
-  const shoulderY = -bodyH * 0.4;
-  const span = Math.max(reachPx, bodyW * 0.9); // gloves at the save-zone edge
-  const reachUp = scale * 0.22; // arms raised as they spread
+  const shirtNum = "#1a1208";
+  const bootCol = "#111";
+  const shinCol = "#ddd";
+
+  // unit = consistent sizing denominator
+  const u = scale * 0.18;
+  const bodyW = u * 1.4;
+  const bodyH = u * 2.1;
+  const headR = u * 0.82;
+  const shoulderY = -bodyH * 0.36;
+  const hipY = bodyH * 0.24;
   const dir = lean === 0 ? 0 : lean > 0 ? 1 : -1;
 
   ctx.save();
-  // Launch off the line: arc up + out toward the dive as `dive` ramps 0→1.
-  ctx.translate(cx + dir * dive * scale * 0.35, cy - Math.sin(dive * Math.PI) * scale * 0.42);
-  // Body rotates from upright toward fully horizontal in the dive direction.
-  ctx.rotate(lean * 0.3 + dir * dive * (Math.PI * 0.42));
+  // Dive: arc off the line toward dive direction
+  ctx.translate(
+    cx + dir * dive * scale * 0.28,
+    cy - Math.sin(dive * Math.PI) * scale * 0.38,
+  );
+  ctx.rotate(lean * 0.22 + dir * dive * (Math.PI * 0.38));
 
-  // legs
+  // — LEGS + BOOTS —
   ctx.fillStyle = dark;
-  rr(ctx, -bodyW * 0.46, bodyH * 0.34, bodyW * 0.34, scale * 0.3, bodyW * 0.16);
-  rr(ctx, bodyW * 0.12, bodyH * 0.34, bodyW * 0.34, scale * 0.3, bodyW * 0.16);
-  // torso (jersey)
+  rr(ctx, -bodyW * 0.42, hipY, bodyW * 0.33, u * 1.4, u * 0.18);
+  rr(ctx, bodyW * 0.09, hipY, bodyW * 0.33, u * 1.4, u * 0.18);
+  // Shin pads (white stripe on each leg)
+  ctx.fillStyle = shinCol;
+  ctx.fillRect(-bodyW * 0.36, hipY + u * 0.3, bodyW * 0.2, u * 0.55);
+  ctx.fillRect(bodyW * 0.16, hipY + u * 0.3, bodyW * 0.2, u * 0.55);
+  // Boots
+  ctx.fillStyle = bootCol;
+  ctx.beginPath(); ctx.ellipse(-bodyW * 0.26, hipY + u * 1.42, u * 0.38, u * 0.2, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(bodyW * 0.26, hipY + u * 1.42, u * 0.38, u * 0.2, 0, 0, Math.PI * 2); ctx.fill();
+
+  // — TORSO (jersey) —
   ctx.fillStyle = kit;
-  rr(ctx, -bodyW / 2, -bodyH * 0.52, bodyW, bodyH, bodyW * 0.34);
-  // arms reaching out to the gloves
+  rr(ctx, -bodyW / 2, shoulderY - u * 0.1, bodyW, bodyH * 0.56, u * 0.32);
+  // Jersey number "1"
+  ctx.fillStyle = shirtNum;
+  ctx.font = `bold ${u * 0.72}px system-ui, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("1", 0, shoulderY + bodyH * 0.18);
+
+  // — ARMS (quadratic curves for natural bend) —
+  const actualArmLen = Math.max(reachPx * 0.72, bodyW * 0.9);
+  const armRaiseY = shoulderY - u * 0.28;
   ctx.strokeStyle = kit;
-  ctx.lineWidth = Math.max(6, scale * 0.15);
+  ctx.lineWidth = Math.max(5, u * 0.62);
   ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(-bodyW * 0.38, shoulderY);
-  ctx.lineTo(-span, shoulderY - reachUp);
-  ctx.moveTo(bodyW * 0.38, shoulderY);
-  ctx.lineTo(span, shoulderY - reachUp);
+  ctx.moveTo(-bodyW * 0.42, shoulderY);
+  ctx.quadraticCurveTo(-actualArmLen * 0.55, armRaiseY - u * 0.2, -actualArmLen, armRaiseY);
+  ctx.moveTo(bodyW * 0.42, shoulderY);
+  ctx.quadraticCurveTo(actualArmLen * 0.55, armRaiseY - u * 0.2, actualArmLen, armRaiseY);
   ctx.stroke();
-  // gloves
-  ctx.fillStyle = glove;
-  ctx.beginPath(); ctx.arc(-span, shoulderY - reachUp, scale * 0.1, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(span, shoulderY - reachUp, scale * 0.1, 0, Math.PI * 2); ctx.fill();
-  // head
+  // Gloves with wristband
+  const gloveR = Math.max(u * 0.44, scale * 0.072);
+  ctx.fillStyle = "#e8b84b"; // wristband
+  ctx.beginPath(); ctx.arc(-actualArmLen, armRaiseY, gloveR * 1.08, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(actualArmLen, armRaiseY, gloveR * 1.08, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = gloveCol;
+  ctx.beginPath(); ctx.arc(-actualArmLen, armRaiseY, gloveR, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(actualArmLen, armRaiseY, gloveR, 0, Math.PI * 2); ctx.fill();
+  // Glove fingers (3 lines)
+  ctx.strokeStyle = "rgba(0,0,0,0.25)";
+  ctx.lineWidth = Math.max(1, u * 0.1);
+  for (let i = -1; i <= 1; i++) {
+    const gx1 = -actualArmLen + i * gloveR * 0.38, gy1 = armRaiseY - gloveR * 0.5;
+    ctx.beginPath(); ctx.moveTo(gx1, gy1); ctx.lineTo(gx1, gy1 + gloveR * 0.8); ctx.stroke();
+    const gx2 = actualArmLen + i * gloveR * 0.38;
+    ctx.beginPath(); ctx.moveTo(gx2, gy1); ctx.lineTo(gx2, gy1 + gloveR * 0.8); ctx.stroke();
+  }
+
+  // — HEAD —
   ctx.fillStyle = skin;
-  ctx.beginPath(); ctx.arc(0, -bodyH * 0.52 - headR * 0.7, headR, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  ctx.arc(0, shoulderY - headR * 0.8, headR, 0, Math.PI * 2);
+  ctx.fill();
+  // Hair (dark cap on top half)
+  ctx.fillStyle = dark;
+  ctx.beginPath();
+  ctx.arc(0, shoulderY - headR * 0.8, headR, Math.PI, Math.PI * 2);
+  ctx.fill();
+  // Cap peak
+  ctx.fillStyle = "#c47a1a";
+  ctx.beginPath();
+  ctx.moveTo(-headR * 0.7, shoulderY - headR * 0.8);
+  ctx.lineTo(headR * 0.7, shoulderY - headR * 0.8);
+  ctx.lineTo(headR * 1.1, shoulderY - headR * 0.65);
+  ctx.lineTo(-headR * 0.7, shoulderY - headR * 0.65);
+  ctx.closePath();
+  ctx.fill();
+  // Eyes
+  ctx.fillStyle = dark;
+  ctx.beginPath(); ctx.arc(-headR * 0.3, shoulderY - headR * 0.72, headR * 0.12, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(headR * 0.3, shoulderY - headR * 0.72, headR * 0.12, 0, Math.PI * 2); ctx.fill();
 
   ctx.restore();
 }
