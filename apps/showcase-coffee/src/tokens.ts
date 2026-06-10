@@ -10,14 +10,14 @@ export const C = {
   paper: '#EDE6D2',
   paperWarm: '#E5DCC4',
   espresso: '#2C1A0E',
-  espressoMid: '#6B4C38',
-  espressoLight: '#9B7A68',
+  espressoMid: '#52382A',
+  espressoLight: '#7B5C4C',
   terracotta: '#C4633A',
   terrLight: '#D47A52',
   sage: '#6B8C6E',
   sageLight: '#9BAE9D',
-  tan: '#BFA98A',
-  tanLight: '#D4C4A8',
+  tan: '#9E8A68',
+  tanLight: '#B8A48A',
 } as const;
 
 export const F = {
