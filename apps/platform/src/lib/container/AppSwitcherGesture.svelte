@@ -657,6 +657,7 @@
     min-width: min(360px, 92vw);
     border-right: 1px solid var(--border-light, rgba(0, 0, 0, 0.08));
     overflow-y: auto;
+    padding-top: env(safe-area-inset-top, 0px);
   }
   .drawer.from-right {
     top: 0;
@@ -666,6 +667,7 @@
     min-width: min(380px, 94vw);
     border-left: 1px solid var(--border-light, rgba(0, 0, 0, 0.08));
     overflow-y: auto;
+    padding-top: env(safe-area-inset-top, 0px);
   }
   .drawer.from-bottom {
     left: 0;

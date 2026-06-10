@@ -110,10 +110,16 @@ export function FreeKick({ onGameOver, target, difficulty = 0.35 }: { onGameOver
 
     function curlFromPath(pts: Pt[]): number {
       if (pts.length < 3) return 0;
-      const a = pts[0], b = pts[pts.length - 1], m = pts[Math.floor(pts.length / 2)];
+      const a = pts[0], b = pts[pts.length - 1];
       const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-      const cross = ((b.x - a.x) * (a.y - m.y) - (b.y - a.y) * (a.x - m.x)) / len;
-      return clamp(-cross / (W * 0.12), -1, 1);
+      // Average signed perpendicular distance of ALL intermediate points from the
+      // start→end line. More robust than a single midpoint for fast mobile swipes.
+      let sum = 0;
+      for (let i = 1; i < pts.length - 1; i++) {
+        const m = pts[i];
+        sum += ((b.x - a.x) * (m.y - a.y) - (b.y - a.y) * (m.x - a.x)) / len;
+      }
+      return clamp(sum / ((pts.length - 2) * W * 0.09), -1, 1);
     }
 
     // How smooth the swipe arc was (low jitter = a clean strike) → feeds the grade.
@@ -146,7 +152,7 @@ export function FreeKick({ onGameOver, target, difficulty = 0.35 }: { onGameOver
         vx: dx * 0.028 * power,
         vDepth: -(10.5 + power * 6.6),
         vz: 4.2 + lift * 6.2 + power * 0.8,
-        curl: curl * (0.16 + power * 0.08),
+        curl: curl * (0.22 + power * 0.10),
         spin: dx * 0.018 + curl * 0.8,
         power,
       };
