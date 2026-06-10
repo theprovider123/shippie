@@ -1,5 +1,6 @@
 <script lang="ts">
   import { toast } from '$lib/stores/toast';
+  import Sheet from '$lib/components/ui/Sheet.svelte';
 
   interface Props {
     slug: string;
@@ -114,180 +115,284 @@
   }
 </script>
 
-<div class="backdrop" role="dialog" aria-modal="true" aria-label="Edit app identity" onclick={onClose}>
-  <div class="modal" onclick={(e) => e.stopPropagation()}>
-    <button class="close" type="button" onclick={onClose} aria-label="Close">×</button>
+<Sheet open={true} {onClose} label="Edit app identity">
+  <header class="head">
+    <p class="eyebrow">Maker</p>
     <h2>App identity</h2>
+  </header>
 
-    <label class="field">
-      <span>Name</span>
-      <input type="text" value={editName} oninput={onNameInput} maxlength="64" placeholder="App name" />
-    </label>
+  <label class="field">
+    <span>Name</span>
+    <input type="text" value={editName} oninput={onNameInput} maxlength="64" placeholder="App name" />
+  </label>
 
-    <label class="field">
-      <span>Slug</span>
-      <div class="slug-row">
-        <input
-          type="text"
-          value={editSlug}
-          oninput={onSlugInput}
-          placeholder="my-app"
-          class:invalid={editSlug && !slugValid}
-          class:taken={slugChanged && slugAvailable === false}
-        />
-        {#if checkingSlug}
-          <span class="slug-state">…</span>
-        {:else if slugChanged && slugAvailable === true}
-          <span class="slug-state ok">✓ available</span>
-        {:else if slugChanged && slugAvailable === false}
-          <span class="slug-state err">✗ taken</span>
-        {/if}
-      </div>
-      {#if slugChanged}
-        <p class="slug-warn">Old URL ({slug}.shippie.app) will redirect for 30 days.</p>
+  <label class="field">
+    <span>Slug</span>
+    <div class="slug-row">
+      <input
+        type="text"
+        value={editSlug}
+        oninput={onSlugInput}
+        placeholder="my-app"
+        class:invalid={editSlug && !slugValid}
+        class:taken={slugChanged && slugAvailable === false}
+      />
+      {#if checkingSlug}
+        <span class="slug-state">…</span>
+      {:else if slugChanged && slugAvailable === true}
+        <span class="slug-state ok">✓ available</span>
+      {:else if slugChanged && slugAvailable === false}
+        <span class="slug-state err">✗ taken</span>
       {/if}
-    </label>
-
-    <fieldset class="icon-tabs">
-      <legend>Icon</legend>
-      <div class="tab-row">
-        <button type="button" class:active={iconTab === 'colour'} onclick={() => iconTab = 'colour'}>Colour</button>
-        <button type="button" class:active={iconTab === 'emoji'} onclick={() => iconTab = 'emoji'}>Emoji</button>
-        <button type="button" class:active={iconTab === 'upload'} onclick={() => iconTab = 'upload'}>Upload</button>
-      </div>
-
-      {#if iconTab === 'colour'}
-        <div class="colour-picker">
-          {#each PRESET_COLORS as c (c)}
-            <button
-              type="button"
-              class="colour-swatch"
-              class:selected={editThemeColor === c}
-              style:background={c}
-              onclick={() => editThemeColor = c}
-              aria-label={`Colour ${c}`}
-            ></button>
-          {/each}
-          <input type="color" bind:value={editThemeColor} title="Custom colour" class="colour-custom" />
-        </div>
-      {:else if iconTab === 'emoji'}
-        <div class="emoji-grid">
-          {#each EMOJI_GRID as em (em)}
-            <button
-              type="button"
-              class="emoji-btn"
-              class:selected={editIconEmoji === em}
-              onclick={() => editIconEmoji = em}
-            >{em}</button>
-          {/each}
-        </div>
-      {:else}
-        <label class="upload-zone">
-          <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onchange={handleFileChange} class="sr-only" />
-          {#if uploadPreview}
-            <img src={uploadPreview} alt="Icon preview" class="upload-preview" />
-            <span>Change</span>
-          {:else}
-            <span>Drop or tap to upload (PNG, JPG, WebP, SVG — max 1 MB)</span>
-          {/if}
-        </label>
-      {/if}
-    </fieldset>
-
-    <div class="actions">
-      <button type="button" class="ghost" onclick={onClose}>Cancel</button>
-      <button
-        type="button"
-        class="primary"
-        onclick={save}
-        disabled={saving || !editName.trim() || !slugValid || (slugChanged && slugAvailable === false)}
-      >{saving ? 'Saving…' : 'Save'}</button>
     </div>
+    {#if slugChanged}
+      <p class="slug-warn">Old URL ({slug}.shippie.app) will redirect for 30 days.</p>
+    {/if}
+  </label>
+
+  <fieldset class="icon-tabs">
+    <legend class="tab-legend">Icon</legend>
+    <div class="tab-row">
+      <button type="button" class:active={iconTab === 'colour'} onclick={() => iconTab = 'colour'}>Colour</button>
+      <button type="button" class:active={iconTab === 'emoji'} onclick={() => iconTab = 'emoji'}>Emoji</button>
+      <button type="button" class:active={iconTab === 'upload'} onclick={() => iconTab = 'upload'}>Upload</button>
+    </div>
+
+    {#if iconTab === 'colour'}
+      <div class="colour-picker">
+        {#each PRESET_COLORS as c (c)}
+          <button
+            type="button"
+            class="colour-swatch"
+            class:selected={editThemeColor === c}
+            style:background={c}
+            onclick={() => editThemeColor = c}
+            aria-label={`Colour ${c}`}
+          ></button>
+        {/each}
+        <input type="color" bind:value={editThemeColor} title="Custom colour" class="colour-custom" />
+      </div>
+    {:else if iconTab === 'emoji'}
+      <div class="emoji-grid">
+        {#each EMOJI_GRID as em (em)}
+          <button
+            type="button"
+            class="emoji-btn"
+            class:selected={editIconEmoji === em}
+            onclick={() => editIconEmoji = em}
+          >{em}</button>
+        {/each}
+      </div>
+    {:else}
+      <label class="upload-zone">
+        <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onchange={handleFileChange} class="sr-only" />
+        {#if uploadPreview}
+          <img src={uploadPreview} alt="Icon preview" class="upload-preview" />
+          <span>Change</span>
+        {:else}
+          <span>Drop or tap to upload (PNG, JPG, WebP, SVG — max 1 MB)</span>
+        {/if}
+      </label>
+    {/if}
+  </fieldset>
+
+  <div class="modal-actions">
+    <button type="button" class="btn" onclick={onClose}>Cancel</button>
+    <button
+      type="button"
+      class="btn btn-primary"
+      onclick={save}
+      disabled={saving || !editName.trim() || !slugValid || (slugChanged && slugAvailable === false)}
+    >{saving ? 'Saving…' : 'Save'}</button>
   </div>
-</div>
+</Sheet>
 
 <style>
-  .backdrop {
-    position: fixed; inset: 0; z-index: 900;
-    background: rgba(0,0,0,0.72);
-    display: grid; place-items: center; padding: 1rem;
+  .head {
+    display: grid;
+    gap: 0.2rem;
   }
-  .modal {
-    background: var(--surface, #1a1814); border: 1px solid var(--border, rgba(255,255,255,0.12));
-    padding: 1.5rem; width: 100%; max-width: 480px;
-    position: relative; max-height: 90dvh; overflow-y: auto;
+  .eyebrow {
+    margin: 0;
+    color: var(--sunset);
+    font-family: var(--font-mono);
+    font-size: var(--text-caption);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
   }
-  .close {
-    position: absolute; top: 1rem; right: 1rem;
-    background: none; border: none; font-size: 1.5rem;
-    color: var(--text-secondary); cursor: pointer; line-height: 1;
-    min-width: 32px; min-height: 32px;
+  .head h2 {
+    margin: 0;
+    font-family: var(--font-heading);
+    font-size: var(--text-subhead);
+    line-height: 1.05;
   }
-  h2 { margin: 0 0 1.25rem; font-family: var(--font-heading); font-size: var(--text-heading); }
-  .field { display: grid; gap: 0.4rem; margin-bottom: 1rem; font-size: var(--text-body); }
-  .field > span { font-size: var(--text-small); color: var(--text-secondary); font-family: var(--font-mono); }
+  .field {
+    display: grid;
+    gap: 0.35rem;
+    font-size: var(--text-body);
+  }
+  .field > span {
+    font-family: var(--font-mono);
+    font-size: var(--text-caption);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-light);
+  }
   .field input {
-    padding: 0.55rem 0.75rem;
-    border: 1px solid var(--border);
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--border-light);
     background: var(--surface);
     color: var(--text);
     font-family: var(--font-mono);
     font-size: var(--text-body);
-    width: 100%; box-sizing: border-box;
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 0;
   }
-  .field input.invalid, .field input.taken { border-color: var(--danger, #e8402c); }
-  .slug-row { display: flex; gap: 0.5rem; align-items: center; }
+  .field input:focus {
+    outline: none;
+    border-color: var(--sunset);
+  }
+  .field input.invalid,
+  .field input.taken {
+    border-color: var(--danger, #b43f2a);
+  }
+  .slug-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
   .slug-row input { flex: 1; min-width: 0; }
-  .slug-state { font-family: var(--font-mono); font-size: var(--text-small); white-space: nowrap; color: var(--text-secondary); }
-  .slug-state.ok { color: var(--sage-leaf, #2d9a6c); }
-  .slug-state.err { color: var(--danger, #e8402c); }
-  .slug-warn { font-size: var(--text-caption); color: var(--amber, #f5a623); margin: 0.3rem 0 0; font-family: var(--font-mono); }
-  .icon-tabs {
-    border: 1px solid var(--border); padding: 0.85rem 1rem 1rem; margin-bottom: 1rem;
+  .slug-state {
+    font-family: var(--font-mono);
+    font-size: var(--text-caption);
+    white-space: nowrap;
+    color: var(--text-secondary);
   }
-  .icon-tabs legend { font-size: var(--text-small); color: var(--text-secondary); font-family: var(--font-mono); padding: 0 0.25rem; }
-  .tab-row { display: flex; gap: 0.5rem; margin-bottom: 0.85rem; }
+  .slug-state.ok { color: var(--success, #2e7d5b); }
+  .slug-state.err { color: var(--danger, #b43f2a); }
+  .slug-warn {
+    margin: 0.25rem 0 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-caption);
+    color: var(--marigold, #e8c547);
+  }
+  .icon-tabs {
+    border: 1px solid var(--border-light);
+    padding: 0.85rem 0.9rem 1rem;
+    margin: 0;
+  }
+  .tab-legend {
+    font-family: var(--font-mono);
+    font-size: var(--text-caption);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-light);
+    padding: 0 0.25rem;
+  }
+  .tab-row {
+    display: flex;
+    gap: 1px;
+    margin-bottom: 0.85rem;
+    background: var(--border-light);
+  }
   .tab-row button {
-    padding: 0.3rem 0.75rem;
-    border: 1px solid var(--border);
-    background: none;
+    flex: 1;
+    min-height: 36px;
+    border: 0;
+    background: var(--surface);
     color: var(--text-secondary);
     font-family: var(--font-mono);
-    font-size: var(--text-small);
+    font-size: var(--text-caption);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
     cursor: pointer;
   }
   .tab-row button.active {
-    border-color: var(--sunset, #e8603c);
-    color: var(--text);
-    background: rgba(232,96,60,0.06);
+    background: var(--sunset);
+    color: #fff;
   }
   .colour-picker { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
-  .colour-swatch { width: 32px; height: 32px; border: 2px solid transparent; cursor: pointer; flex-shrink: 0; }
+  .colour-swatch {
+    width: 32px;
+    height: 32px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
   .colour-swatch.selected { border-color: var(--text); }
-  .colour-custom { width: 32px; height: 32px; padding: 0; border: 1px solid var(--border); cursor: pointer; }
+  .colour-custom {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid var(--border-light);
+    cursor: pointer;
+    border-radius: 0;
+  }
   .emoji-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; }
   .emoji-btn {
-    background: none; border: 1px solid transparent;
-    font-size: 1.2rem; cursor: pointer; padding: 4px; text-align: center;
+    background: none;
+    border: 1px solid transparent;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 4px;
+    text-align: center;
+    border-radius: 0;
   }
-  .emoji-btn.selected { border-color: var(--sunset); background: rgba(232,96,60,0.08); }
+  .emoji-btn.selected {
+    border-color: var(--sunset);
+    background: rgba(232, 96, 60, 0.08);
+  }
   .upload-zone {
-    display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
-    border: 1px dashed var(--border); padding: 1.5rem; cursor: pointer;
-    text-align: center; font-size: var(--text-small); color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px dashed var(--border-light);
+    padding: 1.5rem;
+    cursor: pointer;
+    text-align: center;
+    font-size: var(--text-small);
+    color: var(--text-secondary);
   }
   .upload-preview { width: 80px; height: 80px; object-fit: contain; }
-  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
-  .actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; }
-  .primary {
-    padding: 0.55rem 1.25rem;
-    background: var(--sunset, #e8603c); color: #fff;
-    border: none; font-family: var(--font-heading); font-size: var(--text-body); cursor: pointer;
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
   }
-  .primary:disabled { opacity: 0.5; cursor: default; }
-  .ghost {
-    padding: 0.55rem 1.25rem;
-    background: none; border: 1px solid var(--border);
-    color: var(--text-secondary); font-family: var(--font-heading); font-size: var(--text-body); cursor: pointer;
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+  .btn {
+    min-height: var(--touch-min, 44px);
+    padding: 0 1.1rem;
+    border: 1px solid var(--border-light);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: var(--text-small);
+    cursor: pointer;
+    border-radius: 0;
+  }
+  .btn:hover {
+    border-color: var(--text-secondary);
+  }
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .btn-primary {
+    border-color: var(--sunset);
+    background: var(--sunset);
+    color: #fff;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--sunset) 88%, #fff);
+    border-color: color-mix(in srgb, var(--sunset) 88%, #fff);
   }
 </style>

@@ -557,7 +557,7 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
   .section ul,
   .section ol { padding-left: 1.5rem; }
   .section li { margin-bottom: 6px; }
-  .section li > strong:first-child { color: var(--sage-leaf); }
+  .section li > strong:first-child { color: var(--success, #2e7d5b); }
   .section-lede {
     font-size: var(--text-body);
     color: var(--text-secondary);
@@ -619,9 +619,24 @@ shippie deploy ./dist --slug my-recipe-saver --remix recipe-saver</pre>
   }
   .license-table td:nth-child(2) {
     font-family: var(--font-mono);
-    color: var(--sage-leaf);
+    color: var(--success, #2e7d5b);
     white-space: nowrap;
   }
+
+  .legal-links {
+    list-style: none;
+    padding: 0;
+    margin: var(--space-md) 0;
+    border: 1px solid var(--border-light);
+  }
+  .legal-links li {
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid var(--border-light);
+    margin: 0;
+    font-size: var(--text-body);
+    color: var(--text-secondary);
+  }
+  .legal-links li:last-child { border-bottom: 0; }
 
   /* Deploy paths — scannable term/description rows instead of stacked headers. */
   .paths {

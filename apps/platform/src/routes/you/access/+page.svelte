@@ -149,14 +149,17 @@
     display: inline-flex;
     align-items: center;
     justify-self: start;
-    color: var(--sunset, #E8603C);
+    color: var(--sunset);
     text-decoration: none;
-    font-weight: 700;
+    font-family: var(--font-mono);
+    font-size: var(--text-caption);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
   .eyebrow {
     margin: 0;
-    color: var(--sunset, #E8603C);
-    font-family: var(--font-mono, ui-monospace, monospace);
+    color: var(--sunset);
+    font-family: var(--font-mono);
     font-size: var(--text-caption);
     letter-spacing: 0.14em;
     text-transform: uppercase;
@@ -164,7 +167,7 @@
   h1,
   h2 {
     margin: 0;
-    font-family: var(--font-heading, 'Fraunces', Georgia, serif);
+    font-family: var(--font-heading);
     letter-spacing: 0;
   }
   h1 {
@@ -193,18 +196,21 @@
     justify-content: center;
     padding: 0 0.9rem;
     border: 1px solid var(--border-light);
-    background: var(--surface);
+    background: transparent;
     color: inherit;
     text-decoration: none;
     font: inherit;
-    font-weight: 700;
+    font-family: var(--font-mono);
+    font-size: var(--text-caption);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
     cursor: pointer;
-    transition: border-color 0.15s, background 0.15s;
+    border-radius: 0;
   }
   .head-actions a:hover,
   button:hover {
-    border-color: var(--border);
-    background: var(--surface-alt);
+    border-color: var(--sunset);
+    color: var(--sunset);
   }
   .head-actions .primary {
     border-color: var(--sunset);
