@@ -114,7 +114,7 @@
 <Sheet {open} {onClose} label={heading}>
   {#if phase === 'done'}
     <div class="done">
-      <span class="check" aria-hidden="true">✓</span>
+      <p class="check" aria-hidden="true">✓</p>
       <p class="ack" role="status">{ack}</p>
       <button class="btn btn-primary" type="button" onclick={onClose}>Done</button>
     </div>
@@ -140,21 +140,22 @@
       {/each}
     </fieldset>
 
-    <textarea
-      bind:this={textarea}
-      bind:value={message}
-      maxlength={MAX_FEEDBACK_LEN}
-      rows="4"
-      placeholder={isPlatform
-        ? 'What do you need help with?'
-        : 'What happened, or what would make this better?'}
-      aria-label="Your message"
-      disabled={phase === 'sending'}
-    ></textarea>
-
-    {#if error}
-      <p class="error" role="alert">{error}</p>
-    {/if}
+    <div class="field">
+      <textarea
+        bind:this={textarea}
+        bind:value={message}
+        maxlength={MAX_FEEDBACK_LEN}
+        rows="4"
+        placeholder={isPlatform
+          ? 'What do you need help with?'
+          : 'What happened, or what would make this better?'}
+        aria-label="Your message"
+        disabled={phase === 'sending'}
+      ></textarea>
+      {#if error}
+        <p class="error" role="alert">{error}</p>
+      {/if}
+    </div>
 
     <div class="foot">
       <span class="hint">{hintText}</span>
@@ -171,7 +172,7 @@
 <style>
   .head {
     display: grid;
-    gap: 0.15rem;
+    gap: 0.2rem;
   }
   .eyebrow {
     margin: 0;
@@ -190,27 +191,36 @@
   .types {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.4rem;
+    gap: 1px;
     margin: 0;
     padding: 0;
     border: 0;
+    background: var(--border-light);
   }
   .chip {
     display: inline-flex;
     align-items: center;
+    flex: 1 1 auto;
+    justify-content: center;
     min-height: 36px;
-    padding: 0 0.7rem;
-    border: 1px solid var(--border-light);
+    padding: 0 0.65rem;
+    border: 0;
+    background: var(--surface);
     color: var(--text-secondary);
-    font-size: var(--text-small);
-    font-weight: 600;
+    font-family: var(--font-mono);
+    font-size: var(--text-caption);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     cursor: pointer;
     user-select: none;
   }
   .chip.active {
-    border-color: var(--sunset);
     background: var(--sunset);
     color: #fff;
+  }
+  .chip:hover:not(.active) {
+    color: var(--text);
+    background: var(--surface-raised, rgba(255,255,255,0.04));
   }
   .chip input {
     position: absolute;
@@ -221,58 +231,77 @@
   }
   .chip:focus-within {
     outline: 2px solid var(--sunset);
-    outline-offset: 2px;
+    outline-offset: -2px;
+  }
+  .field {
+    display: grid;
+    gap: 0;
   }
   textarea {
     width: 100%;
     box-sizing: border-box;
-    padding: 0.7rem 0.8rem;
+    padding: 0.75rem 0.85rem;
     border: 1px solid var(--border-light);
-    background: transparent;
+    background: var(--surface);
     color: inherit;
     font: inherit;
     font-size: var(--text-body);
-    line-height: 1.45;
+    line-height: 1.5;
     resize: vertical;
     border-radius: 0;
+    min-height: 100px;
   }
   textarea:focus {
     outline: none;
     border-color: var(--sunset);
   }
+  textarea:disabled {
+    opacity: 0.6;
+  }
   .error {
     margin: 0;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid rgba(180, 63, 42, 0.35);
+    border-top: 0;
+    background: rgba(180, 63, 42, 0.06);
     color: var(--danger, #b43f2a);
     font-size: var(--text-small);
+    line-height: 1.4;
   }
   .foot {
-    display: grid;
-    gap: 0.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
   }
   .hint {
-    color: var(--text-secondary);
+    color: var(--text-light);
+    font-family: var(--font-mono);
     font-size: var(--text-caption);
-    line-height: 1.3;
+    letter-spacing: 0.04em;
   }
   .actions {
     display: flex;
-    justify-content: flex-end;
     gap: 0.5rem;
+    margin-left: auto;
   }
   .btn {
     min-height: var(--touch-min, 44px);
-    padding: 0 1rem;
+    padding: 0 1.1rem;
     border: 1px solid var(--border-light);
     background: transparent;
     color: inherit;
     font: inherit;
     font-size: var(--text-small);
-    font-weight: 600;
     cursor: pointer;
     border-radius: 0;
   }
+  .btn:hover {
+    border-color: var(--text-secondary);
+  }
   .btn:disabled {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
   }
   .btn-primary {
@@ -280,26 +309,31 @@
     background: var(--sunset);
     color: #fff;
   }
+  .btn-primary:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--sunset) 88%, #fff);
+    border-color: color-mix(in srgb, var(--sunset) 88%, #fff);
+  }
   .done {
     display: grid;
-    justify-items: center;
-    gap: 0.75rem;
-    padding: 0.5rem 0 0.25rem;
-    text-align: center;
+    justify-items: start;
+    gap: 0.55rem;
+    padding: 0.25rem 0;
   }
   .check {
-    display: grid;
-    place-items: center;
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    background: rgba(46, 125, 91, 0.15);
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-title);
     color: var(--success, #2e7d5b);
-    font-size: var(--text-subhead);
+    line-height: 1;
   }
   .ack {
     margin: 0;
-    font-size: var(--text-body);
+    font-family: var(--font-heading);
+    font-size: var(--text-lede);
+    color: var(--text);
+  }
+  .done .btn-primary {
+    margin-top: 0.25rem;
   }
   .sr-only {
     position: absolute;

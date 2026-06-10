@@ -657,7 +657,8 @@
     background: var(--border-light);
   }
 
-  .link-list a {
+  .link-list a,
+  .link-list .link-btn {
     flex: 1 1 150px;
     border: 0;
     background: var(--surface);
