@@ -9,6 +9,7 @@ export const SHOWCASE_SLUGS = [
   "breath",
   "bricks",
   "bulwark",
+  "cannon",
   "care-log",
   "chess",
   "chiwit",
