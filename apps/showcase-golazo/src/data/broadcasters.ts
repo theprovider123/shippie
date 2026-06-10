@@ -9,7 +9,7 @@ const CHANNELS: Record<Region, string[]> = {
   UK: ["BBC One", "ITV1"],
   US: ["FOX", "Telemundo", "FS1"],
   CA: ["TSN", "CTV"],
-  MX: ["Canal 5", "TUDN"],
+  MX: ["TUDN", "Azteca 7"],
   INTL: ["FIFA+"],
 };
 
