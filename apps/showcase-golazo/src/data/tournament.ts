@@ -57,30 +57,51 @@ const RR: Array<[number, number]>[] = [
 
 function buildGroupFixtures(): Fixture[] {
   const out: Fixture[] = [];
-  const start = Date.UTC(2026, 5, 11, 19, 0); // 2026-06-11 19:00 UTC = 20:00 BST (8pm UK)
-  const dayMs = 24 * 60 * 60 * 1000;
-  let slot = 0;
+  const BASE = Date.UTC(2026, 5, 11); // June 11 00:00 UTC
+  const DAY = 86_400_000;
+  // Daily kickoff windows (UTC) = 2pm / 5pm / 8pm / 11pm BST
+  const SLOTS = [13, 16, 19, 22];
+
   GROUP_LETTERS.forEach((letter, gi) => {
     const ids = GROUPS[letter];
     RR.forEach((pairs, ri) => {
-      pairs.forEach(([h, a]) => {
-        // Spread kickoffs: each group's rounds land a few days apart, groups
-        // staggered so something is "on" most days of the first fortnight.
-        const day = ri * 5 + (gi % 5);
-        const hour = (slot % 4) * 3; // 0,3,6,9h offsets within the day window
-        const kickoff = new Date(start + day * dayMs + hour * 60 * 60 * 1000);
-        out.push({
-          id: `${letter}${ri + 1}-${ids[h]}-${ids[a]}`,
-          group: letter,
-          round: (ri + 1) as 1 | 2 | 3,
-          home: ids[h],
-          away: ids[a],
-          kickoff: kickoff.toISOString(),
+      if (ri === 2) {
+        // Round 3 (Jun 25–28): 3 groups per day. Both fixtures within a group
+        // kick off simultaneously (FIFA rule for last group-stage matchday).
+        // Groups 0-2 → Jun 25, 3-5 → Jun 26, 6-8 → Jun 27, 9-11 → Jun 28.
+        const dayOffset = 14 + Math.floor(gi / 3);
+        const r3Slots = [15, 18, 21]; // UTC: 4pm / 7pm / 10pm BST
+        const hour = r3Slots[gi % 3];
+        const kickoff = new Date(BASE + dayOffset * DAY + hour * 3_600_000);
+        pairs.forEach(([h, a]) => {
+          out.push({
+            id: `${letter}${ri + 1}-${ids[h]}-${ids[a]}`,
+            group: letter, round: 3,
+            home: ids[h], away: ids[a],
+            kickoff: kickoff.toISOString(),
+          });
         });
-        slot++;
-      });
+      } else {
+        // Rounds 1 & 2: 2 groups per day, 4 games across 4 time slots.
+        // R1: Jun 11–16 (days 0–5). R2: Jun 18–23 (days 7–12).
+        const startDay = ri === 0 ? 0 : 7;
+        const dayOffset = startDay + Math.floor(gi / 2);
+        // First group in each day pair uses slots 0+1; second uses slots 2+3.
+        const slotBase = (gi % 2) * 2;
+        pairs.forEach(([h, a], pairIdx) => {
+          const hour = SLOTS[slotBase + pairIdx];
+          const kickoff = new Date(BASE + dayOffset * DAY + hour * 3_600_000);
+          out.push({
+            id: `${letter}${ri + 1}-${ids[h]}-${ids[a]}`,
+            group: letter, round: (ri + 1) as 1 | 2 | 3,
+            home: ids[h], away: ids[a],
+            kickoff: kickoff.toISOString(),
+          });
+        });
+      }
     });
   });
+
   return out.sort((x, y) => x.kickoff.localeCompare(y.kickoff));
 }
 

@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { KeepyUppy } from "./games/KeepyUppy";
 import { TopBins } from "./games/TopBins";
-import { FreeKick } from "./games/FreeKick";
-import { PenaltyDuel } from "./games/PenaltyDuel";
+import { SpotKick } from "./games/SpotKick";
 import { PenaltyRoulette } from "./games/PenaltyRoulette";
 import { WhoAreYa } from "./games/WhoAreYa";
 import { GuessNation } from "./games/GuessNation";
@@ -65,7 +64,7 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
   const [diff, setDiff] = useState<"casual" | "pro">("casual");
   const [boardGame, setBoardGame] = useState<GameId | null>(null);
 
-  const soloGame: GameId | null = sel === "keepy" || sel === "topbins" || sel === "freekick" || sel === "god" ? sel : null;
+  const soloGame: GameId | null = sel === "keepy" || sel === "topbins" || sel === "freekick" || sel === "god" ? sel as GameId : null;
 
   useEffect(() => {
     if (!soloGame) return;
@@ -105,7 +104,7 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
     const best = bestScore(store.scores, soloGame);
     const url = challengeUrl({ game: soloGame, name: playerName, score: best });
     const text = `⚽️ I got ${best} ${meta.unit} on ${meta.name} in Golazo. Beat me → ${url}`;
-    const emoji = soloGame === "keepy" ? "⚽️" : soloGame === "topbins" ? "🥅" : soloGame === "god" ? "💀" : "🧱";
+    const emoji = soloGame === "keepy" ? "⚽️" : soloGame === "topbins" ? "🥅" : soloGame === "god" ? "💀" : "⚽";
     // Share the viral card image + link first; fall back to text/copy.
     try {
       const blob = await gameCardBlob({ emoji, game: meta.name, score: best, unit: meta.unit, playerName });
@@ -143,7 +142,7 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
           {GAMES.filter((g) => g.id !== "god" && g.id !== "lastman").map((g) => (
             <div key={g.id} className="game-card-wrap">
               <button className="game-card" onClick={() => { tap(); setSel(g.id); }}>
-                <span className="game-card-emoji">{g.id === "keepy" ? "⚽️" : g.id === "topbins" ? "🥅" : "🧱"}</span>
+                <span className="game-card-emoji">{g.id === "keepy" ? "⚽️" : g.id === "topbins" ? "🥅" : g.id === "freekick" ? "⚽" : "🎮"}</span>
                 <span className="game-card-name">{g.name}</span>
                 <span className="game-card-how">{g.how}</span>
                 <span className="game-card-best">Best {bestScore(store.scores, g.id)}</span>
@@ -160,12 +159,6 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
             </button>
             <button className="game-board-btn" aria-label="Last Man Standing world leaderboard" onClick={() => { tap(); setBoardGame("lastman"); }}>🏆</button>
           </div>
-          <button className="game-card vs" onClick={() => { tap(); setSel("penalty"); }}>
-            <span className="game-card-emoji">🥅</span>
-            <span className="game-card-name">Penalty Duel <em className="h2h">H2H</em></span>
-            <span className="game-card-how">You're keeper AND striker — duel a mate by link</span>
-            <span className="game-card-best">You vs a mate</span>
-          </button>
         </div>
 
         <span className="field-label" style={{ marginTop: 22 }}>🍺 Pub games — trivia &amp; pass the phone</span>
@@ -204,12 +197,12 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
     return <LastManStanding onBack={() => setSel(null)} />;
   }
 
-  // ── Head-to-head: Penalty Duel ──
+  // ── Duel link: open Spot Kick directly in penalty mode ──
   if (sel === "penalty") {
     return (
       <div className="games">
         <button className="back-btn" onClick={() => { tap(); setSel(null); }}>← Games</button>
-        <PenaltyDuel duel={duel} playerName={playerName} />
+        <SpotKick duel={duel} playerName={playerName} onGameOver={() => {}} difficulty={0.3} />
       </div>
     );
   }
@@ -239,7 +232,7 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
       </div>
       {soloGame === "keepy" && <KeepyUppy key={`k-${target ?? "x"}`} onGameOver={onGameOver} target={target} />}
       {soloGame === "topbins" && <TopBins key={`t-${diff}-${target ?? "x"}`} onGameOver={onGameOver} target={target} difficulty={diffValue} />}
-      {soloGame === "freekick" && <FreeKick key={`f-${diff}-${target ?? "x"}`} onGameOver={onGameOver} target={target} difficulty={diffValue} />}
+      {soloGame === "freekick" && <SpotKick key={`f-${diff}-${target ?? "x"}`} onGameOver={onGameOver} target={target} difficulty={diffValue} playerName={playerName} />}
       {soloGame === "god" && <GroupOfDeath key={`g-${target ?? "x"}`} onGameOver={onGameOver} target={target} playerName={playerName} />}
 
       <div className="game-meta-row">

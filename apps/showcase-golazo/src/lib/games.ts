@@ -30,9 +30,9 @@ export const GAMES: GameMeta[] = [
   },
   {
     id: "freekick",
-    name: "Free Kick",
-    tagline: "Bend it round the wall",
-    how: "Swipe with a curve to bend it past the wall",
+    name: "Spot Kick",
+    tagline: "Free kick or penalty — your call",
+    how: "Swipe to bend a free kick, or go 1v1 in a penalty shootout",
     unit: "goals",
   },
   {
