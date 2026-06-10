@@ -238,7 +238,7 @@ function NationCard({ teamId, zone }: { teamId: string; zone?: string }) {
   const t = team(teamId);
   const letter = groupOf(teamId);
   const fx = GROUP_FIXTURES.find((f) => f.home === teamId || f.away === teamId);
-  const c = useCountdown(fx?.kickoff ?? "2026-06-11T16:00:00Z");
+  const c = useCountdown(fx?.kickoff ?? "2026-06-11T19:00:00Z");
   const oppId = fx ? (fx.home === teamId ? fx.away : fx.home) : null;
   const k = fx ? formatKickoff(fx.kickoff, zone) : null;
 

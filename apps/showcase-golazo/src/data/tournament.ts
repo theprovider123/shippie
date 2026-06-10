@@ -57,7 +57,7 @@ const RR: Array<[number, number]>[] = [
 
 function buildGroupFixtures(): Fixture[] {
   const out: Fixture[] = [];
-  const start = Date.UTC(2026, 5, 11, 16, 0); // 2026-06-11 16:00 UTC
+  const start = Date.UTC(2026, 5, 11, 19, 0); // 2026-06-11 19:00 UTC = 20:00 BST (8pm UK)
   const dayMs = 24 * 60 * 60 * 1000;
   let slot = 0;
   GROUP_LETTERS.forEach((letter, gi) => {
