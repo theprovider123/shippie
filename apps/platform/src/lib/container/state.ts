@@ -583,6 +583,18 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     },
   },
   {
+    slug: 'cannon',
+    name: 'The Cannon',
+    shortName: 'Cannon',
+    description:
+      'Arsenal Fan OS — the Oracle briefing, the Terrace takes feed, the post-match Gauge, fixtures with head-to-head, and the Club archive.',
+    appKind: 'local',
+    icon: 'CN',
+    accent: '#EF0107',
+    category: 'social',
+    port: 5267,
+  },
+  {
     slug: 'quiet',
     name: 'Quiet',
     shortName: 'Quiet',

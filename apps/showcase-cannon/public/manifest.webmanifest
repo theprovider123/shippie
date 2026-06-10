@@ -1,0 +1,14 @@
+{
+  "name": "The Cannon — Arsenal Fan OS",
+  "short_name": "The Cannon",
+  "description": "The Arsenal fan companion. The Oracle briefing, the Terrace, the Gauge, fixtures, and the Club. Champions of England, 2025/26.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F8F4EE",
+  "theme_color": "#EF0107",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

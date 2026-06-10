@@ -1,0 +1,32 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "The Cannon",
+  "slug": "cannon",
+  "description": "Arsenal Fan OS — the Oracle briefing, the Terrace takes feed with anonymous matchday handles, the post-match Gauge dial, fixtures with head-to-head drill-downs, and the Club archive. Champions of England, 2025/26.",
+  "icon": "/icon.svg",
+  "theme_color": "#EF0107",
+  "background_color": "#F8F4EE",
+  "visibility": "public",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lifecycle": "manual",
+  "allowed_connect_domains": [
+    "shippie.app"
+  ],
+  "intents": {
+    "provides": [],
+    "consumes": []
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "social",
+    "tier": "public-flagship"
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-cannon",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true,
+  "data_passport": {
+    "family": "cannon",
+    "schema": "cannon.v1"
+  }
+}
