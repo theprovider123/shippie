@@ -205,9 +205,14 @@
    * resolve to the same canonical app set. See the convergence test in
    * `$lib/launcher/convergence.test.ts`.
    */
+  // Live D1 curation overlay, shipped from the server load as entries
+  // (Maps don't survive serialisation). Without this, an admin marking
+  // an app private only affected /tools — the dock kept serving the
+  // build-time manifest until the next deploy.
+  const drawerCurationOverrides = $derived(new Map(data.curationOverrideEntries ?? []));
   const launchVisibleApps = $derived.by(() => {
     const phase = drawerLauncherPhase();
-    const catalog = drawerMergeCatalog(visibleContainerApps(apps), []);
+    const catalog = drawerMergeCatalog(visibleContainerApps(apps), [], drawerCurationOverrides);
     const allowed = drawerBuildLauncherVisibleSlugSet(catalog, phase);
     // Drop apps whose raw slug is an alias source — only display the
     // canonical entry, never the legacy slug, even when the container

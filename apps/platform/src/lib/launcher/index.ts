@@ -17,6 +17,8 @@ export {
   containerAppToToolEntry,
   launcherRowToToolEntry,
   mergeCatalog,
+  type CurationOverride,
+  type CurationOverrides,
   type LauncherRowShape,
 } from './adapters';
 

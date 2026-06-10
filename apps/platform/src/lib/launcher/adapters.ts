@@ -29,17 +29,40 @@ const UPCOMING_SLUGS: ReadonlySet<string> = new Set();
 const FORCED_LIVE: ReadonlySet<string> = new Set();
 
 /**
- * Read the surface + successor for a slug from the generated curation
- * manifest. Falls back to 'featured' for unknown slugs (third-party).
+ * Live visibility state for a slug, sourced from D1 at request time.
+ * When present it wins over the build-time generated curation manifest —
+ * the admin panel writes D1, and without this overlay a visibility
+ * change there never reaches launcher surfaces until the next deploy.
  */
-function curationFor(slug: string): {
+export interface CurationOverride {
+  visibility: string;
   surface: 'featured' | 'arcade' | 'labs' | 'archived';
-  visibility: 'public' | 'unlisted' | 'private' | 'team' | 'local';
+}
+
+export type CurationOverrides = ReadonlyMap<string, CurationOverride>;
+
+/**
+ * Read the surface + successor for a slug from the generated curation
+ * manifest, letting a runtime override (D1 state) win on surface +
+ * visibility. Falls back to 'featured' for unknown slugs (third-party).
+ */
+function curationFor(
+  slug: string,
+  overrides?: CurationOverrides,
+): {
+  surface: 'featured' | 'arcade' | 'labs' | 'archived';
+  visibility: string;
   successor?: string;
 } {
   const entry = FIRST_PARTY_CURATION.find((c) => c.slug === slug);
-  if (!entry) return { surface: 'featured', visibility: 'public' };
-  return { surface: entry.surface, visibility: entry.visibility, successor: entry.successor };
+  const base = entry
+    ? { surface: entry.surface, visibility: entry.visibility as string, successor: entry.successor }
+    : { surface: 'featured' as const, visibility: 'public' };
+  // `instanceof` guard: adapters are passed point-free to `Array.map`
+  // in places, which puts the element index in this parameter slot.
+  const override = overrides instanceof Map ? overrides.get(slug) : undefined;
+  if (!override) return base;
+  return { ...base, surface: override.surface, visibility: override.visibility };
 }
 
 function availabilityFor(
@@ -63,8 +86,8 @@ function availabilityFor(
  * Container curated app → ToolEntry. Container source has glyph +
  * accent and lacks rich marketplace metadata (no upvotes, no iconUrl).
  */
-export function containerAppToToolEntry(app: ContainerApp): ToolEntry {
-  const cur = curationFor(app.slug);
+export function containerAppToToolEntry(app: ContainerApp, overrides?: CurationOverrides): ToolEntry {
+  const cur = curationFor(app.slug, overrides);
   const canonical = canonicalShowcaseSlug(app.slug);
   return {
     slug: canonical,
@@ -108,8 +131,8 @@ export interface LauncherRowShape {
  * for collisions the first entry wins so callers should preferentially
  * pass the curated source first.
  */
-export function launcherRowToToolEntry(row: LauncherRowShape): ToolEntry {
-  const cur = curationFor(row.slug);
+export function launcherRowToToolEntry(row: LauncherRowShape, overrides?: CurationOverrides): ToolEntry {
+  const cur = curationFor(row.slug, overrides);
   const canonical = canonicalShowcaseSlug(row.slug);
   return {
     slug: canonical,
@@ -162,15 +185,16 @@ function preferAvailability(a: ToolEntry, b: ToolEntry): ToolEntry {
 export function mergeCatalog(
   curated: readonly ContainerApp[],
   rows: readonly LauncherRowShape[],
+  overrides?: CurationOverrides,
 ): ToolEntry[] {
   const out = new Map<string, ToolEntry>();
   for (const app of curated) {
-    const entry = containerAppToToolEntry(app);
+    const entry = containerAppToToolEntry(app, overrides);
     const existing = out.get(entry.slug);
     out.set(entry.slug, existing ? preferAvailability(existing, entry) : entry);
   }
   for (const row of rows) {
-    const entry = launcherRowToToolEntry(row);
+    const entry = launcherRowToToolEntry(row, overrides);
     const existing = out.get(entry.slug);
     if (!existing) {
       out.set(entry.slug, entry);

@@ -49,7 +49,7 @@ function drawerShelf(opts?: {
   liveSlugs?: readonly string[];
 }) {
   const phase = opts?.phase ?? 'prelaunch';
-  const catalog = visibleContainerApps(curatedApps).map(containerAppToToolEntry);
+  const catalog = visibleContainerApps(curatedApps).map((app) => containerAppToToolEntry(app));
   return buildToolShelf({
     catalog,
     phase,

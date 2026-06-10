@@ -17,7 +17,7 @@ import { curatedApps, curatedAppsBySurface } from '$lib/container/state';
 import { PUBLIC_FLAGSHIP_SLUGS } from '$lib/_generated/first-party-curation';
 import { isFirstPartyShowcase } from '$lib/showcase-slugs';
 import { getDrizzleClient, schema } from '$server/db/client';
-import { browsePublic, searchPublic, listCategories, type FeaturedApp } from '$server/db/queries/apps';
+import { browsePublic, curationOverrides, searchPublic, listCategories, type FeaturedApp } from '$server/db/queries/apps';
 import { provenBadgesFromAwards } from '$server/marketplace/capability-badges';
 import type { AppKind, PublicKindStatus } from '$lib/types/app-kind';
 import {
@@ -25,6 +25,7 @@ import {
   filterCanonicalLauncherItems,
   launcherPhase,
   mergeCatalog,
+  type CurationOverrides,
   type LauncherPhase,
   type LauncherRowShape,
 } from '$lib/launcher';
@@ -47,12 +48,17 @@ const curatedCopyBySlug = new Map(curatedApps.map((app) => [app.slug, app.descri
 function visibleLauncherSlugs(
   phase: LauncherPhase,
   rows: readonly LauncherRowShape[] = [],
+  overrides?: CurationOverrides,
 ): Set<string> {
-  return buildLauncherVisibleSlugSet(mergeCatalog(curatedApps, rows), phase);
+  return buildLauncherVisibleSlugSet(mergeCatalog(curatedApps, rows, overrides), phase);
 }
 
-function launcherVisible<T extends LauncherRowShape>(apps: T[], phase: LauncherPhase): T[] {
-  return filterCanonicalLauncherItems(apps, visibleLauncherSlugs(phase, apps));
+function launcherVisible<T extends LauncherRowShape>(
+  apps: T[],
+  phase: LauncherPhase,
+  overrides?: CurationOverrides,
+): T[] {
+  return filterCanonicalLauncherItems(apps, visibleLauncherSlugs(phase, apps, overrides));
 }
 
 function orderedFeatured<T extends { slug: string }>(apps: T[], slugs: readonly string[]): T[] {
@@ -69,7 +75,7 @@ function marketplaceCategory(category: string | undefined): string {
   return category ?? 'tools';
 }
 
-function fallbackApps(phase: LauncherPhase) {
+function fallbackApps(phase: LauncherPhase, overrides?: CurationOverrides) {
   // Marketplace home shows featured + arcade together so "games" sits
   // alongside "tools" / "social" as a normal category chip. Archived
   // (e.g. live-room → matchday) and labs entries still live on their
@@ -93,7 +99,7 @@ function fallbackApps(phase: LauncherPhase) {
     kind: app.appKind,
     kindStatus: 'confirmed' as PublicKindStatus,
     firstPartySigned: true,
-  })), phase);
+  })), phase, overrides);
 }
 
 function filteredFallbackApps(
@@ -101,8 +107,9 @@ function filteredFallbackApps(
   categoryFilter: string | null,
   phase: LauncherPhase,
   remixableFilter = false,
+  overrides?: CurationOverrides,
 ) {
-  const fallback = fallbackApps(phase);
+  const fallback = fallbackApps(phase, overrides);
   // Hoist `query.toLowerCase()` out of the per-app loop — it's stable
   // for the lifetime of this filter.
   const lowerQuery = query.toLowerCase();
@@ -125,15 +132,16 @@ function mergeWithBundledApps(
   categoryFilter: string | null,
   remixableFilter: boolean,
   phase: LauncherPhase,
+  overrides?: CurationOverrides,
 ) {
-  const visibleRows = launcherVisible(rows, phase);
+  const visibleRows = launcherVisible(rows, phase, overrides);
   const hydratedRows = visibleRows.map((app) => {
     const curatedCopy = curatedCopyBySlug.get(app.slug);
     if (!curatedCopy || app.tagline || app.description) return app;
     return { ...app, tagline: curatedCopy, description: curatedCopy };
   });
   const seen = new Set(hydratedRows.map((app) => app.slug));
-  const fallback = filteredFallbackApps(query, categoryFilter, phase, remixableFilter).apps.filter((app) => !seen.has(app.slug));
+  const fallback = filteredFallbackApps(query, categoryFilter, phase, remixableFilter, overrides).apps.filter((app) => !seen.has(app.slug));
   return [...hydratedRows, ...fallback];
 }
 
@@ -180,12 +188,16 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
   // Filter pushed into the DB query so pagination is correct.
   let dbRows: FeaturedApp[];
   let dbCategories: string[];
+  let overrides: CurationOverrides | undefined;
   try {
-    [dbRows, dbCategories] = await Promise.all([
+    [dbRows, dbCategories, overrides] = await Promise.all([
       query
         ? searchPublic(db, query, { limit: PER_PAGE + 1, offset, category: categoryFilter })
         : browsePublic(db, { limit: PER_PAGE + 1, offset, category: categoryFilter }),
       listCategories(db),
+      // Live D1 visibility wins over the build-time curation manifest, so
+      // admin visibility changes apply without waiting for a redeploy.
+      curationOverrides(db, curatedApps.map((app) => app.slug)),
     ]);
   } catch {
     const fallback = filteredFallbackApps(query, categoryFilter, phase, remixableFilter);
@@ -206,19 +218,19 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
     };
   }
 
-  const fallback = filteredFallbackApps(query, categoryFilter, phase, remixableFilter);
+  const fallback = filteredFallbackApps(query, categoryFilter, phase, remixableFilter, overrides);
   const categories = [...new Set([...dbCategories, ...fallback.categories])].sort();
   const appRows =
     offset === 0
-      ? mergeWithBundledApps(dbRows, query, categoryFilter, remixableFilter, phase)
-      : launcherVisible(dbRows, phase);
+      ? mergeWithBundledApps(dbRows, query, categoryFilter, remixableFilter, phase, overrides)
+      : launcherVisible(dbRows, phase, overrides);
 
   if (appRows.length === 0) {
     return {
       apps: fallback.apps.slice(offset, offset + PER_PAGE),
       featured: [],
       topFourSlugs: [] as string[],
-      suggestionPool: fallbackApps(phase).slice(0, 12),
+      suggestionPool: fallbackApps(phase, overrides).slice(0, 12),
       query,
       page,
       hasMore: fallback.apps.length > offset + PER_PAGE,
@@ -295,7 +307,7 @@ export const load: PageServerLoad = async ({ platform, url, depends, locals, set
   // Suggestion pool for the empty-search fallback. Always populated so
   // the client-side resolver has something to score against, even on
   // queries that hit zero rows from the DB filter.
-  const suggestionPool = fallbackApps(phase).slice(0, 12);
+  const suggestionPool = fallbackApps(phase, overrides).slice(0, 12);
 
   return {
     apps: decorated,

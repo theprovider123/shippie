@@ -12,6 +12,7 @@
  * this module pure read-only over the D1 binding.
  */
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import type { CurationOverride } from '$lib/launcher';
 import type { ShippieDb } from '../client';
 import { apps, appPermissions, deploys } from '../schema';
 import type { App } from '../schema/apps';
@@ -38,6 +39,41 @@ const PUBLIC_FILTERS = and(
   eq(apps.visibilityScope, 'public'),
   eq(apps.isArchived, false),
 );
+
+const OVERRIDE_SURFACES = new Set(['featured', 'arcade', 'labs', 'archived']);
+
+/**
+ * Live curation state for the given slugs, used to overlay the
+ * build-time `FIRST_PARTY_CURATION` manifest at request time. The admin
+ * panel writes `visibility_scope` / `surface` to D1; without this
+ * overlay those changes never reach launcher surfaces until the next
+ * deploy bakes a fresh manifest. Archived rows read as private so they
+ * disappear from listings regardless of their stored scope.
+ */
+export async function curationOverrides(
+  db: ShippieDb,
+  slugs: readonly string[],
+): Promise<Map<string, CurationOverride>> {
+  if (slugs.length === 0) return new Map();
+  const rows = await db
+    .select({
+      slug: apps.slug,
+      visibilityScope: apps.visibilityScope,
+      surface: apps.surface,
+      isArchived: apps.isArchived,
+    })
+    .from(apps)
+    .where(inArray(apps.slug, [...slugs]));
+  return new Map(
+    rows.map((row) => [
+      row.slug,
+      {
+        visibility: row.isArchived ? 'private' : row.visibilityScope,
+        surface: (OVERRIDE_SURFACES.has(row.surface) ? row.surface : 'featured') as CurationOverride['surface'],
+      },
+    ]),
+  );
+}
 
 /**
  * Marketplace surface filter. Pass through to public listing queries so

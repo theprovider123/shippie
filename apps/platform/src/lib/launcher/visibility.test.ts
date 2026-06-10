@@ -49,4 +49,29 @@ describe('launcher visibility helpers', () => {
     expect(launcherPhase(new Date('2026-06-10T23:59:59.999Z'))).toBe('prelaunch');
     expect(launcherPhase(new Date('2026-06-11T00:00:00.000Z'))).toBe('world-cup');
   });
+
+  it('hides a baked-public first-party app when the D1 override says private', () => {
+    const withoutOverride = buildLauncherVisibleSlugSet(mergeCatalog(curatedApps, []), 'prelaunch');
+    expect(withoutOverride.has('lift')).toBe(true);
+
+    const overrides = new Map([['lift', { visibility: 'private', surface: 'featured' as const }]]);
+    const withOverride = buildLauncherVisibleSlugSet(mergeCatalog(curatedApps, [], overrides), 'prelaunch');
+    expect(withOverride.has('lift')).toBe(false);
+  });
+
+  it('shows a baked-private/archived app when the D1 override publishes it (docklands)', () => {
+    const withoutOverride = buildLauncherVisibleSlugSet(mergeCatalog(curatedApps, []), 'prelaunch');
+    expect(withoutOverride.has('docklands')).toBe(false);
+
+    const overrides = new Map([['docklands', { visibility: 'public', surface: 'featured' as const }]]);
+    const withOverride = buildLauncherVisibleSlugSet(mergeCatalog(curatedApps, [], overrides), 'prelaunch');
+    expect(withOverride.has('docklands')).toBe(true);
+  });
+
+  it('applies overrides to DB rows as well as curated entries', () => {
+    const rows = [row({ slug: 'docklands', firstPartySigned: true })];
+    const overrides = new Map([['docklands', { visibility: 'public', surface: 'featured' as const }]]);
+    const visible = buildLauncherVisibleSlugSet(mergeCatalog([], rows, overrides), 'prelaunch');
+    expect(visible.has('docklands')).toBe(true);
+  });
 });
