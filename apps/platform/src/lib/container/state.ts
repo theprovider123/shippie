@@ -591,7 +591,7 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     appKind: 'local',
     icon: 'CN',
     accent: '#EF0107',
-    category: 'sports',
+    category: 'social',
     port: 5267,
   },
   {
