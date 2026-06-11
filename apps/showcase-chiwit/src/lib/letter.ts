@@ -53,7 +53,7 @@ function avgSleep(dayLogs: DayLog[]): number | null {
     const entry = day.things['sleep'];
     if (!entry || entry.action !== 'done') continue;
     const m = (entry.detail ?? '').match(/^([\d.]+)h/);
-    if (m) sleepHours.push(parseFloat(m[1]));
+    if (m && m[1]) sleepHours.push(parseFloat(m[1]));
   }
   if (sleepHours.length === 0) return null;
   return sleepHours.reduce((a, b) => a + b, 0) / sleepHours.length;
@@ -131,13 +131,17 @@ export function composeLetter(days: Record<string, DayLog>, weekEnding: string):
 
   if (heavierDays.length > 0) {
     const heavyDay = heavierDays[0];
+    if (!heavyDay) return { id, weekEnding, body: sentences.join('\n\n') || 'A quiet week.', pills, arc };
     const dayName = shortDayName(heavyDay.date);
 
     // Journal clause
     let journalClause = '';
     if (heavyDay.journal.length > 0) {
-      const fragment = heavyDay.journal[0].text.slice(0, 40).trim();
-      journalClause = `you wrote "${fragment}" on ${dayName} night, which tracks. `;
+      const firstJournal = heavyDay.journal[0];
+      if (firstJournal) {
+        const fragment = firstJournal.text.slice(0, 40).trim();
+        journalClause = `you wrote "${fragment}" on ${dayName} night, which tracks. `;
+      }
     }
 
     // Movement clause
@@ -168,13 +172,16 @@ export function composeLetter(days: Record<string, DayLog>, weekEnding: string):
     let consecutiveCount = 1;
 
     for (let i = 1; i < sortedLighter.length; i++) {
-      const prev = new Date(sortedLighter[i - 1].date + 'T00:00:00');
-      const curr = new Date(sortedLighter[i].date + 'T00:00:00');
+      const prevDay = sortedLighter[i - 1];
+      const currDay = sortedLighter[i];
+      if (!prevDay || !currDay) continue;
+      const prev = new Date(prevDay.date + 'T00:00:00');
+      const curr = new Date(currDay.date + 'T00:00:00');
       const diff = (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24);
       if (diff === 1) {
         consecutiveCount++;
         if (consecutiveCount >= 2 && consecutiveStart === null) {
-          consecutiveStart = sortedLighter[i - 1].date;
+          consecutiveStart = prevDay.date;
         }
       } else {
         consecutiveCount = 1;

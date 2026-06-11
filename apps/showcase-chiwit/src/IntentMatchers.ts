@@ -18,8 +18,8 @@
  */
 import type { IntentLike, IntentMatcher, ToastSpec } from '@shippie/showcase-kit-v2';
 
-/** Map of canonical intent kind → which Chiwit signal kind it boosts. */
-export type AmbientSignalKind = 'hydration' | 'movement' | 'mindful' | 'body' | 'sleep' | 'energy';
+/** Map of canonical intent kind → which Chiwit ambient category it maps to. */
+export type AmbientSignalKind = 'hydration' | 'movement' | 'mindful' | 'body' | 'sleep';
 
 export interface AmbientMatch {
   /** Chiwit signal kind to write into the local DB. */
@@ -137,12 +137,11 @@ function intentTitle(label: string): string {
 
 function intentBody(spec: AmbientMatch): string {
   switch (spec.signal) {
-    case 'hydration': return 'Hydration · +1 ambient signal';
-    case 'movement':  return 'Movement · +1 ambient signal';
-    case 'mindful':   return 'Mind · +1 ambient signal';
-    case 'body':      return 'Foundations · +1 ambient signal';
-    case 'sleep':     return 'Recovery · +1 ambient signal';
-    case 'energy':    return 'Mind · +1 ambient signal';
+    case 'hydration': return 'folded into your garden · hydration';
+    case 'movement':  return 'folded into your garden · movement';
+    case 'mindful':   return 'folded into your garden · mind';
+    case 'body':      return 'folded into your garden · body';
+    case 'sleep':     return 'folded into your garden · sleep';
   }
 }
 

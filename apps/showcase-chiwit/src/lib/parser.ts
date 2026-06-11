@@ -44,7 +44,7 @@ function parseSleepHours(text: string): number | null {
     // Also numeric + fraction: "6 and a half"
     const numFrac = new RegExp(`(\\d+(?:\\.\\d+)?)\\s+${fracPhrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i');
     const m = lower.match(numFrac);
-    if (m) {
+    if (m && m[1]) {
       return parseFloat(m[1]) + fracVal;
     }
   }
@@ -58,7 +58,7 @@ function parseSleepHours(text: string): number | null {
 
   // Try numeric: "7.5 hours" or "7 hours"
   const numMatch = lower.match(/(\d+(?:\.\d+)?)\s*h(?:ours?)?/i);
-  if (numMatch) return parseFloat(numMatch[1]);
+  if (numMatch && numMatch[1]) return parseFloat(numMatch[1]);
 
   return null;
 }
@@ -168,7 +168,7 @@ export function parseDayText(text: string): ParsedItem[] {
   // --- Water ---
   const waterRegex = /(\b(?:one|two|three|four|five|a)\b)\s+(?:glass(?:es)?|cup(?:s)?|bottle(?:s)?)\s+of\s+water/i;
   const waterMatch = text.match(waterRegex);
-  if (waterMatch) {
+  if (waterMatch && waterMatch[1]) {
     const countWord = waterMatch[1].toLowerCase();
     const count = COUNT_WORDS[countWord] ?? 1;
     items.push({
@@ -180,7 +180,7 @@ export function parseDayText(text: string): ParsedItem[] {
   } else {
     // Also handle "water" standalone mentions without count phrase
     const waterSimple = text.match(/(\d+)\s+(?:glass(?:es)?|cup(?:s)?)\s+(?:of\s+)?water/i);
-    if (waterSimple) {
+    if (waterSimple && waterSimple[1]) {
       items.push({
         kind: 'water',
         phrase: waterSimple[0],

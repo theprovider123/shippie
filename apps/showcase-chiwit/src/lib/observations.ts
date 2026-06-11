@@ -127,7 +127,7 @@ function coffeeSleep(
     if (!sleepEntry || sleepEntry.action !== 'done') continue;
     const detail = sleepEntry.detail ?? '';
     const match = detail.match(/^([\d.]+)h/);
-    if (!match) continue;
+    if (!match || !match[1]) continue;
     const hours = parseFloat(match[1]);
     if (hours < 6.5) coOccurrences++;
   }

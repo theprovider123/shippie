@@ -2,7 +2,7 @@
  * Chiwit `BackupableStore` adapter.
  *
  * Chiwit's local state lives in `localStorage` under
- * `shippie.chiwit.daily-pulse.v1` (see App.tsx). The adapter:
+ * `shippie.chiwit.garden.v1` (see lib/store.ts). The adapter:
  *   - `exportEncrypted(passphrase)`  → encrypted .shippiebak Blob
  *   - `importEncrypted(file, …)`     → verify + replace local state
  *
@@ -20,7 +20,7 @@ import {
 } from '@shippie/backup-providers';
 import type { BackupableStore } from '@shippie/showcase-kit-v2';
 
-const STORAGE_KEY = 'shippie.chiwit.daily-pulse.v1';
+const STORAGE_KEY = 'shippie.chiwit.garden.v1';
 const SCHEMA_VERSION = 1;
 
 const encoder = new TextEncoder();
@@ -51,7 +51,7 @@ export function createChiwitBackupStore(): BackupableStore {
       const result = await encryptBackup({
         appSlug: 'chiwit',
         schemaVersion: SCHEMA_VERSION,
-        tables: ['entries', 'checkins'],
+        tables: ['days', 'letters', 'ambient'],
         plaintext: encoder.encode(wrapped),
         passphrase,
       });
