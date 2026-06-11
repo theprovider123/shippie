@@ -1,11 +1,10 @@
 // palate. — More instruments (quiet word-list)
 // DDT, Convert, Log (bake log), kitchen note
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import type { Bake, Formula, KitchenNote } from '../lib/types.ts';
 import { ddtWaterTemp, VOLUME_TO_GRAMS, OVEN_MAP, SUBSTITUTIONS } from '../lib/engine.ts';
 import { newId, saveBakePhoto } from '../lib/store.ts';
-import React from 'react';
 
 type MoreView = 'index' | 'ddt' | 'convert' | 'log' | 'note';
 

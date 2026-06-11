@@ -2,10 +2,9 @@
 // Manual temp set via vertical drag / ± steppers.
 // State machine: tracking → nearly (≤3°) → pull (≥ pull temp)
 
-import { useRef, useCallback } from 'react';
+import React, { useRef, useCallback } from 'react';
 import { probeState, cToF } from '../lib/engine.ts';
 import type { ProbeUnit } from '../lib/types.ts';
-import React from 'react';
 
 const PROBE_CUTS = [
   { name: 'Beef, med-rare', pull: 52, finish: 54 },
@@ -66,6 +65,15 @@ export function Probe({ currentC, cut, unit, compact = false, onTempChange, onCu
   const dragRef = useRef<{ y: number; startC: number } | null>(null);
 
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    // Don't capture pointer events that start inside interactive child areas —
+    // those need their own click/pointer events to reach buttons (steppers,
+    // cut rows, unit toggle, exit wordmark).
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('.probe-cuts') ||
+      target.closest('.probe-steppers') ||
+      target.closest('.probe-header')
+    ) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     dragRef.current = { y: e.clientY, startC: currentC };
   }, [currentC]);
@@ -128,6 +136,22 @@ export function Probe({ currentC, cut, unit, compact = false, onTempChange, onCu
         </div>
 
         <div className="probe-line" style={{ color: pal.sub }}>{line}</div>
+
+        {/* ± Steppers — fine-grained temp adjustment */}
+        <div className="probe-steppers" onClick={(e) => e.stopPropagation()}>
+          <button
+            className="stepper-btn"
+            style={{ color: pal.ink, borderColor: pal.track }}
+            onClick={(e) => { e.stopPropagation(); step(-1); }}
+            aria-label="Decrease temperature by 1°"
+          >−</button>
+          <button
+            className="stepper-btn"
+            style={{ color: pal.ink, borderColor: pal.track }}
+            onClick={(e) => { e.stopPropagation(); step(1); }}
+            aria-label="Increase temperature by 1°"
+          >+</button>
+        </div>
 
         {/* Progress track */}
         <div className="probe-track-wrap">

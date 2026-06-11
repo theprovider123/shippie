@@ -2,7 +2,7 @@
 // SVG dial with bezel pointer-drag winding, tap face start/stop/reset.
 // Size prop: 330px mobile, 240px desktop.
 
-import { useRef } from 'react';
+import React, { useRef } from 'react';
 import { EGG_PRESETS, eggPreset, fmtSeconds } from '../lib/engine.ts';
 
 const TERRA = '#b85c26';
@@ -270,5 +270,3 @@ export function Dial({ dialState, now, size = 330, compact = false, onWind, onSt
   );
 }
 
-// Need React import for useState
-import React from 'react';
