@@ -27,6 +27,16 @@
     "wake-lock"
   ],
   "data": {
+    "mode": "shippie-documents",
+    "documents": [
+      "kitchen"
+    ],
+    "attachments": false,
+    "recovery": "inherited",
+    "migrations": "snapshot-v0",
+    "snapshots": "inherited",
+    "media": "none",
+    "realtime": "inherited",
     "localStorage": {
       "keys": [
         "shippie.palate.kitchen.v1"

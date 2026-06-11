@@ -45,9 +45,12 @@ const SLUG_ALIASES: Record<string, string> = {
   move: 'lift',
   'habit-tracker': 'chiwit',
 
-  // Mise now owns hydration and caffeine context, so old one-tap
-  // sip links open the food-literate nutrition tracker.
-  'sip-log': 'mise',
+  // 2026-06-11 kitchen consolidation — the new palate. kitchen companion
+  // absorbs the cooking instruments; mise/cooking/dough are retired.
+  // Chiwit's garden tracks water, so sip links land there now.
+  'sip-log': 'chiwit',
+  mise: 'palate',
+  dough: 'palate',
 
   // Launch slate Phase 4 — food utilities now live as tabs inside
   // Palate so the cooking workflow has one mobile home.
@@ -101,10 +104,34 @@ export function containerSlugForRequest(slug: string): string {
   return canonicalShowcaseSlug(slug);
 }
 
-export function canonicalAppUrl(slug: string): string {
+export function canonicalAppPath(slug: string, existingSearch = ''): string {
   const canonical = canonicalShowcaseTarget(slug);
-  const search = canonical.searchParams ? `?${new URLSearchParams(canonical.searchParams)}` : '';
-  return isFirstPartyShowcase(canonical.slug)
-    ? `/run/${encodeURIComponent(canonical.slug)}${search}`
-    : `https://${slug}.shippie.app/`;
+  const search = new URLSearchParams(existingSearch);
+  for (const [key, value] of Object.entries(canonical.searchParams ?? {})) {
+    search.set(key, value);
+  }
+  const query = search.toString();
+  return `/${encodeURIComponent(canonical.slug)}${query ? `?${query}` : ''}`;
+}
+
+export function canonicalRunPath(slug: string, existingSearch = ''): string {
+  const canonical = canonicalShowcaseTarget(slug);
+  const search = new URLSearchParams(existingSearch);
+  for (const [key, value] of Object.entries(canonical.searchParams ?? {})) {
+    search.set(key, value);
+  }
+  const query = search.toString();
+  return `/run/${encodeURIComponent(canonical.slug)}${query ? `?${query}` : ''}`;
+}
+
+export function canonicalAppUrl(slug: string): string {
+  return canonicalAppPath(slug);
+}
+
+export function appShareImagePath(slug: string): string {
+  return `/api/apps/${encodeURIComponent(canonicalShowcaseSlug(slug))}/og.svg`;
+}
+
+export function appShareImageUrl(slug: string, origin = 'https://shippie.app'): string {
+  return new URL(appShareImagePath(slug), origin).toString();
 }

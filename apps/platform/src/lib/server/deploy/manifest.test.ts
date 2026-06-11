@@ -245,7 +245,7 @@ describe('deriveManifest', () => {
 
   it('parses flagship local-first app manifests without downgrading sealed recovery', () => {
     const palateRaw = readFileSync(
-      new URL('../../../../../showcase-recipe/shippie.json', import.meta.url),
+      new URL('../../../../../showcase-palate/shippie.json', import.meta.url),
       'utf8',
     );
     const chiwitRaw = readFileSync(
@@ -258,25 +258,25 @@ describe('deriveManifest', () => {
 
     expect(palate.manifest.data).toMatchObject({
       mode: 'shippie-documents',
-      documents: ['recipe-book'],
+      documents: ['kitchen'],
       recovery: 'inherited',
       migrations: 'snapshot-v0',
       snapshots: 'inherited',
       realtime: 'inherited',
     });
-    expect(palate.manifest.data?.localStorage.keys).toContain('shippie.palate.recipe-hub.v1');
-    expect(palate.manifest.data?.localStorage.keys).toContain('shippie.palate.aisle-order.v1');
+    expect(palate.manifest.data?.localStorage.keys).toContain('shippie.palate.kitchen.v1');
+    expect(palate.manifest.data?.localStorage.prefixes).toContain('shippie.palate.bake-photo.');
 
     expect(chiwit.manifest.data).toMatchObject({
       mode: 'shippie-documents',
-      documents: ['daily-pulse'],
+      documents: ['garden'],
       recovery: 'inherited',
       migrations: 'snapshot-v0',
       snapshots: 'inherited',
       realtime: 'inherited',
     });
+    expect(chiwit.manifest.data?.localStorage.keys).toContain('shippie.chiwit.garden.v1');
     expect(chiwit.manifest.data?.localStorage.keys).toContain('shippie.chiwit.daily-pulse.v1');
-    expect(chiwit.manifest.data?.localStorage.keys).toContain('CUSTOM_QUICK_ACTIONS');
   });
 
   it('preserves explicit local-only data policy', () => {

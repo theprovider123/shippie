@@ -31,6 +31,7 @@ import { curatedApps } from '$lib/container/state';
 import { recordSlugRename, resolveSlugAlias } from '$server/slug-aliases';
 import { migrateRuntimeSlug } from '$server/deploy/runtime-slug-migration';
 import { publicRemixInfoForSlug } from '$server/remix/eligibility';
+import { checkAppSlugAvailability } from '$server/apps/slug-availability';
 import {
   connectionBadgesFromConnections,
   connectionBadgesFromKind,
@@ -45,7 +46,7 @@ import type { TrustReport } from '@shippie/app-package-contract';
 
 const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const FIRST_PARTY_SOURCE_DIR_BY_SLUG: Record<string, string> = {
-  palate: 'showcase-recipe',
+  palate: 'showcase-palate',
 };
 
 export const load: PageServerLoad = async ({ platform, params, cookies, locals, url }) => {
@@ -448,12 +449,18 @@ export const actions: Actions = {
     const slugChanged = nextSlug !== app.slug;
     if (slugChanged) {
       const reservedSlugs = await loadReservedSlugs(platform.env.DB);
-      if (reservedSlugs.has(nextSlug)) {
-        return fail(400, { profileError: `Slug '${nextSlug}' is reserved.` });
-      }
-      const existing = await findBySlug(db, nextSlug);
-      if (existing && existing.id !== app.id) {
-        return fail(409, { profileError: `Slug '${nextSlug}' is already taken.` });
+      const availability = await checkAppSlugAvailability(db, nextSlug, {
+        excludeAppId: app.id,
+        excludeSlug: app.slug,
+        reservedSlugs,
+      });
+      if (!availability.available) {
+        const label = availability.reason === 'reserved' || availability.reason === 'first_party'
+          ? 'reserved'
+          : 'already taken';
+        return fail(availability.reason === 'reserved' || availability.reason === 'first_party' ? 400 : 409, {
+          profileError: `Slug '${nextSlug}' is ${label}.`,
+        });
       }
       if (app.activeDeployId && (!platform.env.CACHE || !platform.env.APPS)) {
         return fail(503, { profileError: 'Slug rename needs runtime storage bindings.' });

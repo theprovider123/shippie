@@ -46,6 +46,8 @@ export type ContainerApp = {
   labelKind: 'Local' | 'Connected' | 'Cloud';
   icon: string;
   accent: string;
+  iconUrl?: string | null;
+  themeColor?: string | null;
   version: string;
   packageHash: string;
   data?: AppDataPassportRecord;
@@ -235,6 +237,8 @@ function curatedApp(spec: CuratedAppSpec): ContainerApp {
     labelKind: labelKindForAppKind(spec.appKind),
     icon: spec.icon ?? initials(spec.name),
     accent: spec.accent,
+    iconUrl: null,
+    themeColor: spec.accent,
     version,
     packageHash: curatedPackageHash(spec.slug, version),
     data: defaultAppDataPassport(spec.slug),
@@ -254,26 +258,27 @@ const curatedAppSpecs: CuratedAppSpec[] = [
   {
     slug: 'palate',
     name: 'Palate',
-    shortName: 'Palate',
-    description: 'Recipes, cooking mode, meal planning, pantry, and shopping in one local-first kitchen app.',
+    shortName: 'palate.',
+    description:
+      "A chef's kitchen companion. Wind a dial, run the rail of timers, glance cook mode, probe temps, scale a baker's formula — offline, all local.",
     appKind: 'local',
     icon: 'PA',
-    accent: '#D86918',
+    accent: '#b85c26',
     category: 'cooking',
-    port: 5180,
+    port: 5268,
     intents: {
-      provides: ['shopping-list', 'cooked-meal', 'cooking-now', 'pantry-inventory', 'pantry-low', 'meal-planned'],
-      consumes: ['pantry-inventory', 'mood-logged', 'hydration-logged'],
+      provides: ['cooking-now', 'cooked-meal', 'shopping-list', 'dough-ferment-started', 'dough-ready'],
+      consumes: ['pantry-inventory', 'shopping-list'],
     },
   },
   {
     slug: 'chiwit',
     name: 'Chiwit',
     shortName: 'Chiwit',
-    description: 'How does life feel? Daily Pulse, quick logs, and gentle wellness patterns on this device.',
+    description: 'A wholesome personal tracker. Five mood words, the little things, a garden of your days — local, kind, yours.',
     appKind: 'local',
     icon: 'CH',
-    accent: '#F97066',
+    accent: '#A84136',
     category: 'fitness',
     port: 5251,
     intents: {
@@ -649,30 +654,6 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     category: 'cooking',
     port: 5200,
     intents: { provides: ['coffee-brewed', 'caffeine-logged'] },
-  },
-  {
-    slug: 'cooking',
-    name: 'Cooking',
-    shortName: 'Cooking',
-    description: 'Sous vide, smoking, roasting, grilling, and pan cooking — temps and timing for the whole kitchen.',
-    appKind: 'local',
-    icon: 'CK',
-    accent: '#E8603C',
-    category: 'cooking',
-    port: 5201,
-    intents: { provides: ['cooking-now', 'cooked-meal'] },
-  },
-  {
-    slug: 'dough',
-    name: 'Dough',
-    shortName: 'Dough',
-    description: "Baker's percentages, hydration math, and a full ferment-to-bake schedule.",
-    appKind: 'local',
-    icon: 'DO',
-    accent: '#E8C547',
-    category: 'cooking',
-    port: 5202,
-    intents: { provides: ['dough-ferment-started', 'dough-ready'] },
   },
   {
     slug: 'sip-log',
@@ -1247,38 +1228,6 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     category: 'games',
     port: 5248,
     intents: { provides: ['game.completed'] },
-  },
-  {
-    slug: 'mise',
-    name: 'Mise',
-    shortName: 'Mise',
-    description:
-      'A fast, food-literate nutrition log. Recents, meals, free-text, and copy-yesterday make logging quick; neutral patterns make it useful. Imports cooked + planned meals from Palate.',
-    appKind: 'local',
-    icon: 'MI',
-    accent: '#6E4A6B',
-    category: 'health-fitness',
-    port: 5255,
-    intents: {
-      provides: [
-        'nutrition-logged',
-        'meal-logged',
-        'protein-target-hit',
-        'hydration-logged',
-        'caffeine-logged',
-        'macro-target-updated',
-      ],
-      consumes: [
-        'cooked-meal',
-        'meal-planned',
-        'shopping-list',
-        'pantry-inventory',
-        'workout-completed',
-        'cycle-logged',
-        'body-metrics-logged',
-        'mood-logged',
-      ],
-    },
   },
   {
     slug: 'wedding-demo',
