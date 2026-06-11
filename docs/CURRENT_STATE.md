@@ -2,8 +2,20 @@
 
 > Living truth file. If a doc, plan, or memory disagrees with this, **trust this file**. Re-verify against HEAD before encoding any new claims into a plan.
 >
-> **Last updated:** 2026-05-19 (showcase elevation pass — kit-v2 + 4 best-in-class apps)
-> **Recent HEAD anchor:** `695c9102` (WC Fantasy elevation) — sits on top of the `d6e31d2c..77452a0b` elevation stack.
+> **Last updated:** 2026-06-11 (chiwit garden rebuild + palate. kitchen companion; recipe/mise/cooking/dough retired)
+> **Recent HEAD anchor:** see `git log` on `feat/dock-harmonization`.
+
+---
+
+## 2026-06-11 — Chiwit garden rebuild + palate. kitchen companion (kitchen consolidation)
+
+Plan: `docs/superpowers/plans/2026-06-11-chiwit-palate-rebuild.md`. Design specs in `docs/superpowers/specs/2026-06-11-{chiwit,palate}-design-spec.md` (extracted from the Claude Design `.dc.html` files in `~/Documents/{chiwit,palate} design/`).
+
+- **`apps/showcase-chiwit` rebuilt** to the warm-paper/Georgia "garden" design: Today is interactive prose (five mood WORDS — never numeric in storage/display; the `mood-logged` wire carries `{score: 1–5 rank, label: word}` to keep `breath-on-low-mood` alive), little-things prose lines, stem/bloom flourish, 14-bar Garden + observation engine (`MIN_EVIDENCE=7`, microcopy always ends "just something noticed"/"worth knowing, nothing more"), Sunday Letter generator (Sun→Sat local weeks), Data transparency screen, dictation→parser Voice sheet, Tomorrow + Your Words. Storage `shippie.chiwit.garden.v1` (old `daily-pulse.v1` left on disk). 50 bun tests.
+- **`apps/showcase-palate` is NEW** — the radical kitchen companion (slug `palate`, port 5268): rail (home), windable dial, glance cook mode (colour-as-interface + wake lock), probe, full-screen-drag scale, ferments (Q10), bake log, DDT/convert, kitchen note; desktop ≥1100px Counter mirrors rail|probe|dial+note. Storage `shippie.palate.kitchen.v1` + per-bake photo keys. 58 bun tests. Self-hosted Playfair/DM Sans/Source Serif 4 italic.
+- **Retired:** `showcase-recipe` (old Palate recipe hub), `showcase-mise`, `showcase-cooking`, `showcase-dough` — dirs deleted; D1 rows archived via `drizzle/0063_retire_kitchen_apps.sql` (also rewrites the `palate` row's marketplace description — the `/apps/[slug]` page reads D1, not shippie.json); slug aliases `mise→palate`, `dough→palate`, `sip-log→chiwit`.
+- Intent graph: palate provides `cooking-now, cooked-meal, shopping-list, dough-ferment-started, dough-ready`; consumes `pantry-inventory, shopping-list`. `timer-state`/`probe-reading` deliberately NOT intents.
+- QA: chromium + webkit × 4 viewports, zero console errors, zero external requests.
 
 ---
 

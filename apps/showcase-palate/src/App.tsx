@@ -218,7 +218,7 @@ export function App() {
 
   function handleGlanceComplete() {
     try {
-      void shippie.intent.broadcast('cooked-meal', [{ meal_name: 'Country Loaf', cooked_at: Date.now() }]);
+      void shippie.intent.broadcast('cooked-meal', [{ meal_name: 'Country Loaf', cooked_at: new Date().toISOString() }]);
     } catch { /* ignore */ }
     // Also clear the cooking-now intent by completing
     update((s) => ({ ...s, glance: { ...s.glance, stepIndex: 0 } }));
