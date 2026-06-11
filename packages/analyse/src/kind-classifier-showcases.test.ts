@@ -51,8 +51,8 @@ function loadSrcFiles(showcaseRoot: string): Map<string, Uint8Array> {
 }
 
 describe('kind-classifier showcase smoke', () => {
-  test('showcase-recipe classifies as Local', () => {
-    const files = loadSrcFiles(join(REPO_ROOT, 'apps', 'showcase-recipe'));
+  test('showcase-palate classifies as Local', () => {
+    const files = loadSrcFiles(join(REPO_ROOT, 'apps', 'showcase-palate'));
     expect(files.size).toBeGreaterThan(0);
     const result = classifyKind(files);
     expect(result.detectedKind).toBe('local');
