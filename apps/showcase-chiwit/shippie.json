@@ -2,14 +2,13 @@
   "$schema": "https://shippie.app/schemas/app.json",
   "name": "Chiwit",
   "slug": "chiwit",
-  "description": "How does life feel? A local-first Daily Pulse for sleep, mood, energy, hydration, movement, and body signals.",
+  "description": "A wholesome personal tracker. Five mood words, the little things, a garden of your days — local, kind, yours.",
   "icon": "/icon-512.png",
-  "theme_color": "#F97066",
-  "background_color": "#FFFAF8",
+  "theme_color": "#A84136",
+  "background_color": "#F7F4EF",
   "visibility": "public",
   "display": "standalone",
   "orientation": "portrait",
-  "ai": [],
   "intents": {
     "provides": [
       "mood-logged",
@@ -32,10 +31,6 @@
     "rules": {
       "wakelock": {
         "selector": "[data-shippie-wakelock]"
-      },
-      "list-swipe": {
-        "selector": ".timeline-list",
-        "haptic": "tap"
       }
     }
   },
@@ -45,7 +40,7 @@
   "data": {
     "mode": "shippie-documents",
     "documents": [
-      "daily-pulse"
+      "garden"
     ],
     "attachments": false,
     "recovery": "inherited",
@@ -55,9 +50,8 @@
     "realtime": "inherited",
     "localStorage": {
       "keys": [
-        "shippie.chiwit.daily-pulse.v1",
-        "shippie.chiwit.last-tab.v1",
-        "CUSTOM_QUICK_ACTIONS"
+        "shippie.chiwit.garden.v1",
+        "shippie.chiwit.daily-pulse.v1"
       ],
       "prefixes": [
         "shippie.chiwit."
@@ -69,22 +63,25 @@
     "schema": "chiwit.v1"
   },
   "data_schemas": {
-    "entries": {
-      "id": "text primary key",
-      "kind": "text not null",
-      "date": "text not null",
-      "value": "real",
-      "amount": "real",
-      "note": "text",
-      "created_at": "datetime"
+    "days": {
+      "date": "text primary key",
+      "mood": "text",
+      "things": "text",
+      "journal": "text",
+      "intention": "text"
     },
-    "checkins": {
+    "letters": {
       "id": "text primary key",
-      "date": "text not null",
-      "window": "text not null",
-      "energy": "integer",
-      "mood": "integer",
-      "note": "text"
+      "week_ending": "text not null",
+      "body": "text",
+      "pills": "text",
+      "arc": "text"
+    },
+    "ambient": {
+      "kind": "text not null",
+      "source_app": "text",
+      "at": "integer not null",
+      "payload": "text"
     }
   },
   "curation": {

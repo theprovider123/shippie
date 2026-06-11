@@ -1,1136 +1,1171 @@
-/* Chiwit — private daily pulse. "Calm: a soft daily instrument."
-   Identity diverged from Palate's warm editorial kitchen so the two
-   sibling showcases no longer share a skin. Chiwit is cool, airy and
-   rounded — a quiet calm-clinic instrument: cool mist surfaces, a calm
-   teal primary, and a single warm-coral "pulse" accent that reads as the
-   heartbeat against the cool field. Rounded local display type (no font
-   CDN — sealed app). The atmosphere is a calm instrument panel at dusk,
-   not a cream logbook. */
+/* Chiwit — garden edition.
+   Warm paper palette, Georgia serif voice, 0.5px borders, no shadows,
+   no gradients. Concept A: "Today as a Sentence." */
 
+/* ── Design tokens ─────────────────────────────────────────────────── */
 :root {
-  --bg: #eaf0f3;
-  --bg-deep: #dde7ec;
-  --paper: #fbfdfe;
-  --paper-veil: rgba(255, 255, 255, 0.66);
-  --ink: #16222e;
-  --ink-soft: #384a58;
-  --muted: #5e7280;
-  --soft: #8aa0ad;
-  --line: rgba(22, 34, 46, 0.10);
-  --line-strong: rgba(22, 34, 46, 0.18);
-  --sage: #1f8f88;
-  --sage-deep: #136b66;
-  --sage-soft: #d2ece9;
-  --coral: #f05a39;
-  --coral-soft: #ffe0d6;
-  --warn: #c63d27;
-  /* Soft elevation language — pillowy, low-contrast cool shadows. */
-  --shadow-soft: 0 1px 2px rgba(22, 34, 46, 0.05), 0 14px 34px -18px rgba(22, 34, 46, 0.30);
-  --shadow-lift: 0 2px 4px rgba(22, 34, 46, 0.06), 0 26px 60px -28px rgba(22, 34, 46, 0.38);
-  --radius-lg: 22px;
-  --radius-md: 16px;
-  --radius-sm: 11px;
-  /* Per-signal-kind dot palette — consumed by KIND_META in App.tsx so the
-   * theme owns the colours, not the source. Edit here to retint. */
-  --kind-mood:      #F97066;
-  --kind-energy:    #FF9800;
-  --kind-sleep:     #7C6BE0;
-  --kind-hydration: #2BA6F0;
-  --kind-movement:  #34C27E;
-  --kind-mindful:   #14B5A6;
-  --kind-body:      #B07A57;
-  --kind-weight:    #7FC9A6;
-  --font-display: ui-rounded, 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', 'Quicksand', system-ui, sans-serif;
-  --font-body: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', ui-sans-serif, sans-serif;
-  --font-mono: 'SF Mono', ui-monospace, Menlo, Monaco, Consolas, monospace;
-  font-family: var(--font-body);
+  --coral: #A84136;
+  --coral-pressed: #86352A;
+  --ink: #1C1A17;
+  --paper: #F7F4EF;
+  --card: #FFFDF9;
+  --card-warm: #FFF8F0;
+  --card-warm-border: #EDE4D6;
+  --border: #D3CEC1;
+  --divider: #E2DDD0;
+  --secondary: #797466;
+  --tertiary: #8F8A7C;
+  --muted: #9E988A;
+  --dark-neutral: #2E2B24;
+  --garden-coral-light: #E9A687;
+  --garden-coral-dark: #CC6147;
+  --garden-neutral: #BDB8AC;
+  --plum: #8A5470;
+  --amber: #9A5F30;
+  --font-serif: Georgia, 'Times New Roman', serif;
+  --font-sans: -apple-system, system-ui, BlinkMacSystemFont, sans-serif;
+  --radius-card: 16px;
+  font-family: var(--font-sans);
   color: var(--ink);
-  background: var(--bg);
+  background: var(--paper);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   color-scheme: light;
   -webkit-text-size-adjust: 100%;
 }
 
-* {
+/* ── Resets ─────────────────────────────────────────────────────────── */
+*, *::before, *::after {
   box-sizing: border-box;
 }
 
-html,
-body {
+html, body {
+  margin: 0;
+  padding: 0;
   min-height: 100%;
   overflow-x: hidden;
 }
 
 body {
-  margin: 0;
   min-width: 320px;
   min-height: 100svh;
-  /* Calm instrument atmosphere: a cool vertical wash with two soft auras —
-     a teal calm-light up top and a warm coral "pulse" glow drifting in from
-     the side. Replaces the cream field-journal hairlines that made Chiwit
-     read as Palate's sibling. */
-  background:
-    radial-gradient(120% 70% at 88% -8%, rgba(31, 143, 136, 0.12) 0%, transparent 46%),
-    radial-gradient(90% 55% at 8% 0%, rgba(240, 90, 57, 0.08) 0%, transparent 50%),
-    linear-gradient(178deg, var(--paper) 0%, var(--bg) 52%, var(--bg-deep) 100%);
-  background-attachment: fixed;
+  background: var(--paper);
   overscroll-behavior-y: none;
 }
 
-#root {
-  min-height: 100svh;
-  overflow-x: hidden;
-}
-
-button,
-input,
-select,
-textarea {
-  font: inherit;
-}
-
 button {
-  border: 0;
+  all: unset;
   cursor: pointer;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
 }
 
-input,
-select,
-textarea {
-  width: 100%;
-  min-height: 46px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.85);
-  color: var(--ink);
-  font-size: 16px;
-  padding: 0.75rem 0.9rem;
-  outline: none;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
-  -webkit-tap-highlight-color: transparent;
+input, textarea {
+  all: unset;
+  box-sizing: border-box;
 }
 
-input:focus,
-select:focus,
-textarea:focus {
-  border-color: var(--sage);
-  box-shadow: 0 0 0 3px rgba(31, 143, 136, 0.18);
+ul, ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
-textarea {
-  min-height: 96px;
-  resize: vertical;
+/* ── Animations ─────────────────────────────────────────────────────── */
+@keyframes leafIn {
+  from { opacity: 0; transform: scale(0.3); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
+@keyframes bloomIn {
+  from { opacity: 0; transform: translateX(-50%) scale(0.4); }
+  to   { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+/* ── App shell ──────────────────────────────────────────────────────── */
 .chiwit-app {
   min-height: 100svh;
-  padding-bottom: env(safe-area-inset-bottom);
-  overflow-x: hidden;
-  touch-action: pan-y;
-}
-
-.app-header {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: max(0.85rem, env(safe-area-inset-top)) 1rem 0.85rem;
-  background: rgba(251, 253, 254, 0.92);
-  border-bottom: 1px solid var(--line);
-  backdrop-filter: blur(18px);
-}
-
-.brand-lockup {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.7rem;
-  min-width: 0;
-  padding: 0;
-  background: transparent;
-  color: inherit;
-  text-align: left;
-}
-
-.brand-lockup span {
-  min-width: 0;
-}
-
-.brand-lockup img {
-  width: 44px;
-  height: 44px;
-  border-radius: 6px;
-  object-fit: cover;
-  box-shadow: 0 8px 22px rgba(22, 34, 46, 0.14);
-}
-
-.brand-lockup strong {
-  display: block;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.15rem;
-  letter-spacing: -0.012em;
-  line-height: 1.05;
-  color: var(--ink);
-}
-
-.brand-lockup small,
-.eyebrow,
-.entry-list small,
-.quick-grid small,
-.metric-strip span,
-.section-heading span,
-.measure,
-.empty,
-.timeline-day header strong {
-  color: var(--muted);
-}
-
-/* Eyebrow — field-notes section labels, mono caps. */
-.eyebrow {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-/* Section + page headings — Fraunces, editorial. */
-.section-heading h2,
-.timeline-day header h3,
-.page-title {
-  font-family: var(--font-display);
-  font-weight: 600;
-  letter-spacing: -0.018em;
-  color: var(--ink);
-  line-height: 1.08;
-}
-.page-title {
-  font-size: clamp(1.6rem, 3.4vw, 2.2rem);
-  margin: 0.2em 0;
-}
-
-/* Vital-sign numeric primitive — large, mono, tabular. The "today's
-   signal" highlight tint goes warm coral; the everyday measure stays
-   sage-ink. */
-.pulse-numeric {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  letter-spacing: -0.018em;
-  line-height: 0.95;
-  color: var(--sage-deep);
-}
-.pulse-numeric.size-hero { font-size: clamp(2.4rem, 7vw, 4rem); }
-.pulse-numeric.size-card { font-size: clamp(1.4rem, 3.6vw, 2rem); }
-.pulse-numeric.size-inline { font-size: 1.05rem; }
-.pulse-numeric .unit {
-  font-size: 0.45em;
-  margin-left: 0.2em;
-  color: var(--muted);
-  vertical-align: 0.35em;
-  letter-spacing: 0;
-}
-.pulse-numeric.today { color: var(--coral); }
-
-.brand-lockup small {
-  display: block;
-  font-size: 0.76rem;
-}
-
-.app-header nav {
-  display: flex;
-  gap: 0.25rem;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-
-.app-header nav::-webkit-scrollbar {
-  display: none;
-}
-
-.app-header nav button,
-.hero-actions button,
-.quick-grid button,
-.tracking-form button,
-.danger,
-.insight-card button,
-.entry-list button {
-  min-height: 44px;
-  border-radius: 8px;
-  padding: 0.65rem 0.9rem;
   background: var(--paper);
-  color: var(--ink);
-  border: 1px solid var(--line-strong);
-  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
-}
-
-/* Secondary branded button — cream bg + sage ink + sage border. */
-.hero-actions button,
-.quick-grid button,
-.tracking-form button[type="button"],
-.month-scrubber button,
-.shippie-backup-card__actions button {
-  background: var(--paper);
-  color: var(--sage-deep);
-  border-color: rgba(31, 143, 136, 0.28);
-}
-
-.hero-actions button:hover,
-.quick-grid button:hover,
-.tracking-form button:hover,
-.month-scrubber button:hover,
-.shippie-backup-card__actions button:hover {
-  border-color: var(--sage);
-  box-shadow: 0 6px 16px rgba(31, 143, 136, 0.12);
-}
-
-.app-header nav button {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.app-header nav button:hover,
-.hero-actions button:hover,
-.quick-grid button:hover,
-.tracking-form button:hover,
-.danger:hover,
-.insight-card:hover,
-.entry-list li:hover,
-.timeline-day:hover {
-  transform: translateY(-1px);
-}
-
-.app-header nav .active,
-.primary,
-.hero-actions .primary,
-.tracking-form .primary,
-.month-scrubber button.active,
-.shippie-onboarding__next,
-.shippie-empty-state__cta,
-button.branded.primary {
-  background: var(--sage);
-  color: var(--paper);
-  border-color: var(--sage);
-  box-shadow: 0 8px 22px rgba(47, 86, 64, 0.22);
-}
-
-.app-header nav .active:hover,
-.primary:hover,
-.hero-actions .primary:hover,
-.tracking-form .primary:hover,
-.month-scrubber button.active:hover,
-.shippie-onboarding__next:hover,
-.shippie-empty-state__cta:hover,
-button.branded.primary:hover {
-  background: var(--sage-deep);
-  border-color: var(--sage-deep);
-}
-
-.page-shell {
-  width: min(1160px, calc(100% - 2rem));
-  margin: 0 auto;
-  padding: 1.2rem 0 calc(4rem + env(safe-area-inset-bottom));
-  min-width: 0;
-}
-
-.today-shell {
-  width: min(1220px, calc(100% - 2rem));
-}
-
-.hero-plane {
-  min-height: clamp(360px, 56svh, 560px);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 460px);
-  gap: 2rem;
-  align-items: center;
-  padding: 2rem 0;
-}
-
-.hero-plane h1,
-.page-shell h1 {
-  margin: 0;
-  font-size: clamp(2.35rem, 7vw, 5.8rem);
-  line-height: 0.92;
-  letter-spacing: 0;
-}
-
-.hero-plane p {
-  max-width: 560px;
-  color: #666;
-  line-height: 1.5;
-  font-size: 1.08rem;
-}
-
-.hero-actions,
-.toolbar,
-.section-heading {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.hero-actions {
-  flex-wrap: wrap;
-  margin-top: 1.35rem;
-}
-
-.eyebrow {
-  margin: 0 0 0.55rem;
-  font-size: 0.78rem;
-  font-weight: 850;
-  text-transform: uppercase;
-}
-
-.pulse-card {
-  justify-self: end;
-  width: min(100%, 460px);
-  display: grid;
-  gap: 1rem;
-  padding: 1rem;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.58);
-  border: 1px solid rgba(51, 51, 51, 0.1);
-  box-shadow: 0 30px 80px rgba(51, 51, 51, 0.08);
-}
-
-.pulse-ring {
-  --score: 65;
-  width: min(100%, 360px);
-  aspect-ratio: 1;
-  justify-self: center;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  text-align: center;
-  padding: 2rem;
-  background:
-    radial-gradient(circle at center, rgba(255, 250, 248, 0.98) 0 48%, transparent 49%),
-    conic-gradient(var(--coral) calc(var(--score) * 1%), var(--sage-soft) 0);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4), 0 22px 58px rgba(22, 34, 46, 0.16);
-}
-
-.pulse-ring img {
-  width: 86px;
-  height: 86px;
-  border-radius: 8px;
-  object-fit: cover;
-}
-
-.pulse-ring strong {
-  display: block;
-  font-size: clamp(4rem, 15vw, 7rem);
-  line-height: 0.9;
-}
-
-.pulse-ring span {
-  display: block;
-}
-
-/* Day's reading — a caption under the card. Visible at every width
-   (it used to be display:none on phones, hiding the day's sentence —
-   the product — on the device most people use). */
-.pulse-message {
-  grid-column: 1 / -1;
-  margin: 0;
-  max-width: 420px;
-  justify-self: center;
-  text-align: center;
-  color: var(--ink-soft);
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: 1rem;
-  line-height: 1.4;
-}
-
-/* Live value readout on the check-in sliders. */
-.range-label {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-.range-label em {
-  font-family: var(--font-mono);
-  font-style: normal;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--sage-deep);
-}
-
-.pulse-factors {
-  display: grid;
-  gap: 0.45rem;
-}
-
-.pulse-factors span {
-  display: grid;
-  grid-template-columns: minmax(90px, 0.5fr) minmax(0, 1fr);
-  align-items: center;
-  gap: 0.65rem;
-  min-height: 30px;
-  color: #666;
-  text-transform: capitalize;
-  font-size: 0.82rem;
-}
-
-.pulse-factors i {
-  grid-column: 2;
-  grid-row: 1;
-  display: block;
-  height: 8px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--coral), var(--sage));
-}
-
-.pulse-factors strong {
-  grid-column: 1;
-  grid-row: 1;
-}
-
-/* Un-logged factor — no real signal behind it. Ghost the bar so the
-   user can tell a measured value from a calm baseline placeholder. */
-.pulse-factors span.is-unlogged {
-  color: var(--muted);
-}
-.pulse-factors span.is-unlogged i {
-  background: none;
-  border: 1px dashed var(--line-strong);
-  opacity: 0.7;
-}
-.pulse-factors span.is-unlogged strong {
-  font-weight: 500;
-}
-
-.quick-panel {
-  padding-block: 1.2rem;
-  border-block: 1px solid rgba(51, 51, 51, 0.1);
-}
-
-.quick-grid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 0.65rem;
-}
-
-.quick-grid button {
-  display: grid;
-  gap: 0.25rem;
-  min-height: 92px;
-  text-align: left;
-  background: var(--paper);
-  border-color: rgba(31, 143, 136, 0.18);
-}
-
-.quick-grid button > span,
-.entry-list > li > span {
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
-}
-
-.quick-grid strong,
-.quick-grid small {
-  display: block;
-}
-
-.split-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 390px);
-  gap: 2rem;
-  align-items: start;
-  padding-top: 2rem;
-}
-
-.section-heading {
-  justify-content: space-between;
-  margin-bottom: 1rem;
-}
-
-.section-heading h2,
-.insight-panel h2,
-.tracking-form h2,
-.timeline-day h2 {
-  margin: 0;
-  font-size: 1.1rem;
-  letter-spacing: 0;
-}
-
-.entry-list {
-  display: grid;
-  gap: 0.55rem;
-  padding: 0;
-  margin: 0;
-  list-style: none;
-}
-
-.entry-list li,
-.insight-panel,
-.insight-card,
-.tracking-form,
-.category-grid,
-.timeline-day,
-.metric-strip,
-.week-ribbon {
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(51, 51, 51, 0.1);
-  box-shadow: 0 18px 50px rgba(51, 51, 51, 0.06);
-}
-
-.entry-list li {
-  display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) auto;
-  gap: 0.75rem;
-  align-items: center;
-  min-height: 62px;
-  border-radius: 8px;
-  padding: 0.75rem;
-  transition: transform 160ms ease;
-}
-
-.entry-list strong,
-.entry-list small {
-  display: block;
-}
-
-.entry-list button,
-.insight-card button {
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: rgba(51, 51, 51, 0.06);
-}
-
-.insight-panel {
-  display: grid;
-  gap: 0.75rem;
-  border-radius: 8px;
-  padding: 1rem;
-}
-
-.insight-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.75rem;
-  border-radius: 8px;
-  padding: 0.9rem;
-  transition: transform 160ms ease;
-}
-
-/* Tone-driven insight cards (§4.3) — left-rule colour-codes each card. */
-.insight-card {
   position: relative;
+}
+
+/* ── Shared screen layout ───────────────────────────────────────────── */
+.chiwit-screen {
+  padding: 110px 36px 120px;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Bottom navigation bar ──────────────────────────────────────────── */
+.chiwit-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  border-top: 0.5px solid var(--border);
+  padding: 14px 24px calc(30px + env(safe-area-inset-bottom));
   background: var(--paper);
-  border-color: var(--line);
-  padding-left: 1.1rem;
+  z-index: 50;
 }
-.insight-card::before {
-  content: '';
-  position: absolute;
-  inset: 0.6rem auto 0.6rem 0.45rem;
-  width: 4px;
-  border-radius: 4px;
-  background: var(--muted);
+
+.chiwit-nav__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 44px;
+  min-height: 44px;
+  justify-content: center;
 }
-.insight-card.good,
-.insight-card--good {
-  border-color: rgba(31, 143, 136, 0.28);
+
+.chiwit-nav__label {
+  font-size: 10px;
+  font-family: var(--font-sans);
+  letter-spacing: 0.02em;
+  color: var(--tertiary);
 }
-.insight-card.good::before,
-.insight-card--good::before {
-  background: var(--sage);
-}
-.insight-card.watch,
-.insight-card--watch {
-  border-color: rgba(240, 90, 57, 0.32);
-}
-.insight-card.watch::before,
-.insight-card--watch::before {
-  background: var(--coral);
-}
-.insight-card.neutral::before,
-.insight-card--neutral::before {
-  background: var(--muted);
-}
-.insight-card strong::before {
-  content: '✦';
-  display: inline-block;
-  margin-right: 0.4rem;
-  color: var(--sage);
-  font-size: 0.85em;
-}
-.insight-card.watch strong::before,
-.insight-card--watch strong::before {
+
+.chiwit-nav__item[aria-current="page"] .chiwit-nav__label {
   color: var(--coral);
 }
-.insight-card.neutral strong::before,
-.insight-card--neutral strong::before {
-  color: var(--muted);
-}
-.insight-card p {
-  font-style: italic;
+
+/* ── Today screen ───────────────────────────────────────────────────── */
+.chiwit-today {
+  padding: 110px 36px 140px;
 }
 
-.insight-card p {
-  margin: 0.35rem 0 0;
-  color: #666;
-  line-height: 1.45;
+.chiwit-today__greeting {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  line-height: 1.7;
+  color: var(--ink);
+  margin: 0 0 4px;
 }
 
-.toolbar {
-  justify-content: space-between;
-  margin-bottom: 1.2rem;
-}
-
-.toolbar h1 {
-  font-size: clamp(2rem, 5vw, 4.8rem);
-}
-
-.form-layout {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-}
-
-.tracking-form {
-  display: grid;
-  gap: 0.8rem;
-  border-radius: 8px;
-  padding: 1rem;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
-}
-
-.form-grid label {
-  display: grid;
-  gap: 0.35rem;
-  color: #666;
-}
-
-input[type="range"] {
-  accent-color: var(--coral);
-  padding-inline: 0;
-  box-shadow: none;
-  border: 0;
-  background: transparent;
-}
-
-.category-grid {
-  display: grid;
-  gap: 0.5rem;
-  border-radius: 8px;
-  padding: 1rem;
-}
-
-.category-row {
-  display: grid;
-  grid-template-columns: 160px 48px minmax(0, 1fr);
-  align-items: center;
-  gap: 0.7rem;
-  text-transform: capitalize;
-}
-
-meter {
-  width: 100%;
-  height: 12px;
-}
-
-.insight-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.8rem;
-  margin-block: 1rem;
-}
-
-.week-ribbon {
-  height: 170px;
-  display: flex;
-  align-items: end;
-  gap: 0.45rem;
-  border-radius: 8px;
-  padding: 1rem;
-}
-
-.week-ribbon span {
-  flex: 1;
-  min-height: 14%;
-  border-radius: 999px 999px 4px 4px;
-  background: linear-gradient(180deg, var(--coral), var(--sage));
-}
-
-.timeline-list {
-  display: grid;
-  gap: 0.8rem;
-}
-
-.timeline-day {
-  border-radius: 8px;
-  padding: 1rem;
-  transition: transform 160ms ease;
-}
-
-.timeline-day header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.8rem;
-}
-
-.timeline-day header strong {
-  font-size: 2rem;
-}
-
-.metric-strip {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.metric-strip div {
-  padding: 1rem;
-  border-right: 1px solid rgba(51, 51, 51, 0.1);
-}
-
-.metric-strip div:last-child {
-  border-right: 0;
-}
-
-.metric-strip strong {
-  display: block;
-  font-size: clamp(1.6rem, 4vw, 2.4rem);
-}
-
-.measure {
-  max-width: 680px;
+.chiwit-today__date {
+  font-size: 13px;
+  color: var(--secondary);
+  margin: 0 0 32px;
+  font-family: var(--font-sans);
   line-height: 1.5;
 }
 
-.danger {
-  margin-top: 1.2rem;
-  background: rgba(244, 67, 54, 0.1);
-  color: #d32f2f;
-  border-color: rgba(244, 67, 54, 0.22);
+.chiwit-today__date-highlight {
+  color: var(--coral);
+  font-weight: 600;
 }
 
-@media (max-width: 980px) {
-  .app-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .hero-plane,
-  .split-layout,
-  .form-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .hero-plane {
-    min-height: auto;
-  }
-
-  .pulse-card {
-    justify-self: start;
-    max-width: 360px;
-  }
-
-  .quick-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .insight-grid {
-    grid-template-columns: 1fr;
-  }
+/* Mood prose line */
+.chiwit-today__mood-line {
+  font-family: var(--font-serif);
+  font-size: 21px;
+  line-height: 1.8;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 0 0 8px;
 }
 
-@media (max-width: 560px) {
-  .page-shell,
-  .today-shell {
-    width: min(100% - 1rem, 1220px);
-  }
-
-  .app-header {
-    gap: 0.7rem;
-    padding: max(0.65rem, env(safe-area-inset-top)) 0.5rem 0.65rem;
-  }
-
-  .brand-lockup small {
-    display: none;
-  }
-
-  .app-header nav {
-    width: 100%;
-    padding-inline: 0.05rem max(0.5rem, env(safe-area-inset-right));
-  }
-
-  .app-header nav button {
-    flex: 0 0 auto;
-  }
-
-  .app-header nav button {
-    padding-inline: 0.7rem;
-  }
-
-  .hero-plane h1,
-  .page-shell h1 {
-    font-size: clamp(2rem, 14vw, 3.4rem);
-  }
-
-  .quick-grid,
-  .form-grid,
-  .metric-strip {
-    grid-template-columns: 1fr;
-  }
-
-  .pulse-card {
-    justify-self: center;
-    width: min(100%, 330px);
-  }
-
-  .pulse-ring {
-    width: min(100%, 270px);
-    padding: 1.35rem;
-  }
-
-  .pulse-factors span {
-    grid-template-columns: 1fr;
-    gap: 0.25rem;
-  }
-
-  .pulse-factors i,
-  .pulse-factors strong {
-    grid-column: 1;
-  }
-
-  .pulse-factors strong {
-    grid-row: 1;
-  }
-
-  .pulse-factors i {
-    grid-row: 2;
-  }
-
-  .category-row {
-    grid-template-columns: 1fr 48px;
-  }
-
-  .category-row meter {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (display-mode: standalone) {
-  .app-header {
-    padding-top: max(0.85rem, env(safe-area-inset-top));
-  }
-}
-
-@media (max-width: 700px) {
-  .chiwit-app {
-    padding-bottom: calc(92px + env(safe-area-inset-bottom));
-  }
-
-  .app-header {
-    flex-direction: row;
-    align-items: center;
-    gap: 0.7rem;
-    padding: max(0.65rem, env(safe-area-inset-top)) 0.75rem 0.65rem;
-    background: rgba(251, 253, 254, 0.98);
-    backdrop-filter: none;
-  }
-
-  .app-header nav {
-    position: fixed;
-    right: max(0.6rem, env(safe-area-inset-right));
-    bottom: max(0.6rem, env(safe-area-inset-bottom));
-    left: max(0.6rem, env(safe-area-inset-left));
-    z-index: 60;
-    display: grid;
-    width: auto;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0.2rem;
-    padding: 0.4rem;
-    overflow: visible;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-lg);
-    background: rgba(251, 253, 254, 0.86);
-    backdrop-filter: blur(18px) saturate(1.4);
-    -webkit-backdrop-filter: blur(18px) saturate(1.4);
-    box-shadow: var(--shadow-lift);
-  }
-
-  .app-header nav button {
-    min-width: 0;
-    min-height: 52px;
-    padding: 0.4rem 0.2rem;
-    overflow: hidden;
-    border-radius: var(--radius-md);
-    font-size: 0.72rem;
-    font-weight: 750;
-    letter-spacing: 0.01em;
-    text-overflow: ellipsis;
-    color: var(--muted);
-    transition: color 140ms ease, background 140ms ease;
-  }
-
-  .brand-lockup img {
-    width: 38px;
-    height: 38px;
-  }
-
-  .brand-lockup strong {
-    font-size: 1rem;
-  }
-
-  .page-shell,
-  .today-shell {
-    width: min(100% - 1rem, 1220px);
-    padding-top: 0.75rem;
-    padding-bottom: calc(7rem + env(safe-area-inset-bottom));
-  }
-
-  .hero-plane {
-    gap: 1rem;
-    padding: 0.8rem 0 1rem;
-  }
-
-  .hero-plane h1,
-  .page-shell h1 {
-    font-size: clamp(2rem, 12vw, 3.15rem);
-  }
-
-  .hero-plane p {
-    font-size: 1rem;
-  }
-
-  .pulse-card {
-    width: 100%;
-    max-width: none;
-    grid-template-columns: 128px minmax(0, 1fr);
-    align-items: center;
-    justify-self: stretch;
-    padding: 0.75rem;
-  }
-
-  .pulse-ring {
-    width: 128px;
-    padding: 0.75rem;
-  }
-
-  .pulse-ring img {
-    width: 40px;
-    height: 40px;
-  }
-
-  .pulse-ring strong {
-    font-size: 2.8rem;
-  }
-
-  .pulse-message {
-    font-size: 0.92rem;
-  }
-
-  .pulse-factors {
-    min-width: 0;
-  }
-
-  .quick-panel {
-    padding-block: 0.75rem;
-  }
-
-  .quick-grid {
-    display: flex;
-    gap: 0.55rem;
-    overflow-x: auto;
-    padding-bottom: 0.25rem;
-    scroll-snap-type: x proximity;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .quick-grid::-webkit-scrollbar {
-    display: none;
-  }
-
-  .quick-grid button {
-    flex: 0 0 128px;
-    min-height: 84px;
-    scroll-snap-align: start;
-  }
-
-  .split-layout {
-    gap: 1rem;
-    padding-top: 1rem;
-  }
-}
-
-@media (max-width: 390px) {
-  .pulse-card {
-    grid-template-columns: 112px minmax(0, 1fr);
-  }
-
-  .pulse-ring {
-    width: 112px;
-  }
-
-  .app-header nav button {
-    font-size: 0.68rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    transition-duration: 1ms !important;
-    animation-duration: 1ms !important;
-  }
-}
-
-/* Hero pull-quote — Fraunces italic 1.4rem, sage left-rule, tight leading. */
-.hero-plane .reading {
-  position: relative;
-  margin: 1.1rem 0 0;
-  padding: 0.2rem 0 0.2rem 1.1rem;
-  font-family: var(--font-display);
-  font-size: clamp(1.05rem, 2.6vw, 1.4rem);
-  line-height: 1.08;
-  font-style: italic;
-  font-weight: 500;
+.chiwit-today__mood-word {
+  font-family: var(--font-serif);
+  font-size: 21px;
   color: var(--ink);
-  max-width: 44ch;
+  opacity: 0.38;
+  transition: opacity 0.15s ease, font-weight 0.15s ease;
 }
-.hero-plane .reading::before {
-  content: '';
+
+.chiwit-today__mood-word.is-selected {
+  font-weight: bold;
+  color: var(--coral);
+  opacity: 1;
+}
+
+.chiwit-today__dot {
+  color: var(--garden-neutral);
+}
+
+/* Habit lines */
+.chiwit-today__habits {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 24px;
+}
+
+.chiwit-today__prose-line {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: 21px;
+  line-height: 1.6;
+  text-align: left;
+}
+
+.chiwit-today__habit-line {
+  font-family: var(--font-serif);
+  font-size: 21px;
+  line-height: 1.6;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  min-height: 0;
+}
+
+.chiwit-today__habit-line.is-done {
+  color: var(--ink);
+}
+
+.chiwit-today__habit-line.is-pending {
+  color: var(--muted);
+}
+
+.chiwit-today__habit-line.is-skipped {
+  color: var(--muted);
+}
+
+/* Adopted words */
+.chiwit-today__adopted-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.chiwit-today__adopted-word {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-style: italic;
+  color: var(--secondary);
+  animation: leafIn 0.5s ease both;
+}
+
+/* Journal */
+.chiwit-today__journal {
+  margin-bottom: 16px;
+  border-bottom: 0.5px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.chiwit-today__journal-label {
+  display: block;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 17px;
+  color: var(--secondary);
+  margin-bottom: 6px;
+}
+
+.chiwit-today__journal-input {
+  display: block;
+  width: 100%;
+  font-family: var(--font-serif);
+  font-size: 17px;
+  color: var(--ink);
+  line-height: 1.6;
+  background: none;
+  border: none;
+  outline: none;
+}
+
+.chiwit-today__journal-input::placeholder {
+  color: var(--muted);
+}
+
+.chiwit-today__journal-entries {
+  margin-bottom: 16px;
+}
+
+.chiwit-today__journal-entry {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  color: var(--secondary);
+  line-height: 1.65;
+  padding: 4px 0;
+  border-bottom: 0.5px solid var(--divider);
+}
+
+/* Footer */
+.chiwit-today__footer {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--secondary);
+  text-align: center;
+  margin: 20px 0 16px;
+}
+
+/* Quiet links */
+.chiwit-today__links {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.chiwit-today__quiet-link {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--secondary);
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.chiwit-today__quiet-link:hover {
+  color: var(--coral);
+}
+
+/* ── Stem component ─────────────────────────────────────────────────── */
+.chiwit-stem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 16px auto;
+  position: relative;
+  width: 60px;
+}
+
+.chiwit-stem__stalk {
+  width: 1.5px;
+  min-height: 80px;
+  background: var(--coral);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.chiwit-stem__leaf {
+  width: 25px;
+  height: 25px;
   position: absolute;
-  left: 0;
-  top: 0.2em;
-  bottom: 0.2em;
-  width: 3px;
-  background: var(--sage);
-  border-radius: 3px;
+  animation: leafIn 0.5s ease both;
+}
+
+.chiwit-stem__leaf--right {
+  background: var(--garden-coral-dark);
+  transform: rotate(-45deg);
+  right: -28px;
+  top: 10px;
+  border-radius: 2px;
+}
+
+.chiwit-stem__leaf--left {
+  background: var(--garden-coral-light);
+  transform: rotate(135deg);
+  left: -28px;
+  top: 35px;
+  border-radius: 2px;
+}
+
+.chiwit-stem__bloom {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  margin-top: 8px;
+}
+
+.chiwit-stem__lotus {
+  position: absolute;
+  left: 50%;
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  animation: bloomIn 0.8s ease both;
+}
+
+/* ── Garden screen ──────────────────────────────────────────────────── */
+.chiwit-garden__title {
+  font-family: var(--font-serif);
+  font-size: 23px;
+  font-weight: normal;
+  color: var(--ink);
+  margin: 0 0 6px;
+}
+
+.chiwit-garden__subtitle {
+  font-size: 13px;
+  color: var(--secondary);
+  margin: 0 0 28px;
+}
+
+/* Arc */
+.chiwit-garden__arc-wrap {
+  margin-bottom: 28px;
+}
+
+.chiwit-garden__arc {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 116px;
+  padding-bottom: 4px;
+}
+
+.chiwit-garden__arc-day {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 116px;
+}
+
+.chiwit-garden__arc-day--empty {
+  justify-content: center;
+}
+
+.chiwit-garden__arc-bar {
+  width: 100%;
+  border-radius: 4px 4px 2px 2px;
+  min-width: 4px;
+}
+
+.chiwit-garden__arc-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--garden-neutral);
+}
+
+.chiwit-garden__arc-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--secondary);
+}
+
+.chiwit-garden__arc-quiet {
+  font-style: italic;
+  color: var(--muted);
+}
+
+/* Observations */
+.chiwit-garden__observations {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+/* Legend */
+.chiwit-garden__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  font-size: 12px;
+  color: var(--secondary);
+  margin-top: 24px;
+}
+
+.chiwit-garden__legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Observation card ───────────────────────────────────────────────── */
+.chiwit-observation {
+  padding: 14px 16px;
+  background: var(--card);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.chiwit-observation__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.chiwit-observation__icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.chiwit-observation__text {
+  flex: 1;
+  font-family: var(--font-serif);
+  font-size: 15px;
+  color: var(--ink);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.chiwit-observation__dismiss {
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  min-width: 32px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.chiwit-observation__evidence {
+  font-size: 13px;
+  color: var(--secondary);
+  margin: 0 0 4px;
+  line-height: 1.5;
+}
+
+.chiwit-observation__microcopy {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* ── Letter screen ──────────────────────────────────────────────────── */
+.chiwit-letter__title {
+  font-family: var(--font-serif);
+  font-size: 21px;
+  font-weight: normal;
+  color: var(--ink);
+  margin: 0 0 6px;
+}
+
+.chiwit-letter__subtitle {
+  font-size: 13px;
+  color: var(--secondary);
+  margin: 0 0 24px;
+}
+
+/* Mini arc */
+.chiwit-letter__arc {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 50px;
+  margin-bottom: 20px;
+}
+
+.chiwit-letter__arc-bar {
+  flex: 1;
+  border-radius: 4px 4px 2px 2px;
+  min-width: 4px;
+}
+
+.chiwit-letter__arc-dot {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--garden-neutral);
+  align-self: center;
+}
+
+/* Letter card */
+.chiwit-letter__card {
+  padding: 20px;
+  background: var(--card);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-card);
+  margin-bottom: 16px;
+}
+
+.chiwit-letter__body {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  line-height: 1.85;
+  color: var(--ink);
+  margin: 0;
+  white-space: pre-line;
+}
+
+/* Pills */
+.chiwit-letter__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.chiwit-letter__pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border: 0.5px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--secondary);
+  background: var(--card);
+}
+
+/* Lock meta */
+.chiwit-letter__lock {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+
+/* Empty state */
+.chiwit-letter__empty {
+  padding: 24px 0;
+}
+
+.chiwit-letter__empty p {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  color: var(--secondary);
+  margin: 0 0 8px;
+}
+
+.chiwit-letter__empty-hint {
+  font-style: italic;
+  color: var(--muted);
+}
+
+/* Archive */
+.chiwit-letter__archive {
+  margin-top: 24px;
+  border-top: 0.5px solid var(--divider);
+  padding-top: 20px;
+}
+
+.chiwit-letter__archive-label {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  margin: 0 0 12px;
+  font-family: var(--font-sans);
+}
+
+.chiwit-letter__archive-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chiwit-letter__archive-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.chiwit-letter__archive-date {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.chiwit-letter__archive-pills {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ── Data screen ────────────────────────────────────────────────────── */
+.chiwit-data__title {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: normal;
+  color: var(--ink);
+  line-height: 1.35;
+  margin: 0 0 20px;
+  white-space: pre-line;
+}
+
+.chiwit-data__legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.chiwit-data__legend-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--secondary);
+}
+
+.chiwit-data__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.chiwit-data__items {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin-bottom: 24px;
+  background: var(--card);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+.chiwit-data__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 0.5px solid var(--divider);
+}
+
+.chiwit-data__item:last-child {
+  border-bottom: none;
+}
+
+.chiwit-data__item-label {
+  flex: 1;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.chiwit-data__item-count {
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.chiwit-data__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  border: 0.5px solid currentColor;
+}
+
+.chiwit-data__badge--coral {
+  color: var(--coral);
+}
+
+.chiwit-data__badge--plum {
+  color: var(--plum);
+}
+
+.chiwit-data__badge--amber {
+  color: var(--amber);
+}
+
+.chiwit-data__export {
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+.chiwit-data__footer {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  color: var(--secondary);
+  line-height: 1.6;
+  margin-top: 24px;
+}
+
+/* ── Shared button styles ───────────────────────────────────────────── */
+.chiwit-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 24px;
+  background: var(--coral);
+  color: var(--paper);
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  letter-spacing: 0.01em;
+  width: 100%;
+}
+
+.chiwit-btn-primary:active {
+  background: var(--coral-pressed);
+}
+
+.chiwit-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 20px;
+  background: none;
+  color: var(--secondary);
+  border: 0.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.chiwit-btn-ghost:hover {
+  border-color: var(--coral);
+  color: var(--coral);
+}
+
+/* ── Sheet overlay (Voice / Tomorrow / YourWords) ───────────────────── */
+.chiwit-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: end center;
+  padding: 0.75rem;
+  background: rgba(28, 26, 23, 0.35);
+  backdrop-filter: blur(6px);
+}
+
+.chiwit-sheet {
+  position: relative;
+  width: min(540px, 100%);
+  max-height: 90svh;
+  overflow-y: auto;
+  background: var(--card);
+  border: 0.5px solid var(--border);
+  border-radius: 20px 20px 8px 8px;
+  padding: 24px 24px calc(24px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chiwit-sheet__close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 22px;
+  border-radius: 999px;
+  min-height: 0;
+}
+
+.chiwit-sheet__close:hover {
+  background: var(--divider);
+}
+
+/* ── Voice sheet ────────────────────────────────────────────────────── */
+.chiwit-voice__mic-circle {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  border: 1.5px solid var(--coral);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.chiwit-voice__textarea {
+  display: block;
+  width: 100%;
+  min-height: 100px;
+  background: var(--paper);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 16px;
+  color: var(--ink);
+  line-height: 1.6;
+  resize: none;
+  outline: none;
+}
+
+.chiwit-voice__textarea::placeholder {
+  color: var(--muted);
+}
+
+.chiwit-voice__results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chiwit-voice__heard {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--secondary);
+  margin: 0;
+}
+
+.chiwit-voice__items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chiwit-voice__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--paper);
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+}
+
+.chiwit-voice__check {
+  width: 24px;
+  height: 24px;
+  border: 0.5px solid var(--border);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--muted);
+  flex-shrink: 0;
+  min-height: 0;
+}
+
+.chiwit-voice__check.is-checked {
+  background: var(--coral);
+  border-color: var(--coral);
+  color: var(--paper);
+}
+
+.chiwit-voice__item-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.chiwit-voice__item-phrase {
+  flex: 1;
+  font-family: var(--font-serif);
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.chiwit-voice__item-detail {
+  font-size: 12px;
+  color: var(--secondary);
+}
+
+.chiwit-voice__mood-change {
+  font-size: 11px;
+  color: var(--coral);
+  border: 0.5px solid var(--coral);
+  border-radius: 999px;
+  padding: 2px 8px;
+  min-height: 0;
+}
+
+.chiwit-voice__footer {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  margin: 0;
+}
+
+.chiwit-voice__nothing {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--muted);
+  text-align: center;
+  margin: 0;
+}
+
+/* ── Tomorrow sheet ─────────────────────────────────────────────────── */
+.chiwit-tomorrow__title {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: normal;
+  line-height: 1.7;
+  color: var(--ink);
+  margin: 0;
+}
+
+.chiwit-tomorrow__mood-line,
+.chiwit-tomorrow__walk-line,
+.chiwit-tomorrow__words-line {
+  font-family: var(--font-serif);
+  font-size: 21px;
+  line-height: 1.6;
+  color: var(--ink);
+  margin: 0;
+}
+
+.chiwit-tomorrow__intention-label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--secondary);
+  margin: 0;
+}
+
+.chiwit-tomorrow__options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chiwit-tomorrow__option {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  line-height: 1.6;
+  color: var(--muted);
+  opacity: 0.35;
+  transition: opacity 0.15s ease;
+  text-align: left;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.chiwit-tomorrow__option.is-selected {
+  font-weight: bold;
+  color: var(--coral);
+  opacity: 1;
+}
+
+.chiwit-tomorrow__hint {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.chiwit-tomorrow__nav {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  align-items: center;
+  margin-top: 8px;
+  border-top: 0.5px solid var(--divider);
+  padding-top: 16px;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--secondary);
+}
+
+.chiwit-tomorrow__nav button {
+  color: var(--secondary);
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  min-height: 44px;
+}
+
+.chiwit-tomorrow__nav button:hover {
+  color: var(--coral);
+}
+
+.chiwit-tomorrow__nav-active {
+  font-weight: bold;
+  color: var(--ink);
+}
+
+/* ── YourWords sheet ────────────────────────────────────────────────── */
+.chiwit-yourwords__title {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: normal;
+  color: var(--ink);
+  margin: 0;
+}
+
+.chiwit-yourwords__subtitle {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--secondary);
+  margin: 0;
+}
+
+.chiwit-yourwords__category {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chiwit-yourwords__cat-label {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  font-family: var(--font-sans);
+  margin: 0;
+}
+
+.chiwit-yourwords__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chiwit-yourwords__word {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 16px;
+  color: var(--muted);
+  padding: 6px 14px;
+  border: 0.5px solid var(--border);
+  border-radius: 999px;
+  min-height: 0;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.chiwit-yourwords__word.is-adopted {
+  color: var(--coral);
+  border-color: var(--coral);
+  font-style: normal;
+}
+
+.chiwit-yourwords__add {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 0;
+  border-top: 0.5px solid var(--divider);
+}
+
+.chiwit-yourwords__input {
+  flex: 1;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--ink);
+  background: none;
+  border-bottom: 0.5px solid var(--border);
+  padding: 4px 0;
+  outline: none;
+}
+
+.chiwit-yourwords__input::placeholder {
+  color: var(--muted);
+}
+
+.chiwit-yourwords__footer {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.6;
 }
 
 /* ───────────────────────────────────────────────────────────────────── *
- * Showcase-kit-v2 — Chiwit skin                                          *
- * Selectors live in the kit; we paint them in Chiwit's voice (sage on    *
- * cream, Fraunces for titles, mono for eyebrows, coral only for warn).   *
+ * Showcase-kit-v2 — Chiwit skin (warm paper palette)                    *
+ * Selectors live in the kit; we paint them in Chiwit's voice (coral on  *
+ * warm paper, Georgia for titles, no shadows, 0.5px borders).           *
  * ─────────────────────────────────────────────────────────────────────── */
 
 /* ── Onboarding ──────────────────────────────────────────────────── */
@@ -1141,7 +1176,7 @@ meter {
   display: grid;
   place-items: center;
   padding: 1rem;
-  background: rgba(22, 34, 46, 0.42);
+  background: rgba(28, 26, 23, 0.38);
   backdrop-filter: blur(10px);
   animation: shippie-onboarding-fade 220ms ease both;
 }
@@ -1151,11 +1186,10 @@ meter {
 }
 .shippie-onboarding__surface {
   width: min(520px, 100%);
-  background: var(--paper);
-  border: 1px solid var(--line-strong);
+  background: var(--card);
+  border: 0.5px solid var(--border);
   border-radius: 12px;
   padding: 1.75rem 1.6rem 1.4rem;
-  box-shadow: 0 22px 60px rgba(22, 34, 46, 0.18);
 }
 .shippie-onboarding__progress {
   display: flex;
@@ -1167,25 +1201,24 @@ meter {
   flex: 1;
   height: 4px;
   border-radius: 4px;
-  background: var(--sage-soft);
+  background: var(--divider);
 }
 .shippie-onboarding__dot.is-current {
-  background: var(--sage);
+  background: var(--coral);
 }
 .shippie-onboarding__title {
   margin: 0 0 0.55rem;
-  font-family: var(--font-display);
-  font-weight: 600;
+  font-family: var(--font-serif);
+  font-weight: normal;
   font-size: clamp(1.4rem, 4vw, 1.85rem);
-  line-height: 1.1;
-  letter-spacing: -0.018em;
+  line-height: 1.2;
   color: var(--ink);
 }
 .shippie-onboarding__body {
-  font-family: var(--font-body);
-  color: var(--ink-soft);
+  font-family: var(--font-sans);
+  color: var(--secondary);
   line-height: 1.5;
-  font-size: 1.02rem;
+  font-size: 1rem;
   margin-bottom: 1.4rem;
 }
 .shippie-onboarding__actions {
@@ -1201,19 +1234,17 @@ meter {
   color: var(--muted);
   border: 0;
   border-radius: 6px;
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.85rem;
 }
 .shippie-onboarding__skip:hover {
-  color: var(--ink-soft);
+  color: var(--secondary);
 }
 .shippie-onboarding__next {
   min-height: 44px;
   padding: 0.65rem 1.1rem;
   border-radius: 8px;
-  border: 1px solid var(--sage);
+  border: 0.5px solid var(--coral);
+  color: var(--coral);
   font-weight: 600;
 }
 
@@ -1227,11 +1258,10 @@ meter {
   align-items: center;
   gap: 0.7rem;
   padding: 0.75rem 0.9rem;
-  background: var(--paper);
-  border: 1px solid var(--sage);
-  border-left: 4px solid var(--sage);
+  background: var(--card);
+  border: 0.5px solid var(--border);
+  border-left: 3px solid var(--coral);
   border-radius: 10px;
-  box-shadow: 0 18px 44px rgba(22, 34, 46, 0.16);
   cursor: pointer;
   animation: shippie-intent-toast-in 240ms ease both;
 }
@@ -1254,7 +1284,7 @@ meter {
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background: var(--sage-soft);
+  background: var(--divider);
   font-size: 1.15rem;
 }
 .shippie-intent-toast__text {
@@ -1263,15 +1293,14 @@ meter {
   gap: 0.15rem;
 }
 .shippie-intent-toast__text strong {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 0.98rem;
+  font-family: var(--font-serif);
+  font-weight: normal;
+  font-size: 0.95rem;
   color: var(--ink);
 }
 .shippie-intent-toast__text span {
-  font-family: var(--font-mono);
-  font-size: 0.74rem;
-  letter-spacing: 0.04em;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
   color: var(--muted);
 }
 .shippie-intent-toast__close {
@@ -1284,9 +1313,12 @@ meter {
   color: var(--muted);
   font-size: 1.1rem;
   line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .shippie-intent-toast__close:hover {
-  background: var(--sage-soft);
+  background: var(--divider);
   color: var(--ink);
 }
 
@@ -1295,14 +1327,13 @@ meter {
   display: grid;
   gap: 0.5rem;
   padding: 1.4rem 1.2rem;
-  background: var(--paper);
-  border: 1px dashed var(--line-strong);
+  background: var(--card);
+  border: 0.5px dashed var(--border);
   border-radius: 10px;
   text-align: left;
 }
 .shippie-empty-state__eyebrow {
   margin: 0;
-  font-family: var(--font-mono);
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.16em;
@@ -1311,31 +1342,34 @@ meter {
 }
 .shippie-empty-state__headline {
   margin: 0;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: clamp(1.1rem, 3vw, 1.45rem);
-  line-height: 1.18;
-  letter-spacing: -0.014em;
+  font-family: var(--font-serif);
+  font-weight: normal;
+  font-size: clamp(1.1rem, 3vw, 1.4rem);
+  line-height: 1.3;
   color: var(--ink);
 }
 .shippie-empty-state__headline em {
   font-style: italic;
-  color: var(--sage-deep);
+  color: var(--coral);
 }
 .shippie-empty-state__body {
   margin: 0;
-  color: var(--ink-soft);
-  line-height: 1.45;
+  color: var(--secondary);
+  line-height: 1.5;
+  font-size: 0.9rem;
 }
 .shippie-empty-state__cta {
   justify-self: start;
   min-height: 44px;
   padding: 0.55rem 1rem;
   border-radius: 8px;
-  border: 1px solid var(--sage);
+  border: 0.5px solid var(--coral);
+  color: var(--coral);
   text-decoration: none;
   font-weight: 600;
   margin-top: 0.4rem;
+  display: inline-flex;
+  align-items: center;
 }
 
 /* ── QR share sheet ──────────────────────────────────────────────── */
@@ -1346,7 +1380,7 @@ meter {
   display: grid;
   place-items: end center;
   padding: 0.75rem;
-  background: rgba(22, 34, 46, 0.42);
+  background: rgba(28, 26, 23, 0.38);
   backdrop-filter: blur(8px);
 }
 @media (min-width: 561px) {
@@ -1356,31 +1390,32 @@ meter {
   position: relative;
   width: min(440px, 100%);
   padding: 1.4rem 1.3rem 1.2rem;
-  background: var(--paper);
-  border: 1px solid var(--line-strong);
+  background: var(--card);
+  border: 0.5px solid var(--border);
   border-radius: 14px 14px 6px 6px;
-  box-shadow: 0 24px 60px rgba(22, 34, 46, 0.2);
   display: grid;
   gap: 0.8rem;
 }
 .shippie-qr-sheet__title {
   margin: 0;
-  font-family: var(--font-display);
-  font-weight: 600;
+  font-family: var(--font-serif);
+  font-weight: normal;
   font-size: 1.3rem;
   color: var(--ink);
 }
 .shippie-qr-sheet__body {
   margin: 0;
-  color: var(--ink-soft);
+  color: var(--secondary);
   font-style: italic;
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
 }
 .shippie-qr-sheet__qr {
   display: grid;
   place-items: center;
   padding: 1rem;
   background: white;
-  border: 1px solid var(--line);
+  border: 0.5px solid var(--border);
   border-radius: 8px;
 }
 .shippie-qr-sheet__qr svg {
@@ -1391,11 +1426,10 @@ meter {
 .shippie-qr-sheet__url {
   display: block;
   padding: 0.55rem 0.7rem;
-  background: var(--sage-soft);
+  background: var(--divider);
   border-radius: 6px;
-  font-family: var(--font-mono);
   font-size: 0.72rem;
-  color: var(--sage-deep);
+  color: var(--secondary);
   word-break: break-all;
   line-height: 1.35;
 }
@@ -1408,13 +1442,14 @@ meter {
   min-height: 44px;
   padding: 0.55rem 1rem;
   border-radius: 8px;
-  border: 1px solid var(--sage);
-  background: var(--paper);
-  color: var(--sage-deep);
+  border: 0.5px solid var(--border);
+  background: var(--card);
+  color: var(--secondary);
   font-weight: 600;
 }
 .shippie-qr-sheet__actions button.primary {
-  background: var(--sage);
+  background: var(--coral);
+  border-color: var(--coral);
   color: var(--paper);
 }
 .shippie-qr-sheet__close {
@@ -1428,14 +1463,17 @@ meter {
   background: transparent;
   color: var(--muted);
   font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .shippie-qr-sheet__close:hover {
-  background: var(--sage-soft);
+  background: var(--divider);
   color: var(--ink);
 }
 
 .wipe-confirm-sheet {
-  border-color: rgba(124, 45, 30, 0.22);
+  border-color: rgba(134, 53, 42, 0.22);
 }
 
 .wipe-confirm-sheet__stats {
@@ -1448,20 +1486,20 @@ meter {
   display: grid;
   gap: 0.15rem;
   padding: 0.8rem;
-  border: 1px solid var(--line);
+  border: 0.5px solid var(--border);
   border-radius: 10px;
-  background: var(--sage-soft);
+  background: var(--divider);
 }
 
 .wipe-confirm-sheet__stats strong {
-  font-family: var(--font-display);
+  font-family: var(--font-serif);
   font-size: 1.5rem;
+  font-weight: normal;
   line-height: 1;
   color: var(--ink);
 }
 
 .wipe-confirm-sheet__stats small {
-  font-family: var(--font-mono);
   font-size: 0.68rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1474,13 +1512,12 @@ meter {
   gap: 0.5rem;
   padding: 1.1rem 1.1rem 1rem;
   margin: 1.4rem 0 0;
-  background: var(--paper);
-  border: 1px solid var(--line);
+  background: var(--card-warm);
+  border: 0.5px solid var(--card-warm-border);
   border-radius: 10px;
 }
 .shippie-backup-card__eyebrow {
   margin: 0;
-  font-family: var(--font-mono);
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.16em;
@@ -1489,16 +1526,17 @@ meter {
 }
 .shippie-backup-card__title {
   margin: 0;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.3rem;
-  letter-spacing: -0.012em;
+  font-family: var(--font-serif);
+  font-weight: normal;
+  font-size: 1.25rem;
   color: var(--ink);
 }
 .shippie-backup-card__body {
   margin: 0 0 0.5rem;
-  color: var(--ink-soft);
+  color: var(--secondary);
   font-style: italic;
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
 }
 .shippie-backup-card__actions {
   display: flex;
@@ -1509,2321 +1547,14 @@ meter {
   min-height: 44px;
   padding: 0.55rem 1rem;
   border-radius: 8px;
+  border: 0.5px solid var(--border);
+  background: var(--card);
+  color: var(--secondary);
   font-weight: 600;
 }
 .shippie-backup-card__error {
   margin: 0;
   color: var(--coral);
-  font-family: var(--font-mono);
   font-size: 0.78rem;
   letter-spacing: 0.04em;
-}
-
-/* ── Chiwit-specific lifts ───────────────────────────────────────── */
-
-/* Inline helper text under a form group (e.g. KIND_META.helper). */
-.helper-text {
-  margin: -0.3rem 0 0;
-  font-family: var(--font-mono);
-  font-size: 0.74rem;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-}
-
-/* Factor helper line on Patterns. */
-.category-row strong {
-  display: grid;
-  gap: 0.18rem;
-}
-.factor-helper {
-  display: block;
-  font-style: italic;
-  font-family: var(--font-display);
-  font-weight: 500;
-  font-size: 0.7rem;
-  letter-spacing: 0;
-  color: var(--muted);
-  text-transform: none;
-}
-
-/* Month-jump scrubber on Timeline. */
-.month-scrubber {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin: 0 0 1rem;
-  padding: 0.4rem;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-}
-.month-scrubber button {
-  min-height: 36px;
-  padding: 0.3rem 0.75rem;
-  border-radius: 6px;
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.month-scrubber button:focus-visible {
-  outline: 2px solid var(--sage);
-  outline-offset: 2px;
-}
-
-/* Ambient-signal row on Today timeline — small sibling-app icon. */
-.entry-list li.is-ambient {
-  background: linear-gradient(90deg, var(--sage-soft) 0%, var(--paper) 38%);
-  border-color: rgba(31, 143, 136, 0.22);
-}
-.entry-source-icon {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  margin-left: 0.45rem;
-  padding: 0.05rem 0.4rem 0.05rem 0.32rem;
-  background: var(--sage-soft);
-  border-radius: 999px;
-  font-style: normal;
-  font-size: 1.2em;
-  line-height: 1;
-  vertical-align: -2px;
-}
-.entry-source-icon::before {
-  content: '';
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--sage);
-}
-
-/* Data tab — share-this-week block. */
-.data-share {
-  margin-top: 1.4rem;
-  padding: 1.1rem 1.1rem 1rem;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-}
-.data-share h2 {
-  margin: 0 0 0.4rem;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.2rem;
-  color: var(--ink);
-}
-.data-share button {
-  margin-top: 0.6rem;
-  min-height: 44px;
-  padding: 0.55rem 1rem;
-  border-radius: 8px;
-  font-weight: 600;
-}
-
-/* ── Customize quick log pane — lives in the Data view. ────────────────
- * Paper-tone surface with sage chevrons; matches the data-share block
- * voice so the Customize section reads as another quiet utility, not
- * a new visual register.
- */
-.customize-quick {
-  margin-top: 1.4rem;
-  padding: 1.1rem 1.1rem 1rem;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-}
-.customize-quick__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.85rem;
-}
-.customize-quick__header h2 {
-  margin: 0 0 0.25rem;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.2rem;
-  color: var(--ink);
-}
-.customize-quick__header .measure {
-  margin: 0;
-  font-size: 0.85rem;
-  color: var(--ink-soft);
-  max-width: 36ch;
-}
-.customize-quick__reset {
-  flex-shrink: 0;
-  min-height: 36px;
-  padding: 0.35rem 0.8rem;
-  border-radius: 8px;
-  background: transparent;
-  border: 1px solid var(--line-strong);
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--sage-deep);
-  cursor: pointer;
-}
-.customize-quick__reset:hover {
-  border-color: var(--sage);
-  background: var(--sage-soft);
-}
-.customize-quick__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-.customize-quick__list li {
-  display: grid;
-  grid-template-columns: 14px 1fr auto;
-  align-items: center;
-  gap: 0.7rem;
-  padding: 0.5rem 0.65rem;
-  background: var(--bg, #fdfaf3);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  transition: opacity 200ms ease, background 200ms ease;
-}
-.customize-quick__list li.is-hidden {
-  opacity: 0.5;
-}
-.customize-quick__list li.is-hidden .customize-quick__label strong {
-  text-decoration: line-through;
-  text-decoration-color: var(--line-strong);
-}
-.customize-quick__dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
-}
-.customize-quick__label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  min-width: 0;
-}
-.customize-quick__label strong {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 0.95rem;
-  color: var(--ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.customize-quick__label small {
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-.customize-quick__controls {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-.customize-quick__controls button {
-  min-width: 32px;
-  min-height: 32px;
-  padding: 0 0.5rem;
-  border-radius: 6px;
-  background: transparent;
-  border: 1px solid var(--line-strong);
-  color: var(--sage-deep);
-  font-size: 0.8rem;
-  line-height: 1;
-  cursor: pointer;
-  transition: background 150ms ease, border-color 150ms ease, opacity 150ms ease;
-}
-.customize-quick__controls button:hover:not(:disabled) {
-  background: var(--sage-soft);
-  border-color: var(--sage);
-}
-.customize-quick__controls button:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-.customize-quick__toggle,
-.customize-quick__remove {
-  font-family: var(--font-mono);
-  font-size: 0.7rem !important;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 0 0.6rem !important;
-}
-.customize-quick__remove {
-  color: var(--coral, #c84a3a);
-}
-.customize-quick__add-btn {
-  margin-top: 0.85rem;
-  width: 100%;
-  min-height: 40px;
-  border-radius: 8px;
-  background: transparent;
-  border: 1px dashed var(--line-strong);
-  color: var(--sage-deep);
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease;
-}
-.customize-quick__add-btn:hover {
-  background: var(--sage-soft);
-  border-color: var(--sage);
-}
-.customize-quick__add {
-  margin-top: 0.85rem;
-  padding: 0.85rem;
-  background: var(--bg, #fdfaf3);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-}
-.customize-quick__add .form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.65rem;
-  margin-bottom: 0.65rem;
-}
-.customize-quick__add label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-.customize-quick__add input,
-.customize-quick__add select {
-  min-height: 36px;
-  padding: 0.4rem 0.55rem;
-  border-radius: 6px;
-  border: 1px solid var(--line-strong);
-  background: var(--paper);
-  color: var(--ink);
-  font-family: inherit;
-  font-size: 0.9rem;
-  text-transform: none;
-  letter-spacing: 0;
-}
-.customize-quick__add-actions {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
-}
-.customize-quick__add-actions button {
-  min-height: 36px;
-  padding: 0.4rem 0.85rem;
-  border-radius: 8px;
-  border: 1px solid var(--line-strong);
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-.customize-quick__add-actions button.primary {
-  background: var(--sage);
-  border-color: var(--sage);
-  color: var(--paper);
-}
-.quick-grid__empty {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
-  color: var(--ink-soft);
-  padding: 0.6rem 0.8rem;
-  margin: 0;
-}
-
-/* Consistency card in PatternsView — hero metric for the week. */
-.consistency-card {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 20px;
-  background: var(--surface, rgba(255, 255, 255, 0.6));
-  border: 1px solid var(--border, rgba(42, 31, 22, 0.12));
-  margin-bottom: 16px;
-}
-.consistency-card > div {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-}
-.consistency-card strong {
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  font-size: clamp(2.4rem, 7vw, 3.2rem);
-  line-height: 0.95;
-  letter-spacing: -0.022em;
-  color: var(--accent, currentColor);
-}
-.consistency-card small {
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-  color: var(--muted, rgba(0, 0, 0, 0.55));
-}
-.consistency-card meter {
-  flex: 0 0 120px;
-  width: 120px;
-  height: 8px;
-}
-
-/* ── Week contour — the shape of the week, drawn ─────────────────────── */
-.week-contour {
-  margin: 0.9rem 0 0.2rem;
-}
-.week-contour svg {
-  display: block;
-  width: 100%;
-  height: auto;
-  max-width: 320px;
-}
-.week-contour__area {
-  fill: var(--sage-soft);
-  opacity: 0.55;
-}
-.week-contour__line {
-  fill: none;
-  stroke: var(--sage);
-  stroke-width: 2.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.week-contour__dot { fill: var(--sage); }
-.week-contour__today { fill: var(--coral); }
-.week-contour figcaption {
-  margin-top: 0.3rem;
-  font-family: var(--font-mono);
-  font-size: 0.66rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-/* Premium daily-pulse pass */
-:root {
-  --surface-glass: rgba(255, 253, 246, 0.84);
-  --surface-solid: #fffdf6;
-  --paper-warm:    #fdf8ea;   /* a touch warmer than `--paper` — card tone */
-  --paper-cool:    #f3ede0;   /* slightly cooler, recessed surface */
-  --mist: #e6eee5;
-  --lotus: #ef6f55;
-  --sage-shadow:   rgba(47, 86, 64, 0.16);   /* deep-sage cast for cards */
-  --sage-shadow-strong: rgba(47, 86, 64, 0.22);
-  --ink-quiet:     rgba(22, 34, 46, 0.46);   /* tertiary copy */
-  --shadow-paper:  0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 1px 2px rgba(22, 34, 46, 0.04);
-  --shadow-soft:   0 1px 0 rgba(255, 255, 255, 0.55) inset, 0 14px 38px rgba(22, 34, 46, 0.07), 0 2px 6px rgba(22, 34, 46, 0.04);
-  --shadow-lift:   0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 30px 70px rgba(22, 34, 46, 0.14), 0 6px 14px rgba(22, 34, 46, 0.06);
-  --shadow-float:  0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 38px 90px rgba(47, 86, 64, 0.16), 0 10px 24px rgba(22, 34, 46, 0.08);
-  /* Motion scale — every transition in chiwit should pick from these. */
-  --dur-1: 120ms;     /* tap, micro */
-  --dur-2: 220ms;     /* hover, lift */
-  --dur-3: 480ms;     /* layout / score */
-  --dur-4: 1200ms;    /* contour draw */
-  --ease-chiwit: cubic-bezier(0.32, 0.72, 0.24, 1);        /* default */
-  --ease-lift:   cubic-bezier(0.2, 0.9, 0.3, 1.18);        /* hover lift */
-  --ease-quiet:  cubic-bezier(0.4, 0, 0.2, 1);             /* color/opacity */
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);        /* score-fill */
-}
-
-body {
-  background:
-    linear-gradient(90deg, rgba(31, 143, 136, 0.035) 1px, transparent 1px),
-    repeating-linear-gradient(to bottom, transparent 0, transparent 31px, rgba(22, 34, 46, 0.025) 31px, rgba(22, 34, 46, 0.025) 32px),
-    linear-gradient(160deg, #fffdf6 0%, #f5eedf 56%, #e7f0e8 100%);
-  background-size: 44px 44px, auto, auto;
-}
-
-.app-header {
-  min-height: 70px;
-  background: rgba(255, 253, 246, 0.9);
-  box-shadow: 0 10px 34px rgba(22, 34, 46, 0.06);
-}
-
-.brand-lockup img {
-  border-radius: 8px;
-  box-shadow: 0 10px 26px rgba(239, 111, 85, 0.14);
-}
-
-.hero-plane h1,
-.page-shell h1,
-.section-heading h2,
-.insight-panel h2,
-.tracking-form h2,
-.timeline-day h2 {
-  letter-spacing: 0;
-}
-
-.app-header nav .active,
-.primary,
-.hero-actions .primary,
-.tracking-form .primary,
-.month-scrubber button.active,
-.shippie-onboarding__next,
-.shippie-empty-state__cta,
-button.branded.primary {
-  background: linear-gradient(180deg, #568969, #356246);
-  color: var(--surface-solid);
-  border-color: rgba(53, 98, 70, 0.88);
-  box-shadow: 0 12px 26px rgba(47, 86, 64, 0.2);
-}
-
-.hero-plane {
-  grid-template-columns: minmax(0, 0.98fr) minmax(350px, 0.76fr);
-  gap: clamp(1.5rem, 4vw, 4.2rem);
-}
-
-.hero-plane h1 {
-  max-width: 720px;
-  font-size: clamp(3rem, 7.4vw, 6.3rem);
-  line-height: 0.9;
-}
-
-.signal-composer-group {
-  margin: 1.25rem 0 1rem;
-}
-
-.signal-composer-label {
-  margin: 0 0 0.55rem;
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--coral);
-}
-
-.signal-composer {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.65rem;
-  width: min(100%, 620px);
-  margin: 0;
-}
-
-.signal-composer button {
-  min-height: 86px;
-  display: grid;
-  align-content: center;
-  gap: 0.25rem;
-  padding: 0.85rem;
-  text-align: left;
-  border-radius: 8px;
-  border: 1px solid rgba(31, 143, 136, 0.18);
-  background: var(--surface-glass);
-  color: var(--ink);
-  box-shadow: var(--shadow-soft);
-}
-
-.signal-composer span {
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
-}
-
-.signal-composer strong,
-.signal-composer small {
-  display: block;
-}
-
-.signal-composer small,
-.toolbar-subcopy {
-  color: var(--muted);
-}
-
-.pulse-card,
-.entry-list li,
-.insight-panel,
-.insight-card,
-.tracking-form,
-.category-grid,
-.timeline-day,
-.metric-strip,
-.week-ribbon,
-.consistency-card,
-.data-share,
-.shippie-backup-card {
-  background: var(--surface-glass);
-  border-color: rgba(22, 34, 46, 0.1);
-  box-shadow: var(--shadow-soft);
-}
-
-.pulse-card {
-  overflow: hidden;
-  box-shadow: var(--shadow-lift);
-}
-
-.pulse-ring {
-  background:
-    radial-gradient(circle at center, var(--surface-solid) 0 47%, transparent 48%),
-    conic-gradient(var(--lotus) calc(var(--score) * 1%), var(--mist) 0);
-}
-
-.toolbar-subcopy {
-  max-width: 46ch;
-  margin: 0.6rem 0 0;
-  line-height: 1.45;
-}
-
-.toolbar h1 {
-  max-width: 760px;
-  font-size: clamp(2.2rem, 5.8vw, 4.9rem);
-  line-height: 0.92;
-}
-
-.data-share {
-  display: grid;
-  gap: 0.55rem;
-  margin-top: 1rem;
-  padding: 1.1rem;
-  border-radius: 8px;
-}
-
-@media (max-width: 980px) {
-  .hero-plane,
-  .split-layout,
-  .form-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 700px) {
-  .app-header {
-    min-height: 62px;
-  }
-
-  .app-header nav {
-    border-radius: 8px;
-    padding: 0.28rem;
-    background: rgba(255, 253, 246, 0.97);
-    box-shadow: 0 16px 36px rgba(22, 34, 46, 0.18);
-  }
-
-  .app-header nav button {
-    border-radius: 8px;
-    min-height: 50px;
-    font-size: 0.68rem;
-  }
-
-  .hero-plane {
-    gap: 0.85rem;
-    padding: 0.2rem 0 1rem;
-  }
-
-  .hero-plane h1,
-  .page-shell h1,
-  .toolbar h1 {
-    font-size: clamp(1.95rem, 9.5vw, 2.75rem);
-    line-height: 0.96;
-  }
-
-  .hero-plane .reading,
-  .toolbar-subcopy {
-    font-size: 0.95rem;
-  }
-
-  .signal-composer {
-    display: flex;
-    overflow-x: auto;
-    gap: 0.55rem;
-    margin-block: 0.9rem 0.75rem;
-    padding-bottom: 0.15rem;
-    scroll-snap-type: x proximity;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .signal-composer::-webkit-scrollbar {
-    display: none;
-  }
-
-  .signal-composer button {
-    flex: 0 0 148px;
-    min-height: 82px;
-    scroll-snap-align: start;
-  }
-
-  .pulse-card {
-    grid-template-columns: 96px minmax(0, 1fr);
-    gap: 0.65rem;
-    width: 100%;
-    padding: 0.65rem;
-  }
-
-  .pulse-ring {
-    width: 96px;
-  }
-
-  .pulse-ring img {
-    width: 36px;
-    height: 36px;
-  }
-
-  .pulse-ring strong {
-    font-size: 2.15rem;
-  }
-
-  .pulse-message {
-    display: none;
-  }
-
-  .pulse-factors,
-  .pulse-factors span,
-  .pulse-factors i {
-    min-width: 0;
-    max-width: 100%;
-    overflow: hidden;
-  }
-
-  .pulse-factors span {
-    grid-template-columns: 1fr;
-    gap: 0.18rem;
-    min-height: 24px;
-    font-size: 0.74rem;
-  }
-
-  .pulse-factors strong,
-  .pulse-factors i {
-    grid-column: 1;
-  }
-
-  .pulse-factors strong {
-    grid-row: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .pulse-factors i {
-    grid-row: 2;
-    height: 6px;
-  }
-
-  .tracking-form .form-grid,
-  .metric-strip {
-    grid-template-columns: 1fr;
-  }
-
-  .timeline-list {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Premium mobile polish: a calm daily console, not a document page. */
-@media (max-width: 700px) {
-  .page-shell,
-  .today-shell {
-    width: min(100% - 0.9rem, 1180px);
-    padding-top: 0.55rem;
-    padding-bottom: calc(7.2rem + env(safe-area-inset-bottom));
-  }
-
-  .hero-plane {
-    gap: 0.62rem;
-    padding: 0.15rem 0 0.78rem;
-  }
-
-  .hero-plane h1,
-  .page-shell h1,
-  .toolbar h1 {
-    font-size: clamp(1.65rem, 7.2vw, 2.05rem);
-    line-height: 0.98;
-  }
-
-  .hero-plane .reading {
-    max-width: 34ch;
-    font-size: 0.9rem;
-    line-height: 1.28;
-  }
-
-  .signal-composer {
-    margin-block: 0.65rem 0.48rem;
-    gap: 0.48rem;
-  }
-
-  .signal-composer button {
-    flex-basis: 132px;
-    min-height: 74px;
-    padding: 0.68rem;
-  }
-
-  .signal-composer strong {
-    font-size: 0.88rem;
-  }
-
-  .signal-composer small {
-    font-size: 0.72rem;
-    line-height: 1.25;
-  }
-
-  .pulse-card {
-    grid-template-columns: 88px minmax(0, 1fr);
-    gap: 0.58rem;
-    padding: 0.58rem;
-    border-radius: 10px;
-  }
-
-  .pulse-ring {
-    width: 88px;
-  }
-
-  .pulse-ring strong {
-    font-size: 1.95rem;
-  }
-
-  .week-contour {
-    margin-top: 0.36rem;
-  }
-
-  .week-contour svg {
-    max-width: 250px;
-  }
-
-  .hero-actions {
-    gap: 0.45rem;
-    margin-top: 0.55rem;
-  }
-
-  .hero-actions button {
-    min-height: 46px;
-  }
-}
-
-/* ─── Hero-moment polish (cluster 1) ───────────────────────────────── *
- * Tabular nums on the reading so "45" / "7" land with vital-sign weight.
- * factor-boost class on quick-action helpers makes the signal→factor
- * mapping legible at a glance ("Foundations" / "Mind" / "Recovery").
- * PulseRing progress mode replaces "—" with a momentum ring toward the
- * 3-factor honesty gate.
- * WeekContour line draws over 1.2s — keepsake-feel, not chart-feel.
- * ──────────────────────────────────────────────────────────────────── */
-.hero-plane .reading {
-  font-variant-numeric: tabular-nums;
-}
-
-.factor-boost {
-  display: inline-block;
-  margin-top: 0.1rem;
-  padding: 0.05rem 0.4rem;
-  background: var(--sage-soft);
-  color: var(--sage-deep);
-  border-radius: 999px;
-  font-family: var(--font-mono);
-  font-size: 0.66rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.week-contour figcaption strong {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  color: var(--sage-deep);
-  letter-spacing: 0.08em;
-}
-
-/* PulseRing — momentum mode when overall is null. */
-.pulse-ring--progress {
-  background:
-    radial-gradient(circle at center, rgba(255, 250, 248, 0.98) 0 48%, transparent 49%),
-    conic-gradient(var(--sage) calc(var(--score) * 1%), var(--sage-soft) 0);
-}
-.pulse-ring__progress {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-}
-.pulse-ring__progress span {
-  display: inline;
-  font-size: 0.45em;
-  color: var(--muted);
-  margin-left: 0.04em;
-  vertical-align: 0.35em;
-}
-
-/* WeekContour line draw — runs on mount; respects reduced-motion via the
- * earlier media query that clamps animation-duration to 1ms. */
-.week-contour__line {
-  animation: chiwit-contour-draw 1200ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-@keyframes chiwit-contour-draw {
-  to { stroke-dashoffset: 0; }
-}
-
-/* ─── Information-hierarchy polish (cluster 2) ─────────────────────── *
- * Consistency legend explains the meter's denominator.
- * Focus-visible rings on interactive scrubber + dismiss buttons land a
- * keyboard-first read.
- * ──────────────────────────────────────────────────────────────────── */
-.consistency-legend {
-  margin-top: 0.1rem;
-  font-size: 0.68rem !important;
-  letter-spacing: 0.06em !important;
-  text-transform: uppercase;
-  opacity: 0.78;
-}
-
-.insight-card button:focus-visible,
-.entry-list button:focus-visible {
-  outline: 2px solid var(--sage);
-  outline-offset: 2px;
-}
-
-/* ─── Micro-interactions (cluster 3) ────────────────────────────────── *
- * Dismiss-button press feedback; pulse-ring score-fill transition so the
- * conic-gradient eases when `--score` changes; quick-grid pill commit
- * pulse so haptics have a visual echo. Respects reduced-motion via the
- * earlier 1ms clamp.
- * ──────────────────────────────────────────────────────────────────── */
-.insight-card button,
-.entry-list button {
-  transition: transform 120ms cubic-bezier(0.4, 0, 0.2, 1), background 160ms ease;
-}
-.insight-card button:active,
-.entry-list button:active {
-  transform: scale(0.9);
-}
-
-/* The conic-gradient itself can't tween, but transitioning the custom
- * property smooths the visual jump when --score updates. */
-@property --score {
-  syntax: '<number>';
-  inherits: false;
-  initial-value: 45;
-}
-.pulse-ring {
-  transition: --score 600ms cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* Quick-grid pill — confirm pulse on press (visual echo of the
- * texture('confirm') haptic in quickLog). */
-.quick-grid button:active,
-.signal-composer button:active {
-  transform: scale(0.97);
-  background: var(--sage-soft);
-}
-
-/* ─── Empty + edge states (cluster 4) ──────────────────────────────── *
- * patterns-progress shows bars toward the "Patterns" threshold so the
- * empty state teaches the next move. insight-example surfaces a
- * concrete-shaped sample insight. wipe-sheet replaces window.confirm
- * with a styled modal showing counts.
- * ──────────────────────────────────────────────────────────────────── */
-.patterns-progress {
-  display: grid;
-  gap: 0.55rem;
-  margin-top: 0.6rem;
-  max-width: 360px;
-}
-.patterns-progress__row {
-  display: grid;
-  grid-template-columns: minmax(110px, auto) minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.7rem;
-  font-size: 0.86rem;
-  color: var(--ink-soft);
-}
-.patterns-progress__row strong {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  font-weight: 600;
-}
-.patterns-progress__row meter {
-  width: 100%;
-  height: 8px;
-}
-.patterns-progress__row em {
-  font-family: var(--font-mono);
-  font-style: normal;
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  font-size: 0.78rem;
-  color: var(--sage-deep);
-}
-
-.insight-example {
-  display: block;
-  margin-top: 0.5rem;
-  color: var(--ink-soft);
-}
-.insight-example em {
-  font-family: var(--font-display);
-  font-style: italic;
-  color: var(--ink);
-}
-
-/* Wipe confirm sheet — replaces window.confirm with counts + tone. */
-.wipe-sheet {
-  position: fixed;
-  inset: 0;
-  z-index: 110;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  animation: shippie-onboarding-fade 180ms ease both;
-}
-.wipe-sheet__backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(22, 34, 46, 0.42);
-  backdrop-filter: blur(8px);
-}
-.wipe-sheet__panel {
-  position: relative;
-  width: min(440px, 100%);
-  background: var(--paper);
-  border: 1px solid var(--line-strong);
-  border-radius: 12px;
-  padding: 1.5rem 1.4rem 1.2rem;
-  box-shadow: 0 28px 70px rgba(22, 34, 46, 0.22);
-  display: grid;
-  gap: 0.55rem;
-}
-.wipe-sheet__panel h2 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.4rem;
-  letter-spacing: -0.012em;
-  color: var(--ink);
-}
-.wipe-sheet__counts {
-  margin: 0;
-  font-family: var(--font-body);
-  color: var(--ink-soft);
-}
-.wipe-sheet__counts strong {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  color: var(--coral);
-}
-.wipe-sheet__body {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.92rem;
-  line-height: 1.45;
-}
-.wipe-sheet__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.55rem;
-  margin-top: 0.4rem;
-}
-.wipe-sheet__actions button {
-  min-height: 44px;
-  padding: 0.6rem 1rem;
-  border-radius: 8px;
-  font-weight: 600;
-}
-.wipe-sheet__actions button:not(.danger) {
-  background: var(--paper);
-  color: var(--sage-deep);
-  border: 1px solid rgba(31, 143, 136, 0.28);
-}
-
-/* ─── Repeat-yesterday button (cluster 5) ───────────────────────────── */
-.tracking-form__header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.6rem;
-  margin-bottom: 0.2rem;
-}
-.tracking-form__header h2 {
-  margin: 0;
-}
-.repeat-yesterday {
-  min-height: 32px;
-  padding: 0.3rem 0.7rem;
-  background: var(--sage-soft);
-  color: var(--sage-deep);
-  border: 1px solid rgba(31, 143, 136, 0.28);
-  border-radius: 999px;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  transition: transform 160ms ease, background 160ms ease;
-}
-.repeat-yesterday:hover {
-  background: var(--paper);
-  border-color: var(--sage);
-}
-.repeat-yesterday:active {
-  transform: scale(0.96);
-}
-
-/* ─── Pass 3 · Visual standout ──────────────────────────────────────── *
- * Adds:
- *  - Numbers-as-poetry: hero pulse uses ss01 + tnum + tight tracking and a
- *    handwritten unit pill aside the giant digit.
- *  - Editorial rhythm: section headings get a hairline left-rule + tracked
- *    eyebrow line; vertical breath normalised to an 8-grid.
- *  - Depth: cards use a two-tone shadow that picks up sage in the cast, so
- *    the page feels lit from above-left rather than flat-on.
- *  - Hand-drawn divider: a sage botanical hairline below the hero.
- *  - Motion: every transition standardised against the --dur-* / --ease-*
- *    tokens introduced in the premium block above.
- * ──────────────────────────────────────────────────────────────────── */
-
-/* Numbers-as-art — the giant Daily Pulse digit.
- *
- * `font-feature-settings: 'tnum' 'lnum' 'ss01'` gives us:
- *   tnum — fixed-width digits so the score never jitters at 89→90→100
- *   lnum — lining figures (not old-style) so 7-9 reach baseline cleanly
- *   ss01 — Fraunces stylistic set 1 (single-storey 'a', refined digits) */
-.pulse-ring strong {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings: 'tnum' 1, 'lnum' 1, 'ss01' 1;
-  letter-spacing: -0.045em;
-  color: var(--sage-deep);
-  /* very subtle ink texture so the digit reads like printed type */
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
-}
-.pulse-ring--progress strong {
-  color: var(--sage-deep);
-}
-.pulse-ring__progress {
-  /* When showing "1/3 etc." the slash stays a touch quieter than the digits */
-  font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings: 'tnum' 1, 'lnum' 1;
-}
-
-/* Hero pulse caption — was a quiet uppercase line; promote it to a
- * handwritten serif italic so the giant digit has a partner instead of
- * a label. Also pin "Daily Pulse" to two lines on a narrow card. */
-.pulse-ring span {
-  margin-top: 0.35rem;
-  font-family: var(--font-display);
-  font-style: italic;
-  font-weight: 500;
-  font-size: 0.86rem;
-  letter-spacing: 0.012em;
-  color: var(--ink-soft);
-  text-transform: none;
-}
-
-/* Editorial section-heading rhythm. The H2 keeps Fraunces weight, but
- * gains a 24px hairline rule + a tracked mono eyebrow inside the spacing,
- * matching the field-journal voice from the brand notes. */
-.section-heading {
-  margin-block: 2.5rem 1rem;
-  padding-bottom: 0.55rem;
-  border-bottom: 1px solid var(--line);
-  align-items: baseline;
-}
-.section-heading h2 {
-  position: relative;
-  font-size: 1.18rem;
-  letter-spacing: -0.012em;
-}
-.section-heading span {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-quiet);
-}
-
-/* Today shell — give the hero its breath back. */
-.today-shell {
-  display: grid;
-  gap: 1.6rem;
-}
-.today-shell .hero-plane {
-  padding-block: 2.4rem 1.8rem;
-}
-.today-shell .quick-panel {
-  padding-block: 1.6rem;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-}
-
-/* Hand-drawn botanical divider — single SVG sprig set into a thin sage
- * line. Pure CSS background so it works on every section heading without
- * extra DOM. The svg is encoded inline so it ships with the stylesheet. */
-.today-shell .quick-panel::before {
-  content: '';
-  display: block;
-  width: 140px;
-  height: 18px;
-  margin: 0 auto 1.1rem;
-  opacity: 0.55;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 140 18' fill='none' stroke='%234a7a5e' stroke-width='1.1' stroke-linecap='round'><path d='M2 9 H58'/><path d='M82 9 H138'/><path d='M70 2 C 66 5, 66 13, 70 16 C 74 13, 74 5, 70 2 Z' fill='%234a7a5e' fill-opacity='0.18'/><path d='M70 4 V 14'/><path d='M67 7 L 70 9 L 73 7'/><path d='M66 11 L 70 13 L 74 11'/></svg>");
-}
-
-/* Quiet eyebrow lift — heavier tracking, hairline below for the
- * field-notes vibe across every page. */
-.eyebrow {
-  position: relative;
-  display: inline-block;
-  margin-bottom: 0.85rem;
-  padding-bottom: 0.3rem;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-}
-.eyebrow::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 28px;
-  height: 1px;
-  background: currentColor;
-  opacity: 0.45;
-}
-
-/* Hero reading pull-quote — tighten optical leading + push the rule. */
-.hero-plane .reading {
-  margin-top: 1.35rem;
-  padding-left: 1.4rem;
-  line-height: 1.18;
-  letter-spacing: -0.008em;
-}
-.hero-plane .reading::before {
-  width: 2px;
-  background: linear-gradient(180deg, var(--sage), var(--sage-deep));
-}
-
-/* Card depth — the standardised three-layer cast. Surfaces no longer
- * compete: paper (page) → glass (card) → lifted (hover/modal). */
-.pulse-card,
-.entry-list li,
-.insight-panel,
-.insight-card,
-.tracking-form,
-.category-grid,
-.timeline-day,
-.metric-strip,
-.consistency-card,
-.data-share,
-.shippie-backup-card {
-  background: var(--paper-warm);
-  border-color: rgba(22, 34, 46, 0.08);
-  box-shadow: var(--shadow-soft);
-  transition:
-    transform var(--dur-2) var(--ease-lift),
-    box-shadow var(--dur-2) var(--ease-quiet),
-    border-color var(--dur-2) var(--ease-quiet);
-}
-.entry-list li:hover,
-.insight-card:hover,
-.timeline-day:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lift);
-  border-color: rgba(31, 143, 136, 0.22);
-}
-.pulse-card {
-  box-shadow: var(--shadow-float);
-}
-
-/* Metric strip — was 3 equal tiles; turn it into a hero-asymmetric piece
- * so the first signal count reads like the headline metric. */
-.metric-strip {
-  grid-template-columns: 1.4fr 1fr 1fr;
-  background: var(--paper-warm);
-}
-.metric-strip div:first-child {
-  background: linear-gradient(180deg, var(--sage-soft) 0%, var(--paper-warm) 90%);
-}
-.metric-strip strong {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings: 'tnum' 1, 'lnum' 1, 'ss01' 1;
-  letter-spacing: -0.022em;
-  line-height: 0.94;
-  color: var(--sage-deep);
-}
-.metric-strip div:first-child strong {
-  font-size: clamp(2.2rem, 5.4vw, 3.4rem);
-}
-.metric-strip span {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-/* Consistency card — make the percent feel like a headline number,
- * not a stat. Big tabular numerals + small italic % on the side. */
-.consistency-card {
-  background: linear-gradient(135deg, var(--paper-warm) 0%, var(--sage-soft) 140%);
-  border-radius: 12px;
-  position: relative;
-  overflow: hidden;
-}
-.consistency-card::after {
-  /* sage "73" watermark in the corner — a tiny luxury that says
-   * "this is a designed surface, not a stat tile". */
-  content: '';
-  position: absolute;
-  inset: auto -20px -28px auto;
-  width: 140px;
-  height: 140px;
-  border-radius: 999px;
-  background: radial-gradient(circle at 30% 30%, rgba(31, 143, 136, 0.16) 0%, transparent 60%);
-  pointer-events: none;
-}
-.consistency-card strong {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings: 'tnum' 1, 'lnum' 1, 'ss01' 1;
-  letter-spacing: -0.028em;
-  position: relative;
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.18em;
-  color: var(--sage-deep);
-}
-.consistency-card strong::after {
-  /* Treat the % like a unit pill — small italic Fraunces */
-  content: '';
-}
-
-/* Pull-quote inside insight cards reads as poetry; tighten leading. */
-.insight-card p {
-  line-height: 1.4;
-  letter-spacing: -0.003em;
-}
-
-/* Standardise transitions on every interactive surface. Pulls in the
- * --dur and --ease tokens introduced in the premium block. */
-.app-header nav button,
-.hero-actions button,
-.quick-grid button,
-.tracking-form button,
-.danger,
-.signal-composer button,
-.month-scrubber button,
-.shippie-backup-card__actions button {
-  transition:
-    transform var(--dur-2) var(--ease-lift),
-    background var(--dur-2) var(--ease-quiet),
-    color var(--dur-2) var(--ease-quiet),
-    border-color var(--dur-2) var(--ease-quiet),
-    box-shadow var(--dur-2) var(--ease-quiet);
-}
-.app-header nav button:hover,
-.hero-actions button:hover,
-.quick-grid button:hover,
-.tracking-form button:hover,
-.signal-composer button:hover,
-.month-scrubber button:hover,
-.shippie-backup-card__actions button:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-soft);
-}
-
-/* Pulse-ring score easing — keep the spring on score moves, but tie
- * the duration to --dur-3 so the whole app feels timed together. */
-.pulse-ring {
-  transition: --score var(--dur-3) var(--ease-spring);
-}
-
-/* WeekContour line draws over --dur-4 (1.2s) — matches the keepsake feel. */
-.week-contour__line {
-  animation: chiwit-contour-draw var(--dur-4) var(--ease-quiet) forwards;
-}
-
-/* Hero pulse — very subtle 4s breathing scale on the ring. Reads as
- * "alive" without animating the score itself. The 0.6% scale stays
- * below the perception threshold for "moving"; it's an undertone. */
-@keyframes chiwit-pulse-breathe {
-  0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.006); }
-}
-.pulse-ring {
-  animation: chiwit-pulse-breathe 4.6s var(--ease-quiet) infinite;
-  will-change: transform;
-}
-@media (prefers-reduced-motion: reduce) {
-  .pulse-ring { animation: none; }
-}
-
-/* Pulse-factors meter — tighten and add a soft sage cap so the bars look
- * intentional rather than utility chart fills. */
-.pulse-factors i {
-  height: 6px;
-  background: linear-gradient(90deg, var(--sage-soft) 0%, var(--sage) 60%, var(--coral) 100%);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset;
-}
-.pulse-factors strong {
-  font-family: var(--font-mono);
-  font-size: 0.74rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-.pulse-factors span.is-unlogged strong {
-  color: var(--ink-quiet);
-  font-weight: 500;
-}
-
-/* Week ribbon — make the bars feel typeset, not chart-drawn.
- * Cap radius, hairline ground line, hover lift to surface the day. */
-.week-ribbon {
-  position: relative;
-  padding: 1.2rem 1rem 1.6rem;
-  background: linear-gradient(180deg, var(--paper-warm) 0%, var(--paper-cool) 100%);
-}
-.week-ribbon::after {
-  content: '';
-  position: absolute;
-  inset: auto 1rem 1.1rem 1rem;
-  height: 1px;
-  background: var(--line);
-  pointer-events: none;
-}
-.week-ribbon span {
-  position: relative;
-  border-radius: 999px 999px 3px 3px;
-  background: linear-gradient(180deg, var(--coral) 0%, var(--sage) 70%, var(--sage-deep) 100%);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset;
-  transition: transform var(--dur-2) var(--ease-lift), filter var(--dur-2) var(--ease-quiet);
-}
-.week-ribbon span:hover {
-  transform: scaleY(1.04);
-  filter: saturate(1.1);
-}
-
-/* Toolbar headlines — give the editorial H1 more breathing room and a
- * tight optical-size leading. */
-.toolbar {
-  margin-bottom: 2rem;
-}
-.toolbar h1 {
-  letter-spacing: -0.022em;
-  line-height: 0.92;
-  font-feature-settings: 'ss01' 1, 'liga' 1;
-}
-
-.hero-plane h1 {
-  letter-spacing: -0.024em;
-  font-feature-settings: 'ss01' 1, 'liga' 1;
-}
-
-/* Pulse message — extend the italic Fraunces; sit it on a tiny mark
- * (·) so it reads as a quoted line, not a tooltip. */
-.pulse-message {
-  position: relative;
-  padding-top: 0.45rem;
-  font-size: 1.02rem;
-  line-height: 1.42;
-  color: var(--ink-soft);
-}
-.pulse-message::before {
-  content: '·';
-  display: block;
-  margin: 0 auto 0.15rem;
-  font-family: var(--font-display);
-  font-size: 1.4rem;
-  line-height: 1;
-  color: var(--sage);
-  opacity: 0.7;
-}
-
-/* Mobile-only — keep the breathing animation off on small viewports to
- * save battery, and tighten the ribbon ground-line. */
-@media (max-width: 700px) {
-  .pulse-ring { animation: none; }
-  .section-heading { margin-block: 1.6rem 0.7rem; }
-  .today-shell .quick-panel::before { width: 100px; }
-  .toolbar { margin-bottom: 1.2rem; }
-}
-
-/* ─── Pass 3 · Visual standout — refinements ────────────────────────── *
- * Second-cluster lifts to specific elements:
- *  - WeekContour: subtle paper-warm wash behind the area, today-dot
- *    breathes, x-axis hairline + day initials below the line.
- *  - Entry list: editorial type — bold Fraunces label, mono detail,
- *    bigger swatch dot, hover row marks "active".
- *  - Quick-grid + signal-composer pills: rounded paper tiles with a
- *    coloured swatch corner instead of an in-line dot.
- *  - Insight card title gets a Fraunces lift; bullet shape now
- *    matches the tone colour.
- *  - Tracking-form headings get a sage hairline mark like the
- *    sectional rhythm.
- *  - Heading rhythm for h1 leading on hero — tight, optical.
- * ──────────────────────────────────────────────────────────────────── */
-
-/* WeekContour — line + area get a warmer floor; today dot gets a halo. */
-.week-contour {
-  position: relative;
-  margin: 1.2rem 0 0.4rem;
-  padding: 0.45rem 0.6rem 0.55rem;
-  background: linear-gradient(180deg, rgba(214, 227, 216, 0.32) 0%, rgba(255, 253, 246, 0.55) 100%);
-  border-radius: 10px;
-  border: 1px solid rgba(31, 143, 136, 0.14);
-  max-width: 360px;
-}
-.week-contour__area {
-  fill: var(--sage);
-  opacity: 0.12;
-}
-.week-contour__line {
-  stroke: var(--sage-deep);
-  stroke-width: 2.2;
-}
-.week-contour__today {
-  fill: var(--coral);
-  filter: drop-shadow(0 0 6px rgba(240, 90, 57, 0.5));
-}
-.week-contour figcaption {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0 0.15rem;
-  margin-top: 0.45rem;
-  font-family: var(--font-mono);
-  font-size: 0.64rem;
-  letter-spacing: 0.18em;
-  color: var(--ink-quiet);
-}
-.week-contour figcaption strong {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums lining-nums;
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
-  color: var(--sage-deep);
-  text-transform: none;
-}
-
-/* Entry list — editorial item rows. The kind label becomes a Fraunces
- * micro-headline; the detail line is mono so the unit reads as data. */
-.entry-list li {
-  grid-template-columns: 10px minmax(0, 1fr) auto;
-  gap: 0.95rem;
-  padding: 0.85rem 0.95rem;
-  border-radius: 10px;
-  background: var(--paper-warm);
-}
-.entry-list > li > span {
-  width: 8px;
-  height: 8px;
-  margin-top: 0.55rem;
-  box-shadow: 0 0 0 3px rgba(255, 253, 246, 1), 0 0 0 4px rgba(22, 34, 46, 0.08);
-}
-.entry-list strong {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.01rem;
-  letter-spacing: -0.012em;
-  color: var(--ink);
-}
-.entry-list small {
-  margin-top: 0.18rem;
-  font-family: var(--font-mono);
-  font-size: 0.74rem;
-  letter-spacing: 0.02em;
-  font-variant-numeric: tabular-nums lining-nums;
-  color: var(--ink-soft);
-}
-
-/* Ambient row gets a coral hairline at the swatch column so it reads
- * as "this came from somewhere else" without shouting. */
-.entry-list li.is-ambient {
-  background: linear-gradient(90deg, var(--sage-soft) 0%, var(--paper-warm) 30%);
-  border-color: rgba(31, 143, 136, 0.2);
-}
-.entry-list li.is-ambient > span {
-  box-shadow: 0 0 0 3px rgba(214, 227, 216, 1), 0 0 0 4px var(--sage);
-}
-
-/* Quick-grid pills — paper tile with the swatch as a corner accent
- * instead of an inline dot. Tighter copy hierarchy. */
-.quick-grid button {
-  position: relative;
-  align-content: center;
-  min-height: 96px;
-  padding: 0.85rem 0.85rem 0.8rem 1rem;
-  border-radius: 10px;
-  background: var(--paper-warm);
-  border: 1px solid rgba(31, 143, 136, 0.14);
-  overflow: hidden;
-}
-.quick-grid button > span {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  height: 100%;
-  border-radius: 0;
-  opacity: 0.85;
-}
-.quick-grid strong {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 0.96rem;
-  letter-spacing: -0.008em;
-  line-height: 1.18;
-  color: var(--ink);
-}
-.quick-grid small.factor-boost {
-  margin-top: 0.5rem;
-  justify-self: start;
-}
-
-/* Signal composer hero pills — same paper logic, slightly larger. */
-.signal-composer button {
-  position: relative;
-  padding-left: 1.05rem;
-  border-radius: 10px;
-  background: var(--paper-warm);
-  border-color: rgba(31, 143, 136, 0.16);
-  overflow: hidden;
-}
-.signal-composer span {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  height: 100%;
-  border-radius: 0;
-}
-.signal-composer strong {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.02rem;
-  letter-spacing: -0.01em;
-  color: var(--ink);
-}
-
-/* Insight card — title becomes a Fraunces micro-headline. */
-.insight-card strong {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.04rem;
-  letter-spacing: -0.012em;
-  color: var(--ink);
-  display: block;
-}
-.insight-card p {
-  font-family: var(--font-display);
-  font-size: 0.96rem;
-  font-style: italic;
-  color: var(--ink-soft);
-}
-
-/* Insight panel header — match the editorial section heading. */
-.insight-panel h2 {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.18rem;
-  letter-spacing: -0.012em;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 0.85rem;
-  color: var(--ink);
-}
-
-/* Tracking-form headings — sage hairline mark and tighter caps. */
-.tracking-form h2 {
-  position: relative;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.22rem;
-  letter-spacing: -0.014em;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--line);
-  color: var(--ink);
-}
-.tracking-form h2::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  bottom: -1px;
-  width: 36px;
-  height: 1px;
-  background: var(--sage);
-}
-
-/* Timeline day headers — let the pulse number read as art. */
-.timeline-day {
-  border-radius: 10px;
-  padding: 1.2rem 1.15rem;
-}
-.timeline-day header {
-  padding-bottom: 0.7rem;
-  border-bottom: 1px solid var(--line);
-}
-.timeline-day header h2 {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.1rem;
-  letter-spacing: -0.012em;
-  color: var(--ink);
-}
-.timeline-day header strong {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings: 'tnum' 1, 'lnum' 1, 'ss01' 1;
-  font-size: 2.25rem;
-  letter-spacing: -0.024em;
-  line-height: 0.92;
-  color: var(--sage-deep);
-}
-
-/* ── Timeline day expand/collapse ────────────────────────────────────── */
-
-/* The day header becomes a button so the whole header row toggles the
- * disclosure. Chevron rotates 90° on open; body uses max-height to keep
- * the 280ms cubic-bezier ease honest (height: auto isn't animatable). */
-.timeline-day header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.8rem;
-}
-.timeline-day__toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  flex: 1;
-  min-width: 0;
-  padding: 0;
-  margin: 0;
-  background: transparent;
-  border: 0;
-  color: inherit;
-  text-align: start;
-  cursor: pointer;
-  font: inherit;
-  border-radius: 4px;
-}
-.timeline-day__toggle:disabled {
-  cursor: default;
-}
-.timeline-day__toggle:focus-visible {
-  outline: 2px solid var(--sage);
-  outline-offset: 3px;
-}
-.timeline-day__chevron {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  font-family: var(--font-mono);
-  font-size: 1.05rem;
-  line-height: 1;
-  color: var(--sage-deep);
-  transition: transform 240ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms ease;
-}
-.timeline-day.is-open .timeline-day__chevron {
-  transform: rotate(90deg);
-}
-.timeline-day.is-empty .timeline-day__chevron {
-  opacity: 0.3;
-}
-
-/* Body collapses with max-height + opacity. The 1200px ceiling is well
- * above a normal day's entry-list height — animation feels natural and
- * doesn't need per-day measurement. Padding zero'd when collapsed so
- * the section visually disappears, not just hides. */
-.timeline-day__body {
-  overflow: hidden;
-  max-height: 0;
-  opacity: 0;
-  transition:
-    max-height 280ms cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 200ms ease,
-    margin-top 280ms cubic-bezier(0.4, 0, 0.2, 1);
-  margin-top: 0;
-}
-.timeline-day.is-open .timeline-day__body {
-  max-height: 1200px;
-  opacity: 1;
-  margin-top: 0.95rem;
-}
-.timeline-day__quiet {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-  opacity: 0.7;
-  margin: 0;
-}
-.timeline-day.is-empty header {
-  padding-bottom: 0;
-  border-bottom-color: transparent;
-}
-.timeline-day.is-empty header strong {
-  font-size: 1.4rem;
-  color: var(--ink-soft);
-  opacity: 0.6;
-}
-
-/* Page H1 — pull the tracking even tighter; let Fraunces breathe. */
-.hero-plane h1,
-.page-shell h1 {
-  font-weight: 600;
-  letter-spacing: -0.028em;
-  line-height: 0.9;
-}
-
-/* Hero "what Chiwit notices" panel — recess a touch into the page. */
-.insight-panel {
-  padding: 1.25rem 1.15rem 1.1rem;
-  border-radius: 10px;
-}
-
-/* ─── Pass 3 · Hero pulse unit annotation ──────────────────────────── */
-
-/* The "/100" beside the giant digit — Fraunces italic, baseline-lifted,
- * intentionally tiny so the eye still treats the hero as the main mark. */
-.pulse-ring strong {
-  position: relative;
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.18em;
-}
-.pulse-ring__unit {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-weight: 500;
-  font-size: 0.28em;            /* ~1.96rem when digit is 7rem */
-  letter-spacing: 0.01em;
-  color: var(--ink-quiet);
-  align-self: flex-end;
-  margin-bottom: 0.55em;
-  font-feature-settings: normal;
-  font-variant-numeric: tabular-nums lining-nums;
-}
-.pulse-ring--progress .pulse-ring__progress {
-  /* progress digit keeps the existing layout (slash + denominator) */
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.08em;
-}
-
-/* Brand lockup small caption — lift to italic Fraunces; it's the only
- * place the brand name + tagline sit together. */
-.brand-lockup strong {
-  font-feature-settings: 'ss01' 1, 'liga' 1;
-  letter-spacing: -0.014em;
-}
-.brand-lockup small {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-weight: 500;
-  font-size: 0.78rem;
-  letter-spacing: 0.008em;
-  color: var(--ink-quiet);
-}
-
-/* Today / Patterns / etc. nav button typography — was a sans pill,
- * push tracking + weight so the active state reads as inked-in. */
-.app-header nav button {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-.app-header nav button.active {
-  letter-spacing: 0.08em;
-  color: var(--paper);
-}
-@media (max-width: 700px) {
-  .app-header nav button {
-    font-size: 0.66rem;
-    letter-spacing: 0.08em;
-  }
-}
-
-/* Hero actions — give the primary CTA a small inked corner mark to
- * signal "this is the canonical action on this page". */
-.hero-actions .primary {
-  position: relative;
-  padding-right: 1.2rem;
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-.hero-actions button {
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-/* Empty state — push the headline into the editorial register. */
-.shippie-empty-state {
-  padding: 1.6rem 1.4rem;
-  border-radius: 12px;
-  background: linear-gradient(180deg, var(--paper-warm) 0%, var(--paper-cool) 100%);
-}
-.shippie-empty-state__headline {
-  font-size: clamp(1.2rem, 3.2vw, 1.55rem);
-  letter-spacing: -0.018em;
-  line-height: 1.14;
-}
-
-/* Range-label live readout — bring the numeric up. */
-.range-label em {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums lining-nums;
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--sage-deep);
-}
-
-/* Mobile — drop the hero unit one optical step so the big digit doesn't
- * dominate the compact card and the /100 doesn't crowd the edge. */
-@media (max-width: 700px) {
-  .pulse-ring__unit {
-    font-size: 0.34em;
-    margin-bottom: 0.4em;
-  }
-  .hero-actions .primary,
-  .hero-actions button {
-    font-size: 0.72rem;
-  }
-}
-
-/* ─── Visual standout · Patterns custom factor-row ────────────────────
- * Replaces the native <meter> on Patterns. The browser-painted meter has
- * fixed corner radii, OS-tinted colours, and a chart-y bevel that breaks
- * the editorial register of the rest of the page. FactorBar is a
- * two-element span (track + fill) that pulls the sage palette and the
- * paper-warm tones the journal voice is built on.
- *
- * Variants:
- *   .factor-bar--default     →  category-row (full width, 8px height)
- *   .factor-bar--slim        →  patterns-progress (6px height, no caps)
- *   .factor-bar--consistency →  consistency-card sidebar (fixed 120px)
- * ───────────────────────────────────────────────────────────────────── */
-.factor-bar {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 8px;
-  border-radius: 6px;
-  overflow: hidden;
-  isolation: isolate;
-}
-.factor-bar__track {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background:
-    linear-gradient(180deg, rgba(22, 34, 46, 0.04) 0%, rgba(22, 34, 46, 0.08) 100%),
-    var(--paper-warm, #fdf8ea);
-  box-shadow:
-    inset 0 1px 0 rgba(22, 34, 46, 0.06),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.55);
-}
-.factor-bar__fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: var(--fill, 0%);
-  border-radius: inherit;
-  background: linear-gradient(
-    90deg,
-    var(--sage-soft) 0%,
-    var(--sage) 55%,
-    var(--sage-deep) 100%
-  );
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.45) inset;
-  transition: width var(--dur-3, 480ms) var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
-}
-.factor-bar--slim {
-  height: 6px;
-}
-.factor-bar--slim .factor-bar__fill {
-  background: linear-gradient(90deg, var(--sage-soft) 0%, var(--sage) 100%);
-}
-.factor-bar--consistency {
-  flex: 0 0 140px;
-  width: 140px;
-  height: 10px;
-}
-.factor-bar--consistency .factor-bar__fill {
-  background: linear-gradient(
-    90deg,
-    var(--sage-soft) 0%,
-    var(--sage) 50%,
-    var(--coral) 100%
-  );
-}
-
-/* Tabular value display on the category-row — mono digits in sage-deep
- * so the number reads as data and lines up between rows. */
-.category-row__value {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings: 'tnum' 1, 'lnum' 1;
-  font-size: 0.96rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  color: var(--sage-deep);
-  text-align: end;
-}
-
-/* ─── Visual standout · custom range sliders ──────────────────────────
- * The default browser slider with `accent-color: var(--coral)` was a
- * single-pixel hairline track with a stock thumb. Custom thumb + track
- * use the sage palette to match the rest of the field-journal voice.
- * WebKit (-webkit-slider-thumb) and Firefox (-moz-range-thumb) need
- * separate rules — they cannot be combined in one selector or both fail.
- * ───────────────────────────────────────────────────────────────────── */
-.tracking-form input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 28px;
-  margin: 0.2rem 0;
-  background: transparent;
-  outline: none;
-  cursor: pointer;
-}
-/* WebKit / Blink track */
-.tracking-form input[type="range"]::-webkit-slider-runnable-track {
-  height: 6px;
-  border-radius: 4px;
-  background: linear-gradient(
-    90deg,
-    var(--sage-soft) 0%,
-    var(--sage) 100%
-  );
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    inset 0 -1px 0 rgba(22, 34, 46, 0.08);
-}
-/* WebKit / Blink thumb */
-.tracking-form input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 22px;
-  height: 22px;
-  margin-top: -8px;            /* (thumb - track) / -2 = (22-6)/-2 */
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 30% 28%, #ffffff 0%, var(--paper-warm, #fdf8ea) 35%, var(--sage) 36%, var(--sage-deep) 100%);
-  border: 1px solid var(--sage-deep);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.6) inset,
-    0 2px 6px rgba(47, 86, 64, 0.32),
-    0 0 0 4px rgba(31, 143, 136, 0.08);
-  cursor: grab;
-  transition:
-    transform var(--dur-2, 220ms) var(--ease-lift, cubic-bezier(0.2, 0.9, 0.3, 1.18)),
-    box-shadow var(--dur-2, 220ms) var(--ease-quiet, cubic-bezier(0.4, 0, 0.2, 1));
-}
-.tracking-form input[type="range"]:hover::-webkit-slider-thumb {
-  transform: scale(1.06);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.7) inset,
-    0 3px 10px rgba(47, 86, 64, 0.4),
-    0 0 0 6px rgba(31, 143, 136, 0.12);
-}
-.tracking-form input[type="range"]:active::-webkit-slider-thumb {
-  cursor: grabbing;
-  transform: scale(0.98);
-}
-.tracking-form input[type="range"]:focus-visible::-webkit-slider-thumb {
-  outline: 2px solid var(--coral);
-  outline-offset: 2px;
-}
-/* Firefox track */
-.tracking-form input[type="range"]::-moz-range-track {
-  height: 6px;
-  border-radius: 4px;
-  background: linear-gradient(
-    90deg,
-    var(--sage-soft) 0%,
-    var(--sage) 100%
-  );
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    inset 0 -1px 0 rgba(22, 34, 46, 0.08);
-}
-/* Firefox progress (left of thumb) — deepens to coral as the value
- * climbs, so a high score reads as warmer ink. */
-.tracking-form input[type="range"]::-moz-range-progress {
-  height: 6px;
-  border-radius: 4px;
-  background: linear-gradient(90deg, var(--sage-deep) 0%, var(--coral) 100%);
-}
-/* Firefox thumb */
-.tracking-form input[type="range"]::-moz-range-thumb {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 30% 28%, #ffffff 0%, var(--paper-warm, #fdf8ea) 35%, var(--sage) 36%, var(--sage-deep) 100%);
-  border: 1px solid var(--sage-deep);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.6) inset,
-    0 2px 6px rgba(47, 86, 64, 0.32),
-    0 0 0 4px rgba(31, 143, 136, 0.08);
-  cursor: grab;
-  transition:
-    transform var(--dur-2, 220ms) var(--ease-lift, cubic-bezier(0.2, 0.9, 0.3, 1.18)),
-    box-shadow var(--dur-2, 220ms) var(--ease-quiet, cubic-bezier(0.4, 0, 0.2, 1));
-}
-.tracking-form input[type="range"]:hover::-moz-range-thumb {
-  transform: scale(1.06);
-}
-.tracking-form input[type="range"]:active::-moz-range-thumb {
-  cursor: grabbing;
-  transform: scale(0.98);
-}
-
-/* ─── Visual standout · Timeline month-scrubber hairline rule ─────────
- * The scrubber pills were mono-caps but flat. Bring them in line with the
- * section-heading treatment: a hairline rule under the strip + a tracked
- * mono eyebrow inside, so the cross-page typography reads as one voice.
- * ───────────────────────────────────────────────────────────────────── */
-.month-scrubber {
-  position: relative;
-  margin-block: 2rem 1.2rem;
-  padding: 0.55rem 0.5rem 1.1rem;
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  border-radius: 0;
-}
-.month-scrubber::before {
-  content: 'Jump to month';
-  position: absolute;
-  inset: -1.15rem 0 auto 0;
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-quiet, var(--muted));
-  pointer-events: none;
-}
-.month-scrubber::after {
-  /* Sage hairline tick anchoring the strip — mirrors the
-   * tracking-form h2 motif so the cross-page rhythm matches. */
-  content: '';
-  position: absolute;
-  left: 0;
-  bottom: -1px;
-  width: 44px;
-  height: 1px;
-  background: var(--sage);
-}
-.month-scrubber button {
-  min-height: 32px;
-  padding: 0.35rem 0.85rem;
-  border-radius: 999px;
-  background: transparent;
-  border: 1px solid transparent;
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-quiet, var(--muted));
-}
-.month-scrubber button:hover {
-  color: var(--sage-deep);
-  border-color: rgba(31, 143, 136, 0.18);
-}
-.month-scrubber button.active {
-  color: var(--paper);
-  /* Existing global rule paints the gradient; keep the rounder pill +
-   * tighter tracking so the active state still reads as a primary chip. */
-  letter-spacing: 0.12em;
-  border-color: rgba(53, 98, 70, 0.88);
-}
-
-/* ─── Visual standout · WeekContour per-day dot palette ───────────────
- * Past-day dots tint to their dominant factor via inline `fill` from
- * `tones[i]` (see App.tsx). The today dot keeps its coral halo. This
- * rule just lifts each dot slightly so the tint reads cleanly against
- * the paper-warm wash + adds a soft white anchor for contrast.
- * ───────────────────────────────────────────────────────────────────── */
-.week-contour__dot {
-  /* Inline `fill` from React wins when supplied; this is the fallback +
-   * the shared finish. */
-  filter: drop-shadow(0 0 2px rgba(255, 253, 246, 0.9));
-  transition: r var(--dur-2, 220ms) var(--ease-quiet, cubic-bezier(0.4, 0, 0.2, 1));
-}
-
-/* ─── Visual standout · Paint orphan page modifier classes ────────────
- * `data-page` and `track-shell` were referenced from JSX but had no
- * matching CSS rules, so they inherited only `.page-shell`. Both get a
- * subtle paper warm-wash + the journal-rhythm spacing the rest of the
- * app reads in.
- * ───────────────────────────────────────────────────────────────────── */
-.data-page,
-.track-shell {
-  display: grid;
-  gap: 1.4rem;
-}
-.track-shell {
-  /* Track is composer-heavy — give the forms a small breathing margin so
-   * they don't collide with the page H1. */
-  padding-block: 0.6rem 1.4rem;
-}
-.data-page {
-  /* Local-data page is read-and-decide — wider gap so each tile reads as
-   * an independent decision rather than a chained list. */
-  gap: 1.7rem;
-  padding-block: 0.6rem 2rem;
-}
-
-/* ─── Visual standout · Data hero illustration ────────────────────────
- * The "your data lives here" copy was utilitarian. Pair it with a small
- * sage-hairline pictogram (device + vault/lock with a dotted bridge)
- * that makes the local-first story land at a glance. Strokes only — no
- * fills — so the illustration reads as a field-journal margin sketch.
- * ───────────────────────────────────────────────────────────────────── */
-.data-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) min(220px, 38%);
-  gap: clamp(1rem, 4vw, 2.4rem);
-  align-items: center;
-  padding: 1.4rem 1.4rem 1.2rem;
-  background: linear-gradient(180deg, var(--paper-warm, #fdf8ea) 0%, var(--paper-cool, #f3ede0) 100%);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  box-shadow: var(--shadow-soft);
-}
-.data-hero__tagline {
-  margin: 0.7rem 0 0;
-  font-family: var(--font-display);
-  font-style: italic;
-  font-weight: 500;
-  font-size: 1.02rem;
-  letter-spacing: -0.008em;
-  color: var(--sage-deep);
-}
-.data-hero__art {
-  width: 100%;
-  height: auto;
-  max-width: 220px;
-  justify-self: end;
-  fill: none;
-  stroke: var(--sage);
-  stroke-width: 1.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  opacity: 0.78;
-}
-.data-hero__art-screen {
-  fill: rgba(214, 227, 216, 0.18);
-}
-.data-hero__art-dot {
-  fill: var(--sage-deep);
-  stroke: none;
-}
-@media (max-width: 560px) {
-  .data-hero {
-    grid-template-columns: minmax(0, 1fr);
-    text-align: center;
-  }
-  .data-hero__art {
-    justify-self: center;
-    max-width: 180px;
-    margin-top: 0.4rem;
-  }
-}
-
-/* Key-app polish: Chiwit should never clip its first question. */
-@media (max-width: 700px) {
-  .today-shell {
-    grid-template-columns: minmax(0, 1fr);
-    overflow: hidden;
-  }
-
-  .today-shell .hero-plane {
-    grid-template-columns: minmax(0, 1fr);
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-    justify-self: stretch;
-  }
-
-  .today-shell .hero-plane > div,
-  .today-shell .hero-plane h1,
-  .today-shell .hero-plane .reading,
-  .today-shell .signal-composer,
-  .today-shell .week-contour,
-  .today-shell .pulse-card {
-    min-width: 0;
-    max-width: 100%;
-  }
-
-  .today-shell .hero-plane h1 {
-    font-size: clamp(2.05rem, 10.8vw, 3rem);
-    line-height: 0.96;
-    overflow-wrap: break-word;
-    text-wrap: balance;
-  }
-
-  .today-shell .hero-plane .reading {
-    max-width: 31ch;
-  }
-
-  .today-shell .signal-composer {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    overflow: visible;
-    padding-right: 0.45rem;
-    padding-bottom: 0;
-    scroll-snap-type: none;
-  }
-
-  .today-shell .signal-composer button {
-    min-width: 0;
-    flex: initial;
-  }
-}
-
-.checkin-list + .entry-list {
-  margin-top: 0.55rem;
-}
-
-@media (max-width: 390px) {
-  .today-shell .signal-composer {
-    grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
-  }
-
-  .today-shell .hero-plane h1 {
-    font-size: clamp(1.9rem, 10vw, 2.55rem);
-  }
 }
