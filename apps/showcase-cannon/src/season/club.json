@@ -1,0 +1,69 @@
+{
+  "lastSeason": {
+    "label": "Premier League · 2025/26 · Champions",
+    "row": { "p": 38, "w": 28, "d": 7, "l": 3, "pts": 91 },
+    "headline": "Twenty-two years. The wait is over.",
+    "headlineStats": [
+      { "v": "91", "l": "Pts" },
+      { "v": "89", "l": "Goals" },
+      { "v": "18", "l": "Clean Sheets" }
+    ],
+    "last10": ["W", "W", "W", "D", "W", "W", "W", "L", "W", "W"],
+    "keyMetrics": [
+      { "l": "xG per Game", "v": "2.34", "s": "2nd in league" },
+      { "l": "xGA per Game", "v": "0.82", "s": "Best in league" },
+      { "l": "Avg Possession", "v": "57%", "s": "Top 3" },
+      { "l": "Clean Sheets", "v": "18", "s": "Out of 38" }
+    ],
+    "scorers": {
+      "goals": [
+        { "n": "Havertz", "v": 36 },
+        { "n": "Saka", "v": 24 },
+        { "n": "Martinelli", "v": 21 },
+        { "n": "Ødegaard", "v": 14 },
+        { "n": "Trossard", "v": 11 },
+        { "n": "Rice", "v": 9 }
+      ],
+      "assists": [
+        { "n": "Ødegaard", "v": 22 },
+        { "n": "Saka", "v": 18 },
+        { "n": "Rice", "v": 15 },
+        { "n": "Havertz", "v": 13 },
+        { "n": "Martinelli", "v": 11 },
+        { "n": "White", "v": 9 }
+      ]
+    },
+    "results": [
+      { "opp": "Wolves", "score": "3–0", "r": "W", "home": true, "date": "3 May", "xg": "3.2", "shots": 22, "poss": 64 },
+      { "opp": "Man City", "score": "2–0", "r": "W", "home": false, "date": "26 Apr", "xg": "1.8", "shots": 14, "poss": 48 },
+      { "opp": "Spurs", "score": "4–1", "r": "W", "home": true, "date": "12 Apr", "xg": "3.9", "shots": 25, "poss": 61 },
+      { "opp": "Newcastle", "score": "2–1", "r": "W", "home": false, "date": "5 Apr", "xg": "2.1", "shots": 18, "poss": 55 },
+      { "opp": "Chelsea", "score": "1–1", "r": "D", "home": true, "date": "22 Mar", "xg": "1.4", "shots": 12, "poss": 53 }
+    ]
+  },
+  "trophies": [
+    { "year": "1989", "title": "Division One Champions", "note": "Thomas. One minute to go. Anfield.", "gold": true },
+    { "year": "1991", "title": "Division One Champions", "note": "Lost only once. The forgotten title.", "gold": false },
+    { "year": "1998", "title": "The Double", "note": "Wenger's first. Vieira, Bergkamp, Overmars.", "gold": true },
+    { "year": "2002", "title": "The Double", "note": "The most complete side before the Invincibles.", "gold": true },
+    { "year": "2004", "title": "Premier League Unbeaten", "note": "26W 12D 0L. The Invincibles. Never been done.", "gold": true },
+    { "year": "2014", "title": "FA Cup", "note": "The drought ends. 3–2 vs Hull. Extra time.", "gold": false },
+    { "year": "2020", "title": "FA Cup", "note": "The Arteta era begins. Chelsea 2–1.", "gold": false },
+    { "year": "2026", "title": "Premier League Champions", "note": "Twenty-two years. The title is home.", "gold": true }
+  ],
+  "thisDay": {
+    "06-09": { "year": "2004", "text": "The Invincibles confirmed as champions. 26 wins, 12 draws, 0 defeats. Henry. Bergkamp. Vieira. Football had never seen anything like it." },
+    "06-11": { "year": "1971", "text": "Charlie George lies flat on the Wembley turf. Extra-time winner against Liverpool seals the first Double in the club's history." },
+    "07-01": { "year": "2011", "text": "Gervinho becomes the first signing of a rebuilding summer. The Emirates project enters its hardest decade." },
+    "08-14": { "year": "2004", "text": "The unbeaten run reaches 43 league games against Middlesbrough — bettering Forest's record that had stood for 25 years." },
+    "08-22": { "year": "1886", "text": "Dial Square FC is founded by munitions workers in Woolwich. Fifteen men, one football, and the start of everything." },
+    "09-26": { "year": "1998", "text": "Tony Adams strides out of defence and Steve Bould lifts the pass over the top. THAT goal against Everton, the title sealed at Highbury." },
+    "10-04": { "year": "2009", "text": "Fabregas dismantles Blackburn 6–2 with a hat-trick of assists. Peak pass-them-to-death era." },
+    "11-01": { "year": "2003", "text": "Rooney ends the 49. Old Trafford, a penalty that wasn't, and the ugliest pizza in football history follows in the tunnel." },
+    "12-26": { "year": "1963", "text": "A 6–1 Boxing Day win over Sheffield United in front of a frozen Highbury. The fixture computer has loved Boxing Day ever since." },
+    "02-01": { "year": "2011", "text": "Wenger's 1,000th game in charge approaches as Arsenal put four past Everton. Longevity nobody will repeat." },
+    "03-08": { "year": "2006", "text": "Henry scores at the Bernabéu and Arsenal knock out Real Madrid en route to the Paris final. The away end never sat down." },
+    "04-26": { "year": "2026", "text": "Two-nil at the Etihad. The first league win there in over a decade, and the day the title race tilted for good." },
+    "05-24": { "year": "2026", "text": "The final whistle at the Emirates. Champions of England for the first time in twenty-two years. The Arteta project, complete." }
+  }
+}

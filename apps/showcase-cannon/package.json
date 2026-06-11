@@ -1,18 +1,21 @@
 {
   "name": "@shippie/showcase-cannon",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
-  "description": "The Cannon — Arsenal Fan OS. The Oracle briefing, the Terrace takes feed, the post-match Gauge, fixtures with head-to-head, and the Club archive.",
+  "description": "The Cannon — the Arsenal matchday companion. Live match state, season fixtures, the Terrace fan feed, the post-match Gauge, and the squad.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "publish:season": "node scripts/publish-season.mjs",
     "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {
+    "@shippie/iframe-sdk": "workspace:*",
+    "@shippie/sdk": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

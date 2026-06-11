@@ -18,6 +18,7 @@ export const SEED_TAKES: Take[] = [
     up: 1247,
     down: 34,
     createdAt: NOW - 2 * MIN,
+    matchId: null,
     myVote: null,
   },
   {
@@ -28,6 +29,7 @@ export const SEED_TAKES: Take[] = [
     up: 2341,
     down: 58,
     createdAt: NOW - 8 * MIN,
+    matchId: null,
     myVote: null,
   },
   {
@@ -38,6 +40,7 @@ export const SEED_TAKES: Take[] = [
     up: 567,
     down: 89,
     createdAt: NOW - 15 * MIN,
+    matchId: null,
     myVote: null,
   },
   {
@@ -48,6 +51,7 @@ export const SEED_TAKES: Take[] = [
     up: 234,
     down: 312,
     createdAt: NOW - 22 * MIN,
+    matchId: null,
     myVote: null,
   },
   {
@@ -58,6 +62,7 @@ export const SEED_TAKES: Take[] = [
     up: 891,
     down: 67,
     createdAt: NOW - 34 * MIN,
+    matchId: null,
     myVote: null,
   },
   {
@@ -68,6 +73,7 @@ export const SEED_TAKES: Take[] = [
     up: 3102,
     down: 41,
     createdAt: NOW - 60 * MIN,
+    matchId: null,
     myVote: null,
   },
   {
@@ -78,6 +84,7 @@ export const SEED_TAKES: Take[] = [
     up: 744,
     down: 55,
     createdAt: NOW - 120 * MIN,
+    matchId: null,
     myVote: null,
   },
 ];

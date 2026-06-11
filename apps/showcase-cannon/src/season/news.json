@@ -1,0 +1,40 @@
+{
+  "items": [
+    {
+      "id": "news-2026-06-10-shield",
+      "title": "Community Shield date confirmed: City in Cardiff",
+      "summary": "The season curtain-raiser is set for 16 August at the Principality Stadium — champions against cup winners, and the first competitive look at both rebuilt squads.",
+      "url": "https://www.arsenal.com/fixtures",
+      "source": "Arsenal.com",
+      "publishedAt": "2026-06-10T09:00:00Z",
+      "tag": "fixtures"
+    },
+    {
+      "id": "news-2026-06-09-invincibles",
+      "title": "Twenty-two years since the Invincibles sealed it",
+      "summary": "9 June marks the anniversary of the unbeaten season's coronation — 26 wins, 12 draws, zero defeats. Last season's title is the first since.",
+      "url": "https://www.arsenal.com/history",
+      "source": "Arsenal.com",
+      "publishedAt": "2026-06-09T08:00:00Z",
+      "tag": "club"
+    },
+    {
+      "id": "news-2026-06-08-pre-season",
+      "title": "Pre-season touring schedule announced",
+      "summary": "Three friendlies confirmed before the Shield, with the squad reporting back to London Colney in the first week of July.",
+      "url": "https://www.arsenal.com/news",
+      "source": "Arsenal.com",
+      "publishedAt": "2026-06-08T10:00:00Z",
+      "tag": "club"
+    },
+    {
+      "id": "news-2026-06-07-window",
+      "title": "Transfer window opens with the squad settled",
+      "summary": "The champions' summer looks like retention over revolution: extension talks for key forwards are the priority, with one midfield addition expected.",
+      "url": "https://www.arsenal.com/news",
+      "source": "Arsenal.com",
+      "publishedAt": "2026-06-07T12:00:00Z",
+      "tag": "transfers"
+    }
+  ]
+}
