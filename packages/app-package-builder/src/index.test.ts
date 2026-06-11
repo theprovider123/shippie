@@ -209,18 +209,18 @@ describe('@shippie/app-package-builder', () => {
   });
 
   test('packages a real showcase app project directory without build noise', async () => {
-    const showcaseDir = new URL('../../../apps/showcase-recipe', import.meta.url).pathname;
+    const showcaseDir = new URL('../../../apps/showcase-palate', import.meta.url).pathname;
     const built = await buildShippiePackageFromDirectory({
       app: {
-        id: 'app_showcase_recipe',
-        slug: 'showcase-recipe',
-        name: 'Showcase Recipe',
-        description: 'Recipe showcase packaged from project files.',
+        id: 'app_showcase_palate',
+        slug: 'showcase-palate',
+        name: 'Showcase Palate',
+        description: 'Palate showcase packaged from project files.',
         kind: 'connected',
         entry: 'app/index.html',
         createdAt: '2026-04-27T12:00:00Z',
         maker: { id: 'maker_shippie', name: 'Shippie' },
-        domains: { canonical: 'https://showcase-recipe.shippie.app' },
+        domains: { canonical: 'https://showcase-palate.shippie.app' },
         runtime: { standalone: true, container: true, hub: true, minimumSdk: '1.0.0' },
       },
       directory: showcaseDir,
