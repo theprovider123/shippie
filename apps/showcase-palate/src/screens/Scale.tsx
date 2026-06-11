@@ -81,7 +81,7 @@ export function Scale({ formulas, activeFormulaId, totalDoughG, shippie, onTotal
       <div className="scale-total-block">
         <div className="scale-tag">total dough</div>
         <div className="scale-total">{totalDoughG.toLocaleString('en-US')} g</div>
-        <div className="scale-hint">{Math.round(perPiece).toLocaleString('en-US')} g · drag anywhere ← → to scale</div>
+        <div className="scale-hint">{Math.round(perPiece).toLocaleString('en-US')} g per loaf ×{pieces} · drag anywhere ← → to scale</div>
       </div>
 
       {pantryHints.length > 0 && (
@@ -114,14 +114,6 @@ export function Scale({ formulas, activeFormulaId, totalDoughG, shippie, onTotal
         </div>
       </div>
 
-      <div className="scale-actions" onClick={(e) => e.stopPropagation()}>
-        <button className="scale-action-btn" onClick={() => { setEditFormula({ ...formula }); setShowEditor(true); }}>
-          edit formula
-        </button>
-        <button className="scale-action-btn scale-action-primary" onClick={sendToShoppingList}>
-          send to shopping list
-        </button>
-      </div>
 
       {showEditor && editFormula && (
         <FormulaEditor

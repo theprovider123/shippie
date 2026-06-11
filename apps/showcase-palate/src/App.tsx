@@ -37,7 +37,12 @@ function OfflineIcon() {
 export function App() {
   const [store, setStore] = useState<PalateState>(() => load());
   const [now, setNow] = useState(() => Date.now());
-  const [screen, setScreen] = useState<Screen>('rail');
+  const [screen, setScreen] = useState<Screen>(() => {
+    // Support test harness init via window.__PALATE_INIT_SCREEN
+    const init = typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).__PALATE_INIT_SCREEN;
+    if (init && ['rail','dial','glance','probe','scale','more'].includes(init as string)) return init as Screen;
+    return 'rail';
+  });
   const [fermentDetailId, setFermentDetailId] = useState<string | null>(null);
   const [photoWarningId, setPhotoWarningId] = useState<string | null>(null);
 
@@ -353,15 +358,19 @@ export function App() {
     />;
   }
 
+  const isFullScreen = screen === 'glance' || screen === 'probe';
+
   return (
     <div className="palate-app">
-      <header className="app-header">
-        <span className="wordmark">palate.</span>
-        <span className="offline-status">
-          <OfflineIcon />
-          offline · all local
-        </span>
-      </header>
+      {!isFullScreen && (
+        <header className="app-header">
+          <span className="wordmark">palate.</span>
+          <span className="offline-status">
+            <OfflineIcon />
+            offline · all local
+          </span>
+        </header>
+      )}
 
       <main className="screen-content">
         {screen === 'rail' && (
@@ -432,17 +441,19 @@ export function App() {
         )}
       </main>
 
-      <nav className="screen-switcher">
-        {(['rail', 'dial', 'glance', 'probe', 'scale', 'more'] as Screen[]).map((s) => (
-          <button
-            key={s}
-            className={`switcher-btn${screen === s ? ' active' : ''}`}
-            onClick={() => goScreen(s)}
-          >
-            {s}
-          </button>
-        ))}
-      </nav>
+      {!isFullScreen && (
+        <nav className="screen-switcher">
+          {(['rail', 'dial', 'glance', 'probe', 'scale', 'more'] as Screen[]).map((s) => (
+            <button
+              key={s}
+              className={`switcher-btn${screen === s ? ' active' : ''}`}
+              onClick={() => goScreen(s)}
+            >
+              {s}
+            </button>
+          ))}
+        </nav>
+      )}
     </div>
   );
 }
@@ -481,7 +492,7 @@ function DesktopCounter({ store, now, dialState, screen, shippie, onScreenChange
         </div>
         <span className="offline-status desktop-offline">
           <OfflineIcon />
-          offline · all local
+          offline · all local · 2 devices on kitchen LAN
         </span>
       </header>
 
@@ -530,6 +541,7 @@ function DesktopCounter({ store, now, dialState, screen, shippie, onScreenChange
           <div className="desktop-col">
             <div className="desktop-col-label">live probe</div>
             <Probe currentC={store.probe.current_c} cut={store.probe.cut} unit={store.probe.unit}
+              compact
               onTempChange={onProbeTemp} onCutChange={onProbeCut} onUnitToggle={onProbeUnit} />
           </div>
 
@@ -537,7 +549,11 @@ function DesktopCounter({ store, now, dialState, screen, shippie, onScreenChange
           <div className="desktop-col">
             <div className="desktop-col-label">the dial</div>
             <Dial dialState={dialState} now={now} size={240}
+              compact
               onWind={onDialWind} onStart={onDialStart} onStop={onDialStop} onReset={onDialReset} />
+            <div style={{ fontSize: '10.5px', color: 'var(--tertiary)', textAlign: 'center' }}>
+              mirrors the phone dial — wind either one
+            </div>
             <div className="desktop-col-label" style={{ marginTop: 20 }}>tonight's note</div>
             <div className="tonights-note-card">
               <textarea

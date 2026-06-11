@@ -20,6 +20,7 @@ interface Props {
   dialState: DialState;
   now: number;
   size?: number; // defaults to 330
+  compact?: boolean; // desktop: hides egg presets and dial-screen wrapper chrome
   onWind: (minutes: number) => void;
   onStart: () => void;
   onStop: () => void;
@@ -41,7 +42,7 @@ function computeRemaining(state: DialState, now: number): number {
   return Math.max(0, state.duration_s - elapsed);
 }
 
-export function Dial({ dialState, now, size = 330, onWind, onStart, onStop, onReset }: Props) {
+export function Dial({ dialState, now, size = 330, compact = false, onWind, onStart, onStop, onReset }: Props) {
   const draggingRef = useRef(false);
 
   const remaining_s = computeRemaining(dialState, now);
@@ -130,8 +131,8 @@ export function Dial({ dialState, now, size = 330, onWind, onStart, onStop, onRe
   const [eggFridge, setEggFridge] = React.useState(false);
 
   return (
-    <div className="dial-screen">
-      <div className="dial-wrap" style={{ '--dial-size': `${size}px` } as React.CSSProperties}>
+    <div className={compact ? '' : 'dial-screen'} style={compact ? { display: 'flex', justifyContent: 'center' } : {}}>
+      <div className={compact ? '' : 'dial-wrap'} style={compact ? {} : ({ '--dial-size': `${size}px` } as React.CSSProperties)}>
         {/* SVG Dial */}
         <svg
           width={size}
@@ -231,8 +232,8 @@ export function Dial({ dialState, now, size = 330, onWind, onStart, onStop, onRe
           </foreignObject>
         </svg>
 
-        {/* Egg presets */}
-        <div className="egg-presets">
+        {/* Egg presets — hidden in compact mode */}
+        {!compact && <div className="egg-presets">
           <div className="egg-adjustments">
             <label className="egg-adj-label">
               <input type="checkbox" checked={eggLarge} onChange={(e) => setEggLarge(e.target.checked)} />
@@ -263,7 +264,7 @@ export function Dial({ dialState, now, size = 330, onWind, onStart, onStop, onRe
             })}
           </div>
           <div className="dial-footer">drag the bezel to wind · tap the face to start</div>
-        </div>
+        </div>}
       </div>
     </div>
   );

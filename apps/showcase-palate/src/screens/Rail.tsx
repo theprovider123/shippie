@@ -109,7 +109,6 @@ export function Rail({ timers, ferments, now, onAddTimer, onExtendTimer, onClear
   return (
     <div className="rail-screen">
       <div className="rail-header">
-        <span className="wordmark">palate.</span>
         <span className="rail-count">{items.length > 0 ? `${items.length} on the rail` : 'nothing on the rail'}</span>
       </div>
 

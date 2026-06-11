@@ -34,12 +34,13 @@ interface Props {
   currentC: number;
   cut: string;
   unit: ProbeUnit;
+  compact?: boolean;
   onTempChange: (c: number) => void;
   onCutChange: (name: string) => void;
   onUnitToggle: () => void;
 }
 
-export function Probe({ currentC, cut, unit, onTempChange, onCutChange, onUnitToggle }: Props) {
+export function Probe({ currentC, cut, unit, compact = false, onTempChange, onCutChange, onUnitToggle }: Props) {
   const cutDef = (PROBE_CUTS.find((c) => c.name === cut) ?? PROBE_CUTS[0])!;
   const state = probeState(currentC, cutDef.pull);
   const pal = STATE_PALETTES[state];
@@ -103,19 +104,12 @@ export function Probe({ currentC, cut, unit, onTempChange, onCutChange, onUnitTo
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
     >
-      <div className="probe-header">
-        <span className="wordmark" style={{ color: pal.sub }}>palate.</span>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+      {!compact && (
+        <div className="probe-header">
+          <span className="wordmark" style={{ color: pal.sub }}>palate.</span>
           <span className="probe-label" style={{ color: pal.sub }}>live probe</span>
-          <button
-            className="unit-toggle"
-            onClick={(e) => { e.stopPropagation(); onUnitToggle(); }}
-            style={{ color: pal.sub }}
-          >
-            °{unit === 'C' ? 'F' : 'C'}
-          </button>
         </div>
-      </div>
+      )}
 
       <div className="probe-body">
         <div className="probe-tag" style={{ color: pal.accent }}>{tag}</div>
@@ -129,12 +123,6 @@ export function Probe({ currentC, cut, unit, onTempChange, onCutChange, onUnitTo
         </div>
 
         <div className="probe-line" style={{ color: pal.sub }}>{line}</div>
-
-        {/* Steppers */}
-        <div className="probe-steppers" onClick={(e) => e.stopPropagation()}>
-          <button className="stepper-btn" style={{ color: pal.ink, borderColor: pal.hair }} onClick={() => step(-1)}>−</button>
-          <button className="stepper-btn" style={{ color: pal.ink, borderColor: pal.hair }} onClick={() => step(1)}>+</button>
-        </div>
 
         {/* Progress track */}
         <div className="probe-track-wrap">
