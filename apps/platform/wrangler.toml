@@ -56,7 +56,11 @@ remote = true
 allowed_sender_addresses = ["login@shippie.app"]
 
 # Phase 6: scheduled triggers.
-#   */5 * * * *   reconcile-kv
+#   */5 * * * *   reconcile-kv + cannon-ingest (Cannon season feeds; live
+#                 polling only fires inside a match window. Optional secret
+#                 CANNON_FOOTBALL_API_TOKEN enables the football-data.org
+#                 provider — without it the schedule machine still runs and
+#                 manual publishes own the data.)
 #   0 * * * *     reap-trials + rollups (both fire on the hour)
 #   0 4 * * *     retention (daily 4am UTC)
 #

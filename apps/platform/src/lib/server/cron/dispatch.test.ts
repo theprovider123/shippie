@@ -10,6 +10,7 @@ import { handleScheduled, type CronEnv, type CronHandlers } from './index';
 
 interface CallCounts {
   reconcileKv: number;
+  cannonIngest: number;
   reapTrials: number;
   rollups: number;
   retention: number;
@@ -23,6 +24,10 @@ function makeHandlers(counts: CallCounts): CronHandlers {
     reconcileKv: async () => {
       counts.reconcileKv += 1;
       return { checked: 0, updated: [], csp_updated: [], missing_version: [], errors: [] };
+    },
+    cannonIngest: async () => {
+      counts.cannonIngest += 1;
+      return { fixturesPublished: false, matchPublished: false };
     },
     reapTrials: async () => {
       counts.reapTrials += 1;
@@ -60,6 +65,7 @@ function makeHandlers(counts: CallCounts): CronHandlers {
 function makeCounts(): CallCounts {
   return {
     reconcileKv: 0,
+    cannonIngest: 0,
     reapTrials: 0,
     rollups: 0,
     retention: 0,
@@ -76,10 +82,11 @@ function controller(cron: string): ScheduledController {
 const env: CronEnv = { DB: {} as never, CACHE: {} as never };
 
 describe('handleScheduled', () => {
-  test('dispatches */5 cron to reconcileKv', async () => {
+  test('dispatches */5 cron to reconcileKv AND cannonIngest', async () => {
     const counts = makeCounts();
     await handleScheduled(controller('*/5 * * * *'), env, makeHandlers(counts));
     expect(counts.reconcileKv).toBe(1);
+    expect(counts.cannonIngest).toBe(1);
     expect(counts.reapTrials).toBe(0);
     expect(counts.rollups).toBe(0);
     expect(counts.retention).toBe(0);
@@ -91,6 +98,7 @@ describe('handleScheduled', () => {
     expect(counts.reapTrials).toBe(1);
     expect(counts.rollups).toBe(1);
     expect(counts.reconcileKv).toBe(0);
+    expect(counts.cannonIngest).toBe(0);
     expect(counts.retention).toBe(0);
   });
 

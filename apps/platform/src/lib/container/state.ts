@@ -592,12 +592,15 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     name: 'The Cannon',
     shortName: 'Cannon',
     description:
-      'Arsenal Fan OS — the Oracle briefing, the Terrace takes feed, the post-match Gauge, fixtures with head-to-head, and the Club archive.',
+      'The Arsenal matchday companion — live match state, the season fixture list, the anonymous Terrace fan feed, the post-match Gauge, and the full squad with availability.',
     appKind: 'local',
     icon: 'CN',
     accent: '#EF0107',
     category: 'social',
     port: 5267,
+    intents: {
+      provides: ['match-starting', 'score-updated', 'fan-reaction'],
+    },
   },
   {
     slug: 'quiet',

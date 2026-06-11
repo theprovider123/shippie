@@ -121,3 +121,64 @@ describe('/api/cannon/takes', () => {
     expect(res.status).toBe(429);
   });
 });
+
+describe('/api/cannon/takes v2 (match threads + moderation)', () => {
+  test('GET excludes hidden and removed takes', async () => {
+    const db = fakeCannonDb({
+      takes: [
+        ...seedTakes(),
+        { id: 't4', handle: 'NorthBankNelson', anon_key: 'seed', thread: 'MATCH', text: 'hidden', up: 0, down: 0, created_at: 4000, status: 'hidden' },
+        { id: 't5', handle: 'NorthBankNelson', anon_key: 'seed', thread: 'MATCH', text: 'removed', up: 0, down: 0, created_at: 5000, status: 'removed' },
+      ],
+    });
+    const res = await GET(eventFor({ db }));
+    const body = (await res.json()) as { takes: Array<{ id: string }> };
+    expect(body.takes.map((t) => t.id)).toEqual(['t3', 't2', 't1']);
+  });
+
+  test('GET scopes to a match thread via ?match=', async () => {
+    const db = fakeCannonDb({
+      takes: [
+        ...seedTakes(),
+        { id: 'm1', handle: 'NorthBankNelson', anon_key: 'seed', thread: 'MATCH', text: 'live take', match_id: 'pl-che-2026-08-30', up: 0, down: 0, created_at: 6000 },
+      ],
+    });
+    const res = await GET(eventFor({ db, url: 'https://shippie.app/api/cannon/takes?match=pl-che-2026-08-30' }));
+    const body = (await res.json()) as { takes: Array<{ id: string; matchId: string | null }> };
+    expect(body.takes.map((t) => t.id)).toEqual(['m1']);
+    expect(body.takes[0].matchId).toBe('pl-che-2026-08-30');
+  });
+
+  test('POST carries matchId through and rejects malformed ones', async () => {
+    const db = fakeCannonDb();
+    const ok = await POST(eventFor({
+      method: 'POST', db,
+      body: { handle: 'HighburyHenry', anonKey: ANON, thread: 'MATCH', text: 'What a goal', matchId: 'pl-che-2026-08-30' },
+    }));
+    expect(ok.status).toBe(201);
+    expect(((await ok.json()) as { take: { matchId: string } }).take.matchId).toBe('pl-che-2026-08-30');
+
+    const bad = await POST(eventFor({
+      method: 'POST', db,
+      body: { handle: 'HighburyHenry', anonKey: 'ffffffff-1111-2222-3333-444444444444', thread: 'MATCH', text: 'x', matchId: 'NOT VALID!' },
+    }));
+    expect(bad.status).toBe(400);
+  });
+
+  test('POST blocks slur/direct-harm language, leaves banter alone', async () => {
+    const db = fakeCannonDb();
+    const blocked = await POST(eventFor({
+      method: 'POST', db,
+      body: { handle: 'HighburyHenry', anonKey: ANON, thread: 'MATCH', text: 'ref go kill yourself' },
+    }));
+    expect(blocked.status).toBe(400);
+    expect(((await blocked.json()) as { error: string }).error).toBe('blocked-language');
+    expect(db.takes).toHaveLength(0);
+
+    const banter = await POST(eventFor({
+      method: 'POST', db,
+      body: { handle: 'HighburyHenry', anonKey: ANON, thread: 'MATCH', text: 'that ref is an absolute disgrace, shocking decision' },
+    }));
+    expect(banter.status).toBe(201);
+  });
+});

@@ -39,3 +39,53 @@ describe('isKnownSchema', () => {
     expect(isKnownSchema('foo.v1')).toBe(false);
   });
 });
+
+describe('cannon feed schemas', () => {
+  const fixture = {
+    id: 'pl-che-2026-08-30', kickoffUtc: '2026-08-30T15:30:00Z', comp: 'Premier League',
+    opponent: 'Chelsea', opponentShort: 'CHE', venue: 'H', ground: 'Emirates Stadium',
+    tv: null, status: 'scheduled', score: null, difficulty: 'hard',
+  };
+
+  it('accepts a valid cannon.fixtures.v1 payload', () => {
+    expect(validateFeedPayload('cannon.fixtures.v1', { season: '2026/27', fixtures: [fixture], h2h: {} })).toEqual([]);
+  });
+
+  it('rejects fixtures with bad venue, id shape, or kickoff', () => {
+    const errors = validateFeedPayload('cannon.fixtures.v1', {
+      season: '2026/27',
+      fixtures: [{ ...fixture, venue: 'X' }, { ...fixture, id: 'NOT VALID!' }, { ...fixture, kickoffUtc: 'tomorrow' }],
+    });
+    expect(errors).toHaveLength(3);
+  });
+
+  it('accepts cannon.match.v1 through the phase machine', () => {
+    const base = { matchId: 'cs-mci-2026-08-16', kickoffUtc: '2026-08-16T14:00:00Z', opponent: 'Man City' };
+    for (const phase of ['idle', 'pre', 'live', 'ht', 'ft']) {
+      expect(validateFeedPayload('cannon.match.v1', { ...base, phase, score: { home: 1, away: 0 }, events: [{ min: 12, type: 'goal', player: 'Saka' }] })).toEqual([]);
+    }
+    expect(validateFeedPayload('cannon.match.v1', { ...base, phase: 'et' }).length).toBeGreaterThan(0);
+    expect(validateFeedPayload('cannon.match.v1', { ...base, phase: 'live', score: { home: 'one' } }).length).toBeGreaterThan(0);
+  });
+
+  it('accepts cannon.squad.v1 and rejects bad availability', () => {
+    const player = {
+      id: 'saka', num: 7, name: 'Saka', full: 'Bukayo Saka', nat: 'ENG', pos: 'RW', group: 'Forwards',
+      availability: 'fit', availabilityNote: null, stats: { apps: 37, goals: 24, assists: 18, rating: 8.4 }, form: ['W'],
+    };
+    expect(validateFeedPayload('cannon.squad.v1', { players: [player] })).toEqual([]);
+    expect(validateFeedPayload('cannon.squad.v1', { players: [{ ...player, availability: 'benched' }] })).toHaveLength(1);
+  });
+
+  it('cannon.news.v1 requires an own-words summary and a real link', () => {
+    const item = { id: 'n1', title: 'T', summary: 'S', url: 'https://example.com/x', source: 'BBC Sport', publishedAt: '2026-06-10T09:00:00Z' };
+    expect(validateFeedPayload('cannon.news.v1', { items: [item] })).toEqual([]);
+    expect(validateFeedPayload('cannon.news.v1', { items: [{ ...item, url: 'javascript:alert(1)' }] })).toHaveLength(1);
+    expect(validateFeedPayload('cannon.news.v1', { items: [{ ...item, summary: '' }] })).toHaveLength(1);
+  });
+
+  it('cannon.club.v1 wants trophies + MM-DD thisDay map', () => {
+    expect(validateFeedPayload('cannon.club.v1', { trophies: [], thisDay: { '06-09': { year: '2004', text: 'Invincibles' } } })).toEqual([]);
+    expect(validateFeedPayload('cannon.club.v1', { trophies: 'lots', thisDay: [] })).toHaveLength(2);
+  });
+});

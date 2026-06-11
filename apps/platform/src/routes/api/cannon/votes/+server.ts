@@ -37,10 +37,14 @@ export const POST: RequestHandler = async ({ request, platform }) => {
   }
 
   const take = await db
-    .prepare('SELECT id FROM cannon_takes WHERE id = ?1')
+    .prepare('SELECT id, status FROM cannon_takes WHERE id = ?1')
     .bind(takeId)
-    .first<{ id: string }>();
-  if (!take) return json({ error: 'not-found' }, { status: 404, headers: cors });
+    .first<{ id: string; status: string }>();
+  // Hidden/removed takes are not voteable — same 404 as missing so the
+  // moderation state never leaks through the public surface.
+  if (!take || take.status !== 'visible') {
+    return json({ error: 'not-found' }, { status: 404, headers: cors });
+  }
 
   const existing = await db
     .prepare('SELECT dir FROM cannon_votes WHERE take_id = ?1 AND anon_key = ?2')
