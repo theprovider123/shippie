@@ -355,6 +355,16 @@ export function App() {
       onProbeUnit={() => update((s) => ({ ...s, probe: { ...s.probe, unit: s.probe.unit === 'C' ? 'F' : 'C' } }))}
       tonightsNote={store.tonightsNote}
       onTonightsNoteChange={handleTonightsNoteChange}
+      onGlanceAdvance={handleGlanceAdvance}
+      onGlanceComplete={handleGlanceComplete}
+      onTotalChange={handleTotalChange}
+      onFormulaChange={handleFormulaChange}
+      onSaveFormula={saveFormula}
+      onAddBake={addBake}
+      onNoteChange={(content) => {
+        const note: KitchenNote = { id: newId(), content, created_at: Date.now() };
+        update((s) => ({ ...s, notes: [...s.notes, note] }));
+      }}
     />;
   }
 
@@ -402,6 +412,7 @@ export function App() {
             shippie={shippie}
             onAdvance={handleGlanceAdvance}
             onComplete={handleGlanceComplete}
+            onExit={() => goScreen('rail')}
           />
         )}
         {screen === 'probe' && (
@@ -412,6 +423,7 @@ export function App() {
             onTempChange={(c) => update((s) => ({ ...s, probe: { ...s.probe, current_c: c } }))}
             onCutChange={(name) => update((s) => ({ ...s, probe: { ...s.probe, cut: name, current_c: (store.probe.current_c) } }))}
             onUnitToggle={() => update((s) => ({ ...s, probe: { ...s.probe, unit: s.probe.unit === 'C' ? 'F' : 'C' } }))}
+            onExit={() => goScreen('rail')}
           />
         )}
         {screen === 'scale' && activeFormula && (
@@ -480,9 +492,16 @@ interface DesktopProps {
   onProbeUnit: () => void;
   tonightsNote: string;
   onTonightsNoteChange: (s: string) => void;
+  onGlanceAdvance: (nextIndex: number) => void;
+  onGlanceComplete: () => void;
+  onTotalChange: (g: number) => void;
+  onFormulaChange: (id: string) => void;
+  onSaveFormula: (f: Formula) => void;
+  onAddBake: (b: Bake) => void;
+  onNoteChange: (content: string) => void;
 }
 
-function DesktopCounter({ store, now, dialState, screen, shippie, onScreenChange, onDialWind, onDialStart, onDialStop, onDialReset, onAddTimer, onExtendTimer, onClearTimer, onStartTimer, onProbeTemp, onProbeCut, onProbeUnit, tonightsNote, onTonightsNoteChange }: DesktopProps) {
+function DesktopCounter({ store, now, dialState, screen, shippie, onScreenChange, onDialWind, onDialStart, onDialStop, onDialReset, onAddTimer, onExtendTimer, onClearTimer, onStartTimer, onProbeTemp, onProbeCut, onProbeUnit, tonightsNote, onTonightsNoteChange, onGlanceAdvance, onGlanceComplete, onTotalChange, onFormulaChange, onSaveFormula, onAddBake, onNoteChange }: DesktopProps) {
   return (
     <div className="palate-desktop">
       <header className="desktop-header">
@@ -492,7 +511,7 @@ function DesktopCounter({ store, now, dialState, screen, shippie, onScreenChange
         </div>
         <span className="offline-status desktop-offline">
           <OfflineIcon />
-          offline · all local · 2 devices on kitchen LAN
+          offline · all local
         </span>
       </header>
 
@@ -514,17 +533,17 @@ function DesktopCounter({ store, now, dialState, screen, shippie, onScreenChange
         <div className="desktop-fullbleed">
           {screen === 'glance' && (
             <Glance stepIndex={store.glance.stepIndex} workflowId={store.glance.workflowId} shippie={shippie}
-              onAdvance={(i) => {}} onComplete={() => {}} />
+              onAdvance={onGlanceAdvance} onComplete={onGlanceComplete} onExit={() => onScreenChange('rail')} />
           )}
           {screen === 'scale' && store.formulas[0] && (
             <Scale formulas={store.formulas} activeFormulaId={store.formulas[0].id}
               totalDoughG={store.formulas[0].total_dough_g} shippie={shippie}
-              onTotalChange={() => {}} onFormulaChange={() => {}} onSaveFormula={() => {}} />
+              onTotalChange={onTotalChange} onFormulaChange={onFormulaChange} onSaveFormula={onSaveFormula} />
           )}
           {screen === 'more' && (
             <More bakes={store.bakes} formulas={store.formulas} notes={store.notes}
               tonightsNote={tonightsNote}
-              onAddBake={() => {}} onNoteChange={() => {}} onTonightsNoteChange={onTonightsNoteChange} />
+              onAddBake={onAddBake} onNoteChange={onNoteChange} onTonightsNoteChange={onTonightsNoteChange} />
           )}
         </div>
       ) : (

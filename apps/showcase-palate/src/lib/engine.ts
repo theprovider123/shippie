@@ -104,9 +104,7 @@ export function scaleFormula(formula: Formula, total_g: number): ScaledFormula {
     }
     return sum;
   }, 0);
-  const trueHydration = (totalWaterG / flourMass) * 100;
-
-  // Prefermented flour percentage
+  // Prefermented flour, needed for the true totals below.
   const prefermentedFlourG = ingredients.reduce((sum, ing) => {
     if (ing.is_prefermented && ing.hydration_pct != null) {
       const levainG = (ing.bakers_pct / flourPct) * flourMass;
@@ -115,7 +113,13 @@ export function scaleFormula(formula: Formula, total_g: number): ScaledFormula {
     }
     return sum;
   }, 0);
-  const prefermentedPct = (prefermentedFlourG / flourMass) * 100;
+
+  // Both stats are conventionally on the TOTAL flour basis (formula flour +
+  // flour hiding inside the preferment) — that's what makes 20% levain at
+  // 100% hydration read as "prefermented 9.1%", not 10%.
+  const totalFlourG = flourMass + prefermentedFlourG;
+  const trueHydration = (totalWaterG / totalFlourG) * 100;
+  const prefermentedPct = (prefermentedFlourG / totalFlourG) * 100;
 
   const saltIng = ingredients.find((i) => isSalt(i.name));
   const saltPct = saltIng ? saltIng.bakers_pct : 0;

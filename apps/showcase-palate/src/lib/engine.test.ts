@@ -134,20 +134,17 @@ describe('scaleFormula', () => {
     expect(result.saltInRange).toBe(false);
   });
 
-  it('trueHydration accounts for levain water', () => {
+  it('trueHydration uses the total flour basis (incl. levain flour)', () => {
     const result = scaleFormula(DEFAULT_FORMULA as Formula, 1800);
-    // Water = 71% + levain water
-    // Levain is 20%, 100% hydration: levainG = 20/100 * flourMass; levainWater = levainG * 100/200 = levainG/2
-    // direct water = 71/100 * flourMass
-    // trueHydration = (directWater + levainWater) / flourMass * 100
-    // = (71 + 20/2)% = 81%
-    expect(result.trueHydration).toBeCloseTo(81, 0);
+    // Levain 20% at 100% hydration carries 10 flour + 10 water (per 100 formula flour).
+    // True hydration = (71 + 10) / (100 + 10) = 73.6%
+    expect(result.trueHydration).toBeCloseTo(73.6, 1);
   });
 
-  it('prefermentedPct is approx flour in levain', () => {
+  it('prefermentedPct uses the total flour basis — 20% levain reads as 9.1%', () => {
     const result = scaleFormula(DEFAULT_FORMULA as Formula, 1800);
-    // Levain 20%, 100% hydration: levainFlour = levainG / 2 = (20/100 * flourMass)/2 = 10% of flourMass
-    expect(result.prefermentedPct).toBeCloseTo(10, 0);
+    // Levain flour 10 over total flour 110 = 9.1% (matches the design's stat line)
+    expect(result.prefermentedPct).toBeCloseTo(9.1, 1);
   });
 });
 

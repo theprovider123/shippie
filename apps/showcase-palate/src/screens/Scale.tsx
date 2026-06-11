@@ -23,6 +23,7 @@ export function Scale({ formulas, activeFormulaId, totalDoughG, shippie, onTotal
   const [showEditor, setShowEditor] = useState(false);
   const [editFormula, setEditFormula] = useState<Formula | null>(null);
   const [pantryHints, setPantryHints] = useState<string[]>([]);
+  const [sentAt, setSentAt] = useState<number | null>(null);
 
   const scaled = formula ? scaleFormula(formula, totalDoughG) : null;
 
@@ -46,14 +47,16 @@ export function Scale({ formulas, activeFormulaId, totalDoughG, shippie, onTotal
 
   function sendToShoppingList() {
     if (!scaled || !formula) return;
-    const items = scaled.rows.map((r) => ({
+    const rows = scaled.rows.map((r) => ({
       item: r.name,
       quantity: parseFloat(r.grams.toFixed(1)),
       unit: 'g',
       source: 'palate',
+      list: formula.name,
     }));
     try {
-      void shippie.intent.broadcast('shopping-list', [{ items, formula: formula.name }]);
+      void shippie.intent.broadcast('shopping-list', rows);
+      setSentAt(Date.now());
     } catch {
       // ignore
     }
@@ -110,6 +113,14 @@ export function Scale({ formulas, activeFormulaId, totalDoughG, shippie, onTotal
           <span className={`salt-badge${scaled.saltInRange ? ' salt-ok' : ' salt-warn'}`}>
             {scaled.saltInRange ? 'salt in range' : `salt high (${scaled.saltPct.toFixed(1)}%)`}
           </span>
+        </div>
+
+        <div className="scale-quiet-actions" onPointerDown={(e) => e.stopPropagation()}>
+          <button className="quiet-action" onClick={() => { setEditFormula(formula); setShowEditor(true); }}>edit formula</button>
+          <span className="quiet-dot">·</span>
+          <button className="quiet-action" onClick={sendToShoppingList}>
+            {sentAt && Date.now() - sentAt < 4000 ? 'sent to shopping' : 'send to shopping'}
+          </button>
         </div>
       </div>
 

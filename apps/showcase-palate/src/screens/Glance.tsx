@@ -46,9 +46,10 @@ interface Props {
   shippie: ShippieIframeSdk;
   onAdvance: (nextIndex: number) => void;
   onComplete: () => void;
+  onExit?: () => void;
 }
 
-export function Glance({ stepIndex, shippie, onAdvance, onComplete }: Props) {
+export function Glance({ stepIndex, shippie, onAdvance, onComplete, onExit }: Props) {
   const steps = COUNTRY_LOAF_WORKFLOW;
   const step = steps[Math.min(stepIndex, steps.length - 1)]!;
   const pal = PALETTES[step.mode]!
@@ -96,7 +97,11 @@ export function Glance({ stepIndex, shippie, onAdvance, onComplete }: Props) {
       onClick={advance}
     >
       <div className="glance-header">
-        <span className="wordmark" style={{ color: pal.sub }}>palate.</span>
+        <span
+          className="wordmark"
+          style={{ color: pal.sub, cursor: 'pointer' }}
+          onClick={(e) => { e.stopPropagation(); onExit?.(); }}
+        >palate.</span>
         <span className="glance-counter" style={{ color: pal.sub }}>
           {stepIndex + 1} / {steps.length}
         </span>

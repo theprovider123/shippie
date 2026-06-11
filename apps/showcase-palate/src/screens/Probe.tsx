@@ -38,9 +38,10 @@ interface Props {
   onTempChange: (c: number) => void;
   onCutChange: (name: string) => void;
   onUnitToggle: () => void;
+  onExit?: () => void;
 }
 
-export function Probe({ currentC, cut, unit, compact = false, onTempChange, onCutChange, onUnitToggle }: Props) {
+export function Probe({ currentC, cut, unit, compact = false, onTempChange, onCutChange, onUnitToggle, onExit }: Props) {
   const cutDef = (PROBE_CUTS.find((c) => c.name === cut) ?? PROBE_CUTS[0])!;
   const state = probeState(currentC, cutDef.pull);
   const pal = STATE_PALETTES[state];
@@ -106,7 +107,11 @@ export function Probe({ currentC, cut, unit, compact = false, onTempChange, onCu
     >
       {!compact && (
         <div className="probe-header">
-          <span className="wordmark" style={{ color: pal.sub }}>palate.</span>
+          <span
+            className="wordmark"
+            style={{ color: pal.sub, cursor: 'pointer' }}
+            onClick={(e) => { e.stopPropagation(); onExit?.(); }}
+          >palate.</span>
           <span className="probe-label" style={{ color: pal.sub }}>live probe</span>
         </div>
       )}
@@ -158,6 +163,13 @@ export function Probe({ currentC, cut, unit, compact = false, onTempChange, onCu
         })}
         <div className="probe-footer" style={{ color: pal.sub }}>
           carryover adds 2–3° while resting
+          <button
+            className="quiet-action"
+            style={{ color: pal.sub }}
+            onClick={(e) => { e.stopPropagation(); onUnitToggle(); }}
+          >
+            · show {unit === 'C' ? '°f' : '°c'}
+          </button>
         </div>
       </div>
     </div>

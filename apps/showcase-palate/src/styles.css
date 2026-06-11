@@ -841,6 +841,34 @@ html, body {
   background: var(--calm-tint);
 }
 
+.scale-quiet-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 0 2px;
+}
+
+.quiet-action {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--tertiary);
+  background: none;
+  border: none;
+  padding: 4px 2px;
+  cursor: pointer;
+}
+
+.quiet-action:hover {
+  color: var(--secondary);
+}
+
+.quiet-dot {
+  font-size: 10.5px;
+  color: var(--tertiary);
+}
+
 .salt-warn {
   color: var(--amber-text);
   background: var(--heat-tint);
