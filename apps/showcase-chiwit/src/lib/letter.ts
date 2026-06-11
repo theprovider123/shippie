@@ -112,8 +112,8 @@ export function composeLetter(days: Record<string, DayLog>, weekEnding: string):
   // Quiet week — not enough data
   if (loggedCount < 2) {
     const body = [
-      `A quieter week — ${loggedCount} ${loggedCount === 1 ? 'day' : 'days'} logged, and that's fine. The garden keeps growing either way.`,
-      'Small things, most days — that\'s how a week like this gets built.',
+      `a quieter week — ${loggedCount} ${loggedCount === 1 ? 'day' : 'days'} logged, and that's fine. the garden keeps growing either way.`,
+      "small things, most days — that's how a week like this gets built.",
     ].join('\n\n');
     return { id, weekEnding, body, pills, arc };
   }
@@ -140,7 +140,7 @@ export function composeLetter(days: Record<string, DayLog>, weekEnding: string):
       const firstJournal = heavyDay.journal[0];
       if (firstJournal) {
         const fragment = firstJournal.text.slice(0, 40).trim();
-        journalClause = `you wrote "${fragment}" on ${dayName} night, which tracks. `;
+        journalClause = `you wrote "${fragment}" on ${dayName.toLowerCase()} night, which tracks. `;
       }
     }
 
@@ -150,7 +150,7 @@ export function composeLetter(days: Record<string, DayLog>, weekEnding: string):
     );
     let movedClause: string;
     if (movedOnHeavyDay) {
-      movedClause = `you walked ${dayName} anyway. That's a thing you do, apparently, even when it's hard.`;
+      movedClause = `you walked ${dayName.toLowerCase()} anyway. that's a thing you do, apparently, even when it's hard.`;
     } else {
       movedClause = 'the week carried you through.';
     }
@@ -160,7 +160,7 @@ export function composeLetter(days: Record<string, DayLog>, weekEnding: string):
       : heavierDays.map((d) => shortDayName(d.date)).join(' and ');
 
     sentences.push(
-      `You had a heavier ${dayNames} — ${journalClause}But ${movedClause}`,
+      `you had a heavier ${dayNames.toLowerCase()} — ${journalClause}but ${movedClause.charAt(0).toLowerCase() + movedClause.slice(1)}`,
     );
   }
 
@@ -190,7 +190,7 @@ export function composeLetter(days: Record<string, DayLog>, weekEnding: string):
 
     if (consecutiveStart) {
       sentences.push(
-        `Your evenings ran lighter from ${shortDayName(consecutiveStart)} onwards.`,
+        `your evenings ran lighter from ${shortDayName(consecutiveStart).toLowerCase()} onwards.`,
       );
     }
   }
@@ -200,16 +200,16 @@ export function composeLetter(days: Record<string, DayLog>, weekEnding: string):
     const moodsLogged = weekDays.filter((d) => d.mood).length;
     if (moodsLogged > 0) {
       sentences.push(
-        `You showed up ${loggedCount} ${loggedCount === 1 ? 'day' : 'days'} this week — that's the whole thing, really.`,
+        `you showed up ${loggedCount} ${loggedCount === 1 ? 'day' : 'days'} this week — that's the whole thing, really.`,
       );
     } else {
       sentences.push(
-        `A quieter week — ${loggedCount} ${loggedCount === 1 ? 'day' : 'days'} logged, and that's fine. The garden keeps growing either way.`,
+        `a quieter week — ${loggedCount} ${loggedCount === 1 ? 'day' : 'days'} logged, and that's fine. the garden keeps growing either way.`,
       );
     }
   }
 
-  sentences.push("Small things, most days — that's how a week like this gets built.");
+  sentences.push("small things, most days — that's how a week like this gets built.");
 
   return {
     id,

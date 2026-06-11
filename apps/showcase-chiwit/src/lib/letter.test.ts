@@ -65,7 +65,7 @@ describe('letter — deterministic output', () => {
     const days = buildFixtureDays();
     const letter = composeLetter(days, FIXTURE_WEEK_ENDING);
     expect(letter.body).toContain(
-      "Small things, most days — that's how a week like this gets built.",
+      "small things, most days — that's how a week like this gets built.",
     );
   });
 
@@ -95,8 +95,8 @@ describe('letter — deterministic output', () => {
 describe('letter — empty week', () => {
   test('empty days → quiet-week letter with no fabricated stats', () => {
     const letter = composeLetter({}, FIXTURE_WEEK_ENDING);
-    expect(letter.body).toContain("The garden keeps growing either way.");
-    expect(letter.body).toContain("Small things, most days");
+    expect(letter.body).toContain("the garden keeps growing either way.");
+    expect(letter.body).toContain("small things, most days");
     // Should not fabricate any stats
     expect(letter.pills).toHaveLength(0);
   });

@@ -19,8 +19,8 @@ const MOOD_HEIGHT: Record<MoodWord, number> = {
 
 const MOOD_COLOR: Record<MoodWord, string> = {
   heavy: '#CC6147',
-  low: '#BDB8AC',
-  okay: '#BDB8AC',
+  low: '#CC6147',
+  okay: '#E9A687',
   light: '#E9A687',
   bright: '#E9A687',
 };
