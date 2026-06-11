@@ -56,7 +56,6 @@
           // Ledger may already be in an inoperable state; continue with hard reset.
         }
       }
-      // Hard reset: localStorage + delete every IndexedDB our packages use.
       if (typeof localStorage !== 'undefined') {
         localStorage.clear();
       }
@@ -99,145 +98,290 @@
 </svelte:head>
 
 <main class="safe">
-  <header>
+  <header class="head">
+    <p class="eyebrow">Recovery</p>
     <h1>Safe Mode</h1>
-    <p>
+    <p class="lede">
       Shippie's container is paused. You can read the Trust Ledger, revoke capabilities,
       restore from backup, pin the container to a known-good version, or wipe local data.
     </p>
   </header>
 
   {#if notice}
-    <p class="notice">{notice}</p>
+    <p class="notice" role="status">{notice}</p>
   {/if}
 
-  <section>
-    <h2>Trust Ledger</h2>
-    <p>Ledger init: <strong>{ledgerOk}</strong></p>
-    <p>
-      <a class="btn" href="/__shippie/trust/">Open Trust Center</a>
-      <a class="btn btn--ghost" href="/__shippie/data">Open Your Data</a>
-    </p>
-  </section>
+  <div class="sections">
+    <section class="block" aria-labelledby="ledger-title">
+      <div class="block-head">
+        <p class="block-eyebrow">Trust</p>
+        <h2 id="ledger-title">Trust Ledger</h2>
+      </div>
+      <div class="ledger-status">
+        <span>Ledger init</span>
+        <span class="status-val" class:ok={ledgerOk === 'ok'} class:err={ledgerOk === 'unavailable'}>{ledgerOk}</span>
+      </div>
+      <div class="action-row">
+        <a class="btn btn-primary" href="/__shippie/trust/">Open Trust Center</a>
+        <a class="btn" href="/__shippie/data">Your Data</a>
+      </div>
+    </section>
 
-  <section>
-    <h2>Container channel</h2>
-    <p class="muted">Current preference: <code>{currentChannel}</code></p>
-    <p>
-      <button class="btn" disabled={busy} onclick={pinKnownGood}>Pin to known-good ({PINNED_CHANNEL})</button>
-      <button class="btn btn--ghost" disabled={busy} onclick={releaseChannel}>Release pin</button>
-    </p>
-    <p class="muted">
-      Pinning prevents the next container update from applying until a release with healthier
-      Proof signals reaches your device. Use this if a recent update started failing on your
-      phone.
-    </p>
-  </section>
+    <section class="block" aria-labelledby="channel-title">
+      <div class="block-head">
+        <p class="block-eyebrow">Container</p>
+        <h2 id="channel-title">Channel pin</h2>
+      </div>
+      <p class="block-meta">Current preference: <code>{currentChannel}</code></p>
+      <p class="block-desc">
+        Pinning prevents the next container update from applying. Use this if a recent update
+        started failing on your phone.
+      </p>
+      <div class="action-row">
+        <button class="btn btn-primary" disabled={busy} onclick={pinKnownGood}>
+          Pin to {PINNED_CHANNEL}
+        </button>
+        <button class="btn" disabled={busy} onclick={releaseChannel}>Release pin</button>
+      </div>
+    </section>
 
-  <section>
-    <h2>Full reset</h2>
-    <p class="muted">
-      Last resort. Wipes the on-device Trust Ledger, the Vault seed, every Shippie
-      IndexedDB database, and localStorage. Backups in your chosen cloud (Drive / iCloud /
-      Dropbox / Hub) are NOT touched.
-    </p>
-    <p>
-      <button class="btn btn--danger" disabled={busy} onclick={wipeEverything}>Wipe on-device data</button>
-    </p>
-  </section>
+    <section class="block block-danger" aria-labelledby="reset-title">
+      <div class="block-head">
+        <p class="block-eyebrow">Danger</p>
+        <h2 id="reset-title">Full reset</h2>
+      </div>
+      <p class="block-desc">
+        Last resort. Wipes the on-device Trust Ledger, the Vault seed, every Shippie
+        IndexedDB database, and localStorage. Backups in your chosen cloud — Drive, iCloud,
+        Dropbox, Hub — are not touched.
+      </p>
+      <div class="action-row">
+        <button class="btn btn-danger" disabled={busy} onclick={wipeEverything}>
+          Wipe on-device data
+        </button>
+      </div>
+    </section>
+  </div>
 
-  <footer>
-    <p class="muted">
-      You can leave Safe Mode by closing this tab or navigating to
-      <a href="/">shippie.app</a>.
-    </p>
+  <footer class="foot">
+    <p>Leave Safe Mode by closing this tab or navigating to <a href="/">shippie.app</a>.</p>
   </footer>
 </main>
 
 <style>
   .safe {
-    max-width: 720px;
+    max-width: 640px;
     margin: 0 auto;
-    padding: 1.5rem 1rem;
-    font-family: var(--font-sans, system-ui, sans-serif);
-    color: var(--ink-primary, #1a1a1a);
+    padding: calc(var(--safe-top, 0px) + var(--space-xl)) clamp(1rem, 4vw, 2rem) calc(var(--safe-bottom, 0px) + var(--space-3xl));
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    box-sizing: border-box;
   }
 
-  .safe a {
-    min-height: var(--touch-min, 44px);
-    display: inline-flex;
-    align-items: center;
+  .head {
+    padding-bottom: var(--space-xl);
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: var(--space-xl);
   }
 
-  header h1 {
-    margin: 0 0 0.25rem;
-    font-size: 1.75rem;
-    font-weight: 600;
+  .eyebrow {
+    margin: 0 0 0.35rem;
+    font-family: var(--font-mono);
+    font-size: var(--text-caption);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--sunset);
   }
 
-  header p {
-    margin: 0 0 1.5rem;
-    color: var(--ink-muted, #666);
+  h1 {
+    margin: 0 0 var(--space-sm);
+    font-family: var(--font-heading);
+    font-size: var(--text-display);
+    line-height: 1;
   }
 
-  section {
-    margin: 2rem 0;
-  }
-
-  section h2 {
-    margin: 0 0 0.5rem;
-    font-size: 1rem;
-    font-weight: 500;
-    color: var(--ink-muted, #666);
-  }
-
-  .muted {
-    color: var(--ink-muted, #666);
-    font-size: 0.875rem;
+  .lede {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--text-body);
+    line-height: 1.6;
+    max-width: 52ch;
   }
 
   .notice {
-    padding: 0.75rem 1rem;
-    border-radius: 0.5rem;
-    background: var(--surface-soft, #f7f4ee);
+    margin: 0 0 var(--space-lg);
+    padding: var(--space-md);
+    border: 1px solid var(--border-light);
+    border-left: 3px solid var(--sunset);
+    background: rgba(232, 96, 60, 0.04);
+    color: var(--text);
+    font-size: var(--text-small);
+  }
+
+  .sections {
+    display: grid;
+    gap: 0;
+  }
+
+  .block {
+    padding: var(--space-lg) 0;
+    border-bottom: 1px solid var(--border-light);
+    display: grid;
+    gap: var(--space-sm);
+  }
+
+  .block:first-child {
+    border-top: 0;
+  }
+
+  .block-danger .block-eyebrow {
+    color: var(--danger, #b43f2a);
+  }
+
+  .block-head {
+    display: grid;
+    gap: 0.15rem;
+    margin-bottom: var(--space-xs);
+  }
+
+  .block-eyebrow {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-caption);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-light);
+  }
+
+  h2 {
+    margin: 0;
+    font-family: var(--font-heading);
+    font-size: var(--text-subhead);
+    letter-spacing: 0;
+  }
+
+  .ledger-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    font-family: var(--font-mono);
+    font-size: var(--text-small);
+    color: var(--text-secondary);
+  }
+
+  .status-val {
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-light);
+  }
+  .status-val.ok { color: var(--success, #2e7d5b); }
+  .status-val.err { color: var(--danger, #b43f2a); }
+
+  .block-meta {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--text-small);
+  }
+
+  .block-meta code {
+    font-family: var(--font-mono);
+    font-size: 0.92em;
+    background: var(--surface);
+    padding: 1px 6px;
+    border: 1px solid var(--border-light);
+    color: var(--text);
+  }
+
+  .block-desc {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--text-small);
+    line-height: 1.6;
+    max-width: 56ch;
+  }
+
+  .action-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: var(--space-xs);
   }
 
   .btn {
-    display: inline-block;
-    padding: 0.5rem 0.9rem;
-    border-radius: 0.4rem;
-    border: 1px solid var(--border-default, #cfc6b3);
-    background: var(--surface-default, #ffffff);
-    color: var(--ink-primary, #1a1a1a);
-    text-decoration: none;
+    min-height: var(--touch-min, 44px);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 1rem;
+    border: 1px solid var(--border-light);
+    background: transparent;
+    color: var(--text);
     font: inherit;
+    font-family: var(--font-mono);
+    font-size: var(--text-caption);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-decoration: none;
     cursor: pointer;
-    margin-right: 0.5rem;
   }
 
   .btn:hover:not(:disabled) {
-    background: var(--surface-soft, #f7f4ee);
+    border-color: var(--sunset);
+    color: var(--sunset);
   }
 
   .btn:disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
   }
 
-  .btn--ghost {
-    background: transparent;
-    border-color: transparent;
-    color: var(--ink-muted, #666);
+  .btn-primary {
+    border-color: var(--sunset);
+    background: var(--sunset);
+    color: #fff;
   }
 
-  .btn--danger {
-    border-color: var(--border-warning, #f3c969);
-    color: var(--ink-warning, #4a3000);
+  .btn-primary:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--sunset) 88%, #fff);
+    border-color: color-mix(in srgb, var(--sunset) 88%, #fff);
   }
 
-  code {
-    font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
-    font-size: 0.85rem;
-    color: var(--ink-muted, #666);
+  .btn-danger {
+    border-color: rgba(180, 63, 42, 0.45);
+    color: var(--danger, #b43f2a);
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    border-color: var(--danger, #b43f2a);
+    background: rgba(180, 63, 42, 0.08);
+  }
+
+  .foot {
+    margin-top: var(--space-xl);
+    padding-top: var(--space-lg);
+    border-top: 1px solid var(--border-light);
+  }
+
+  .foot p {
+    margin: 0;
+    color: var(--text-light);
+    font-family: var(--font-mono);
+    font-size: var(--text-caption);
+    letter-spacing: 0.04em;
+  }
+
+  .foot a {
+    color: var(--sunset);
+    text-decoration: none;
+  }
+
+  @media (max-width: 640px) {
+    .action-row {
+      flex-direction: column;
+    }
+    .btn {
+      width: 100%;
+    }
   }
 </style>

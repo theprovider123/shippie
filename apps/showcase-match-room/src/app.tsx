@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BackupCard,
   EmptyState,
@@ -55,6 +55,7 @@ const TEMPLATE_DEFAULT: RoomTemplate = 'friends';
 export function App() {
   const [params, setParams] = useState(() => readRoomParams());
   const peerId = useMemo(() => getStablePeerId(), []);
+  const creatingRef = useRef(false);
   const [profile, setProfile] = useState<UserProfile>(() => {
     const existing = readUserProfile();
     const detectedLocale = params.locale ?? detectLocale();
@@ -94,6 +95,9 @@ export function App() {
   // model, no invite expected. Front-door cold-start path that lets you
   // get value before sharing.
   const startHost = (opts: { template?: RoomTemplate; title?: string; solo?: boolean } = {}) => {
+    if (creatingRef.current) return;
+    creatingRef.current = true;
+    setTimeout(() => { creatingRef.current = false; }, 600);
     const template = opts.template ?? (opts.solo ? 'hardcore' : TEMPLATE_DEFAULT);
     const title = opts.title ?? (opts.solo ? 'Just me' : 'Match room');
     const roomId = randomId('match').replace(/^match_/, 'match-');

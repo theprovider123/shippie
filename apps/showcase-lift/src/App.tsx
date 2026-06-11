@@ -21,7 +21,8 @@ function Shell() {
   if (!lift.ready) {
     return (
       <div className="lift-app lift-app--loading">
-        <p className="lift-loading">Lift…</p>
+        <p className="lift-loading">Lift</p>
+        <p className="lift-loading-sub">Loading your workouts…</p>
       </div>
     );
   }

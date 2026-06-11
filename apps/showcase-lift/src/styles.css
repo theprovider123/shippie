@@ -118,6 +118,13 @@ html, body {
   color: var(--lift-text-soft);
 }
 
+.lift-loading-sub {
+  font-size: 14px;
+  color: var(--lift-text-soft);
+  opacity: 0.6;
+  margin-top: 6px;
+}
+
 .lift-main {
   flex: 1 1 auto;
   padding: 20px 16px 88px;

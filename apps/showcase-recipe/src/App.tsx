@@ -1780,16 +1780,23 @@ function RecipeImportSheet({
     if (!trimmed || importing) return;
     setImporting(true);
     setImportError(null);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10_000);
     try {
-      const result = await importRecipeFromUrl(trimmed);
+      const fetchWithTimeout = ((input, init) =>
+        fetch(input, { ...init, signal: controller.signal })) as typeof fetch;
+      const result = await importRecipeFromUrl(trimmed, fetchWithTimeout);
       setParsed(result);
     } catch (err) {
       if (err instanceof RecipeImportError) {
         setImportError(err.message);
+      } else if (err instanceof Error && err.name === 'AbortError') {
+        setImportError("That took too long — check your connection and try again.");
       } else {
         setImportError("Something went wrong fetching that page. Try pasting the text instead.");
       }
     } finally {
+      clearTimeout(timeoutId);
       setImporting(false);
     }
   }
@@ -2185,7 +2192,10 @@ function RecipePickerSheet({
         </label>
         <div className="recipe-picker-list">
           {shown.length === 0 ? (
-            <p className="empty">No recipes match "{query}".</p>
+            <div className="empty-search">
+              <p className="empty">No recipes match "{query}".</p>
+              <button type="button" className="link-action" onClick={() => setQuery('')}>Clear search</button>
+            </div>
           ) : (
             shown.map((recipe) => (
               <button

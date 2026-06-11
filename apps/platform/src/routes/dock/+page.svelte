@@ -1566,7 +1566,7 @@
     }
     if (!doc?.body) return true;
     const bodyText = (doc.body.innerText || doc.body.textContent || '').trim();
-    if (/something went wrong|application error|failed to load|not found|404|500/i.test(bodyText)) return false;
+    if (/something went wrong|application error|failed to load|error loading|runtime error|cannot read|syntaxerror|not found|404|500/i.test(bodyText)) return false;
     if (bodyText.length > 0) return true;
     if (doc.querySelector('canvas, svg, img, video, button, input, textarea, select, [role="button"], [role="main"]')) {
       return true;

@@ -162,7 +162,7 @@
       <div class="actions">
         <button class="btn" type="button" onclick={onClose} disabled={phase === 'sending'}>Cancel</button>
         <button class="btn btn-primary" type="button" onclick={send} disabled={!canSend}>
-          {phase === 'sending' ? 'Sending…' : 'Send'}
+          {phase === 'sending' ? 'Sending…' : error ? 'Retry' : 'Send'}
         </button>
       </div>
     </div>

@@ -982,6 +982,25 @@ h2 {
   line-height: 1.5;
 }
 
+.empty-search {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 0;
+}
+
+.link-action {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #9b7d5e;
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .data-page .measure {
   max-width: 620px;
 }

@@ -195,6 +195,7 @@ export function App() {
     const dx = e.clientX - s.x;
     const dy = e.clientY - s.y;
     if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+    e.preventDefault();
     if (Math.abs(dx) > Math.abs(dy)) hopOrSetDir(dx > 0 ? 'E' : 'W');
     else hopOrSetDir(dy > 0 ? 'S' : 'N');
   };
