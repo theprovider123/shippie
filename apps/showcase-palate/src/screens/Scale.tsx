@@ -74,7 +74,6 @@ export function Scale({ formulas, activeFormulaId, totalDoughG, shippie, onTotal
       onPointerLeave={handlePointerUp}
     >
       <div className="scale-header">
-        <span className="wordmark">palate.</span>
         <span className="scale-formula-name">formula · {formula.name.toLowerCase()}</span>
       </div>
 

@@ -32,7 +32,7 @@ export function More({ bakes, formulas, notes, tonightsNote, onAddBake, onNoteCh
   return (
     <div className="more-screen">
       <div className="more-header">
-        <span className="wordmark">palate.</span>
+        <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--secondary)' }}>more instruments</span>
       </div>
       <div className="more-list">
         <button className="more-row" onClick={() => setView('ddt')}>
