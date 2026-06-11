@@ -1,0 +1,112 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Palate",
+  "slug": "palate",
+  "description": "A chef's kitchen companion. Wind a dial, run the rail of timers, glance cook mode, probe temps, scale a baker's formula — offline, all local.",
+  "icon": "/icon-512.png",
+  "theme_color": "#b85c26",
+  "background_color": "#f7f3ec",
+  "visibility": "public",
+  "display": "standalone",
+  "orientation": "portrait",
+  "ai": [],
+  "intents": {
+    "provides": [
+      "cooking-now",
+      "cooked-meal",
+      "shopping-list",
+      "dough-ferment-started",
+      "dough-ready"
+    ],
+    "consumes": [
+      "pantry-inventory",
+      "shopping-list"
+    ]
+  },
+  "permissions": [
+    "wake-lock"
+  ],
+  "data": {
+    "localStorage": {
+      "keys": [
+        "shippie.palate.kitchen.v1"
+      ],
+      "prefixes": [
+        "shippie.palate.bake-photo."
+      ]
+    }
+  },
+  "data_passport": {
+    "family": "palate",
+    "schema": "palate.v2"
+  },
+  "data_schemas": {
+    "formulas": {
+      "id": "text primary key",
+      "name": "text not null",
+      "version": "integer",
+      "total_dough_g": "real",
+      "notes": "text",
+      "created_at": "integer",
+      "updated_at": "integer"
+    },
+    "formula_ingredients": {
+      "id": "text primary key",
+      "formula_id": "text",
+      "name": "text not null",
+      "bakers_pct": "real not null",
+      "is_prefermented": "integer",
+      "hydration_pct": "real",
+      "sort_order": "integer"
+    },
+    "timers": {
+      "id": "text primary key",
+      "label": "text not null",
+      "context": "text",
+      "duration_s": "integer not null",
+      "started_at": "integer",
+      "paused_at": "integer",
+      "status": "text",
+      "colour": "text",
+      "created_at": "integer"
+    },
+    "ferments": {
+      "id": "text primary key",
+      "name": "text not null",
+      "type": "text",
+      "started_at": "integer",
+      "target_duration_s": "integer",
+      "dough_temp_c": "real",
+      "room_temp_c": "real",
+      "status": "text",
+      "notes": "text",
+      "updated_at": "integer"
+    },
+    "bakes": {
+      "id": "text primary key",
+      "formula_id": "text",
+      "baked_at": "integer",
+      "crumb_score": "real",
+      "rise": "integer",
+      "crumb": "integer",
+      "crust": "integer",
+      "flavour": "integer",
+      "ease": "integer",
+      "what_changed": "text",
+      "notes": "text"
+    },
+    "kitchen_notes": {
+      "id": "text primary key",
+      "content": "text",
+      "created_at": "integer"
+    }
+  },
+  "curation": {
+    "surface": "featured",
+    "category": "food-drink",
+    "tier": "public-flagship"
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-palate",
+  "license": "MIT",
+  "remix_allowed": true
+}
