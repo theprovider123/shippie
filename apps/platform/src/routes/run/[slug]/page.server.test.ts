@@ -46,7 +46,7 @@ describe('/run/[slug]/+page.server load', () => {
     ['body-metrics', '/run/lift?from=body-metrics'],
     ['breath', '/run/quiet?from=breath'],
     ['colour-of-day', '/run/chiwit?tab=track&from=colour-of-day'],
-    ['sip-log', '/run/mise?tab=track&from=sip-log'],
+    ['sip-log', '/run/chiwit?tab=track&from=sip-log'],
   ] as const) {
     test(`/run/${oldSlug} throws redirect(302) to canonical successor`, async () => {
       try {
