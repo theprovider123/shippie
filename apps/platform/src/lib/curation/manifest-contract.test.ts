@@ -17,7 +17,6 @@ const APPS_DIR = join(REPO_ROOT, 'apps');
 const PUBLIC_FLAGSHIPS = [
   'palate',
   'chiwit',
-  'mise',
   'symptom-diary',
   'lift',
   'golazo',
