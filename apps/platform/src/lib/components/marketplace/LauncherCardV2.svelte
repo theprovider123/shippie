@@ -173,7 +173,7 @@
     onclick={launchAndRemember}
     onpointerenter={warmLaunch}
     onfocus={warmLaunch}
-    data-sveltekit-preload-data="tap"
+    data-sveltekit-preload-data="hover"
     data-sveltekit-preload-code="hover"
     aria-label={`Open ${safeName} — ${categoryLabel}`}
   >
@@ -496,7 +496,8 @@
       border-color 0.15s var(--ease-out),
       background 0.15s var(--ease-out);
   }
-  .icon-btn:hover {
+  .icon-btn:hover,
+  .icon-btn:active {
     color: var(--text);
     border-color: var(--border);
   }

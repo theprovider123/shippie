@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { invalidateAll } from '$app/navigation';
+  import { invalidate, invalidateAll } from '$app/navigation';
   import { toast } from '$lib/stores/toast';
   import IdentityModal from '$lib/components/maker/IdentityModal.svelte';
   import type { PageData } from './$types';
@@ -44,7 +44,9 @@
     } else {
       toast.push({ kind: 'success', message: `Set to ${next}.` });
     }
-    await invalidateAll();
+    // Only catalog/visibility state changed — refresh just the loads
+    // tagged `app:apps` rather than every load on the page.
+    await invalidate('app:apps');
   }
 
   async function shareApp(slug: string) {

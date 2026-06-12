@@ -190,7 +190,7 @@
     onpointerenter={warmLaunch}
     onfocus={warmLaunch}
     ontouchstart={warmLaunch}
-    data-sveltekit-preload-data="tap"
+    data-sveltekit-preload-data="hover"
     data-sveltekit-preload-code="eager"
     aria-label={`Open ${app.name}`}
   >
@@ -494,6 +494,7 @@
       background 0.15s var(--ease-out);
   }
   .quick-actions button:hover,
+  .quick-actions button:active,
   .quick-actions button.active,
   .quick-actions button.copied {
     border-color: var(--sage-leaf);

@@ -322,6 +322,7 @@
     backdrop-filter: blur(3px);
     z-index: 1000;
     animation: scrim-fade 140ms ease-out;
+    will-change: opacity;
     touch-action: none;
   }
   @keyframes scrim-fade {

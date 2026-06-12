@@ -13,7 +13,10 @@ import type { LayoutServerLoad } from './$types';
 import { getDrizzleClient, schema } from '$server/db/client';
 import { claimTrialAppForMaker } from '$server/deploy/trial-claim';
 
-export const load: LayoutServerLoad = async ({ locals, platform, url }) => {
+export const load: LayoutServerLoad = async ({ locals, platform, url, depends }) => {
+  // Tag the recent-apps + counts query so visibility changes can
+  // `invalidate('app:apps')` instead of re-running every load.
+  depends('app:apps');
   if (!locals.user) {
     throw redirect(303, `/auth/login?return_to=${encodeURIComponent(url.pathname + url.search)}`);
   }

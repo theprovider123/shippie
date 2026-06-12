@@ -54,7 +54,10 @@ function parseSort(raw: string | null): { key: SortKey; dir: 'asc' | 'desc' } {
   return { key, dir };
 }
 
-export const load: PageServerLoad = async ({ parent, platform, url }) => {
+export const load: PageServerLoad = async ({ parent, platform, url, depends }) => {
+  // Tag the apps-list query so visibility changes can `invalidate('app:apps')`
+  // instead of re-running every load on the page.
+  depends('app:apps');
   const { user } = await parent();
 
   const q = (url.searchParams.get('q') ?? '').trim();

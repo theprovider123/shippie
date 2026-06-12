@@ -64,7 +64,7 @@
 
 <script lang="ts">
   import { page as pageStore } from '$app/stores';
-  import { goto, invalidateAll } from '$app/navigation';
+  import { goto, invalidate } from '$app/navigation';
   import { toast } from '$lib/stores/toast';
   import MakerShareSheet from '$components/maker/MakerShareSheet.svelte';
   import { shareStateFor } from '$lib/maker/share';
@@ -81,7 +81,8 @@
     });
     if (!res.ok) {
       toast.push({ kind: 'error', message: 'Visibility change failed.' });
-      await invalidateAll();
+      // Re-sync the select with server truth — only the apps list needs it.
+      await invalidate('app:apps');
       return;
     }
     const j = (await res.json()) as { metadata_synced?: boolean };
@@ -90,7 +91,9 @@
     } else {
       toast.push({ kind: 'success', message: `Set to ${next}.` });
     }
-    await invalidateAll();
+    // Only catalog/visibility state changed — refresh just the loads
+    // tagged `app:apps` rather than every load on the page.
+    await invalidate('app:apps');
   }
 
   let shareSheet = $state<{ open: boolean; url: string; title: string }>({

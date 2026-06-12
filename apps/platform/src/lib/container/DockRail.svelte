@@ -26,7 +26,7 @@
 -->
 <aside class="dock-rail">
   <div class="rail-inner">
-    <nav class="rail-nav" aria-label="Primary">
+    <nav class="rail-nav" aria-label="Primary" data-sveltekit-preload-data="hover">
       <a class="rail-item" class:current={dockActive} href="/dock" title="Dock" aria-label="Dock">
         <span class="rail-ico" aria-hidden="true">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="11" height="11" rx="1.5"/><path d="M9 20h11V9"/></svg>
@@ -59,7 +59,7 @@
       </p>
     {/if}
 
-    <nav class="rail-nav rail-secondary" aria-label="More">
+    <nav class="rail-nav rail-secondary" aria-label="More" data-sveltekit-preload-data="hover">
       {#if user?.isAdmin}
         <a class="rail-item" href="/admin" title="Admin" aria-label="Admin">
           <span class="rail-ico" aria-hidden="true">
@@ -160,7 +160,8 @@
   }
 
   /* One hover/active treatment for every row. */
-  .rail-item:hover {
+  .rail-item:hover,
+  .rail-item:active {
     color: var(--text);
     border-color: var(--border-light);
     background: var(--surface);
@@ -235,6 +236,13 @@
     .label {
       opacity: 1;
       pointer-events: auto;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rail-inner,
+    .label {
+      transition: none;
     }
   }
 

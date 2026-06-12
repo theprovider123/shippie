@@ -31,6 +31,12 @@
     grid-template-columns: 64px minmax(0, 1fr);
     background: var(--bg);
     transition: grid-template-columns 0.2s ease;
+    will-change: grid-template-columns;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .rail-shell {
+      transition: none;
+    }
   }
   /* Rail expands by pushing content right — never covering it. */
   .rail-shell:has(:global(.dock-rail:hover)),

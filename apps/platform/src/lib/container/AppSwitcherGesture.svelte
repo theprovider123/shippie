@@ -508,7 +508,7 @@
 <div
   class="backdrop"
   class:open
-  style:transition="opacity {transitionDuration} {transitionEase}, backdrop-filter {transitionDuration} {transitionEase}"
+  style:transition="opacity {transitionDuration} {transitionEase}"
   style:--app-scale={dimmedAppTransform}
   style:--app-opacity={dimmedAppOpacity}
   onclick={handleBackdropTap}
@@ -617,19 +617,19 @@
   .backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(20, 18, 15, 0);
+    /* Constant paint (tint + blur); only opacity animates — keeps the
+       fade compositor-only instead of re-blurring every frame. */
+    background: rgba(20, 18, 15, 0.35);
     pointer-events: none;
     z-index: 50;
     opacity: 0;
-    backdrop-filter: blur(0);
-    -webkit-backdrop-filter: blur(0);
-  }
-  .backdrop.open {
-    background: rgba(20, 18, 15, 0.35);
-    pointer-events: auto;
-    opacity: 1;
     backdrop-filter: blur(1px);
     -webkit-backdrop-filter: blur(1px);
+    will-change: opacity;
+  }
+  .backdrop.open {
+    pointer-events: auto;
+    opacity: 1;
   }
 
   /* Drawer: the app-switcher panel itself. Slides in from the
@@ -724,6 +724,12 @@
     .backdrop.open {
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
+    }
+    /* Belt and braces alongside the script's reducedMotion 0ms duration —
+       the !important outranks the inline style:transition. */
+    .backdrop,
+    .drawer {
+      transition: none !important;
     }
   }
 </style>
