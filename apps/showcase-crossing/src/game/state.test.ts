@@ -70,7 +70,7 @@ describe('car collision', () => {
     // tickRoad checks standing collisions
     const alive = tickRoad(state);
     expect(alive).toBe(false);
-    expect(state.phase).toBe('dead-flash');
+    expect(state.phase as string).toBe('dead-flash');
   });
 });
 
@@ -134,7 +134,7 @@ describe('drown on open water', () => {
     const alive = tickRiver(state, 0.016);
     // Either alive (log found anyway) or dead (gap confirmed)
     if (!alive) {
-      expect(state.phase).toBe('dead-flash');
+      expect(state.phase as string).toBe('dead-flash');
     } else {
       // Log was there — skip this test deterministically
       expect(alive).toBe(true);
@@ -196,7 +196,7 @@ describe('home scoring', () => {
     resolveHop(state);
     expect(state.homeSlots[0]!.occupied).toBe(true);
     expect(state.score).toBe(SCORE_HOME);
-    expect(state.phase).toBe('playing'); // respawned (not level-clear yet)
+    expect(state.phase as string).toBe('playing'); // respawned (not level-clear yet)
     expect(state.frog.row).toBe(0); // reset to start
   });
 
@@ -219,7 +219,7 @@ describe('home scoring', () => {
       durationMs: 120,
     };
     resolveHop(state);
-    expect(state.phase).toBe('dead-flash');
+    expect(state.phase as string).toBe('dead-flash');
   });
 
   // ── Test 8: Home scoring — fly bonus ────────────────────────────────
@@ -276,14 +276,14 @@ describe('level progression', () => {
       durationMs: 120,
     };
     resolveHop(state);
-    expect(state.phase).toBe('level-clear');
+    expect(state.phase as string).toBe('level-clear');
     expect(state.score).toBeGreaterThan(0);
 
     // Confirm tickDeathFlash still works for separate state
     const testState = { ...state, deathFlashMs: 0, phase: 'dead-flash' as const, lives: 1 } as FroggerState;
     tickDeathFlash(testState, 1000);
     // (level-clear is separate; we just confirm phase was set above)
-    expect(state.phase).toBe('level-clear');
+    expect(state.phase as string).toBe('level-clear');
   });
 
   test('level 2 lanes are faster than level 1', () => {

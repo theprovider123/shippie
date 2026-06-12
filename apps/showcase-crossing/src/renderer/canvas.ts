@@ -562,7 +562,7 @@ function overlayBox(
   sub: string,
   prompt: string,
   fontLoaded: boolean,
-  accentColor = PAL.hudAccent,
+  accentColor: string = PAL.hudAccent,
 ): void {
   // Dim
   ctx.fillStyle = 'rgba(6,10,15,0.78)';
