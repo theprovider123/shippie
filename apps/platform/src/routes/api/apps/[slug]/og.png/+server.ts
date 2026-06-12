@@ -24,6 +24,21 @@ const FONT_PATH = '/__shippie/og-font.ttf';
 // Font bytes are stable for the lifetime of the isolate — fetch once.
 let fontCache: Promise<Uint8Array> | null = null;
 
+// Workers forbids compiling wasm from bytes at runtime, so production MUST
+// use the statically-imported WebAssembly.Module (bundled by wrangler's
+// CompiledWasm rule). The import fails under vite dev / vitest — there the
+// fetch-the-bytes path below still works. Cache the probe per isolate.
+let wasmModuleCache: Promise<WebAssembly.Module | null> | null = null;
+
+function loadWasmModule(): Promise<WebAssembly.Module | null> {
+  if (!wasmModuleCache) {
+    wasmModuleCache = import('$server/og/resvg-module')
+      .then((mod) => mod.default)
+      .catch(() => null);
+  }
+  return wasmModuleCache;
+}
+
 async function fetchStaticAsset(event: RequestEvent, path: string): Promise<Response> {
   // Workers Assets matches by pathname; the host is irrelevant but must be
   // well-formed. Prefer the binding (no subrequest loop back into the
@@ -67,8 +82,9 @@ export const GET: RequestHandler = async (event) => {
 
   try {
     const font = await loadFont(event);
+    const wasmModule = await loadWasmModule();
     const png = await rasterizeSvgToPng(svg, {
-      wasm: () => fetchStaticAsset(event, WASM_PATH),
+      wasm: () => wasmModule ?? fetchStaticAsset(event, WASM_PATH),
       fonts: [font],
       defaultFontFamily: OG_FONT_FAMILY,
       width: OG_WIDTH,
@@ -84,9 +100,13 @@ export const GET: RequestHandler = async (event) => {
         'cache-control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
       },
     });
-  } catch {
+  } catch (error) {
     // Rasterization unavailable (e.g. wasm asset missing). Degrade to the
     // SVG card rather than failing the unfurl outright.
+    console.error(
+      '[og.png] rasterization failed',
+      error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+    );
     return new Response(null, {
       status: 302,
       headers: {
