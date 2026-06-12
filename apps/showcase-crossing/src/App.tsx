@@ -317,10 +317,9 @@ export function App() {
         onPointerUp={onPointerUp}
       >
         <canvas ref={canvasRef} />
-      </div>
-
-      <div className={`hint${hintFaded ? ' faded' : ''}`}>
-        arrows / swipe to hop
+        <div className={`hint${hintFaded ? ' faded' : ''}`}>
+          arrows / swipe to hop
+        </div>
       </div>
     </div>
   );

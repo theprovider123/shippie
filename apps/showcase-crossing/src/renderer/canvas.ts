@@ -13,19 +13,34 @@ const TIMER_ROWS = 1; // rows at bottom for timer bar
 
 /** Compute the canvas CSS size (square) and cell size. */
 export function computeLayout(containerW: number, containerH: number): {
-  cssSize: number;
+  cssW: number;
+  cssH: number;
   cellPx: number;
+  topBandH: number;
+  bottomBandH: number;
 } {
-  const availH = containerH;
-  const availW = containerW;
-  // The logical canvas is ROWS+HUD_ROWS+TIMER_ROWS rows tall × COLS wide
-  // We want a square board (COLS cells wide) with HUD strip on top.
   const boardRows = ROWS + HUD_ROWS + TIMER_ROWS;
-  const cellFromW = availW / COLS;
-  const cellFromH = availH / boardRows;
+  const portrait = containerH > containerW;
+
+  if (portrait) {
+    // On tall phones: width-constrained — fill the entire container height with
+    // themed bands above and below the playfield instead of dead black bars.
+    const cellPx = Math.floor(containerW / COLS);
+    const boardH = cellPx * boardRows;
+    const extraH = Math.max(0, containerH - boardH);
+    // Split extra space: slightly more on top (sky band) than bottom (grass band)
+    const topBandH = Math.floor(extraH * 0.55);
+    const bottomBandH = extraH - topBandH;
+    return { cssW: containerW, cssH: containerH, cellPx, topBandH, bottomBandH };
+  }
+
+  // Landscape / desktop: original behaviour — largest square that fits
+  const cellFromW = containerW / COLS;
+  const cellFromH = containerH / boardRows;
   const cellPx = Math.floor(Math.min(cellFromW, cellFromH));
-  const cssSize = cellPx * COLS;
-  return { cssSize, cellPx };
+  const cssW = cellPx * COLS;
+  const cssH = cellPx * boardRows;
+  return { cssW, cssH, cellPx, topBandH: 0, bottomBandH: 0 };
 }
 
 /** Resize canvas for devicePixelRatio. Returns cellPx. */
@@ -35,19 +50,18 @@ export function resizeCanvas(
   containerH: number,
 ): number {
   const dpr = window.devicePixelRatio || 1;
-  const { cssSize, cellPx } = computeLayout(containerW, containerH);
-  const canvasH = cellPx * (ROWS + HUD_ROWS + TIMER_ROWS);
-  canvas.style.width = `${cssSize}px`;
-  canvas.style.height = `${canvasH}px`;
-  canvas.width = Math.round(cssSize * dpr);
-  canvas.height = Math.round(canvasH * dpr);
+  const { cssW, cssH, cellPx } = computeLayout(containerW, containerH);
+  canvas.style.width = `${cssW}px`;
+  canvas.style.height = `${cssH}px`;
+  canvas.width = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
   return cellPx;
 }
 
-function laneY(row: number, cellPx: number): number {
+function laneY(row: number, cellPx: number, topBandH: number): number {
   // Row 0 is the bottom (start verge), row ROWS-1 is home.
-  // On canvas, y increases downward. HUD is at the top.
-  return (HUD_ROWS + (ROWS - 1 - row)) * cellPx;
+  // On canvas, y increases downward. HUD sits just below topBandH.
+  return topBandH + (HUD_ROWS + (ROWS - 1 - row)) * cellPx;
 }
 
 export function drawFrame(
@@ -60,7 +74,7 @@ export function drawFrame(
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
-  const { cellPx } = computeLayout(
+  const { cellPx, topBandH, bottomBandH } = computeLayout(
     canvas.width / dpr,
     canvas.height / dpr,
   );
@@ -82,10 +96,15 @@ export function drawFrame(
   ctx.fillStyle = PAL.bg;
   ctx.fillRect(0, 0, W, H);
 
+  // ── Top band (themed skyline/tree-line above HUD) ─────────────────
+  if (topBandH > 0) {
+    drawTopBand(ctx, topBandH, W, cellPx);
+  }
+
   // ── Board rows ───────────────────────────────────────────────────
   for (let row = 0; row < ROWS; row++) {
     const lane = state.level.lanes[row]!;
-    const y = laneY(row, cellPx);
+    const y = laneY(row, cellPx, topBandH);
 
     if (lane.kind === 'home') {
       drawHomeRow(ctx, state, y, cellPx, W);
@@ -96,6 +115,11 @@ export function drawFrame(
     } else if (lane.kind === 'river') {
       drawRiverRow(ctx, state, row, y, cellPx, W);
     }
+  }
+
+  // ── Bottom band (grass verge continuation below start row) ────────
+  if (bottomBandH > 0) {
+    drawBottomBand(ctx, topBandH, cellPx, bottomBandH, W);
   }
 
   // ── Frog ─────────────────────────────────────────────────────────
@@ -121,17 +145,18 @@ export function drawFrame(
     }
 
     if (state.phase !== 'dead-flash' || Math.floor(nowMs / 80) % 2 === 0) {
-      drawFrog(ctx, drawCol, drawRow, cellPx, scaleX, scaleY);
+      drawFrog(ctx, drawCol, drawRow, cellPx, scaleX, scaleY, topBandH);
     } else {
-      drawDeathSkull(ctx, drawCol, drawRow, cellPx);
+      drawDeathSkull(ctx, drawCol, drawRow, cellPx, topBandH);
     }
   }
 
   // ── HUD ──────────────────────────────────────────────────────────
-  drawHUD(ctx, state, W, cellPx, fontLoaded);
+  drawHUD(ctx, state, W, cellPx, fontLoaded, topBandH);
 
   // ── Timer bar ────────────────────────────────────────────────────
-  drawTimerBar(ctx, state, W, H, cellPx);
+  const boardBottomY = topBandH + (HUD_ROWS + ROWS) * cellPx;
+  drawTimerBar(ctx, state, W, boardBottomY, cellPx);
 
   // ── Overlay screens ──────────────────────────────────────────────
   if (state.phase === 'attract') {
@@ -182,7 +207,7 @@ function drawHomeRow(
     ctx.fillRect(sx + 2, y + 2, cellPx - 4, cellPx - 4);
     // Fly
     if (state.flySlotIndex === si && !slot.occupied) {
-      drawFly(ctx, slotCol + 0.5, cellPx);
+      drawFly(ctx, slotCol + 0.5, cellPx, y);
     }
     // Locked frog silhouette if occupied
     if (slot.occupied) {
@@ -381,8 +406,9 @@ function drawFrog(
   cellPx: number,
   scaleX: number,
   scaleY: number,
+  topBandH: number = 0,
 ): void {
-  const laneTopY = (HUD_ROWS + (ROWS - 1 - row)) * cellPx;
+  const laneTopY = topBandH + (HUD_ROWS + (ROWS - 1 - row)) * cellPx;
   const fcx = (col + 0.5) * cellPx;
   const fcy = laneTopY + cellPx / 2;
 
@@ -435,8 +461,9 @@ function drawDeathSkull(
   ctx: CanvasRenderingContext2D,
   col: number, row: number,
   cellPx: number,
+  topBandH: number = 0,
 ): void {
-  const laneTopY = (HUD_ROWS + (ROWS - 1 - row)) * cellPx;
+  const laneTopY = topBandH + (HUD_ROWS + (ROWS - 1 - row)) * cellPx;
   const fcx = (col + 0.5) * cellPx;
   const fcy = laneTopY + cellPx / 2;
   ctx.font = `${Math.round(cellPx * 0.7)}px sans-serif`;
@@ -450,10 +477,10 @@ function drawFly(
   ctx: CanvasRenderingContext2D,
   slotCenterX: number,
   cellPx: number,
+  homeRowY: number,
 ): void {
-  const homeRowTopY = HUD_ROWS * cellPx; // = (HUD_ROWS + (ROWS-1-(ROWS-1))) * cellPx
   const fcx = slotCenterX * cellPx;
-  const fcy = homeRowTopY + cellPx / 2;
+  const fcy = homeRowY + cellPx / 2;
   ctx.fillStyle = PAL.flyYellow;
   ctx.beginPath();
   ctx.arc(fcx, fcy, cellPx * 0.18, 0, Math.PI * 2);
@@ -464,6 +491,95 @@ function drawFly(
   ctx.fill();
 }
 
+// ── Themed fill bands (portrait phone only) ───────────────────────────
+
+/**
+ * Top band: dark home-bank continuation with a simple tree-line silhouette.
+ * Sits above the HUD strip on tall phones.
+ */
+function drawTopBand(
+  ctx: CanvasRenderingContext2D,
+  bandH: number,
+  W: number,
+  cellPx: number,
+): void {
+  if (bandH <= 0) return;
+
+  // Sky gradient — deep night fading to slightly lighter horizon
+  const grad = ctx.createLinearGradient(0, 0, 0, bandH);
+  grad.addColorStop(0, '#060a0f');
+  grad.addColorStop(1, '#0d1a14');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, bandH);
+
+  // Tree-line silhouette along the bottom of the band
+  // Uses same homeBank + homeSlot palette tones so it blends into the home row
+  const treeBaseY = bandH;
+  const treeH = Math.min(bandH, cellPx * 1.4);
+  const treeW = Math.max(6, cellPx * 0.8);
+  const treeSpacing = treeW * 1.6;
+
+  ctx.fillStyle = '#1a2e1e'; // dark evergreen silhouette
+  // Draw a row of triangular/rounded tree shapes
+  for (let x = -treeW * 0.5; x < W + treeW; x += treeSpacing) {
+    // Vary height slightly per tree using a cheap hash
+    const hVar = 0.7 + 0.3 * (((x * 7 + 13) % 17) / 17);
+    const h = treeH * hVar;
+    const cx = x + treeW * 0.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - treeW * 0.5, treeBaseY);
+    ctx.lineTo(cx, treeBaseY - h);
+    ctx.lineTo(cx + treeW * 0.5, treeBaseY);
+    ctx.closePath();
+    ctx.fill();
+    // Second smaller triangle layered on top for depth
+    ctx.fillStyle = '#142413';
+    ctx.beginPath();
+    ctx.moveTo(cx - treeW * 0.35, treeBaseY - h * 0.4);
+    ctx.lineTo(cx, treeBaseY - h * 1.0);
+    ctx.lineTo(cx + treeW * 0.35, treeBaseY - h * 0.4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#1a2e1e';
+  }
+
+  // Thin accent line at bottom edge where band meets HUD
+  ctx.fillStyle = 'rgba(89,217,142,0.08)';
+  ctx.fillRect(0, bandH - 1, W, 1);
+}
+
+/**
+ * Bottom band: grass verge continuation below the start row.
+ * The hint text is drawn into this band by a CSS overlay; we just paint the ground.
+ */
+function drawBottomBand(
+  ctx: CanvasRenderingContext2D,
+  topBandH: number,
+  cellPx: number,
+  bandH: number,
+  W: number,
+): void {
+  if (bandH <= 0) return;
+
+  // The start verge (row 0) ends at: topBandH + (HUD_ROWS + ROWS) * cellPx
+  const bandY = topBandH + (HUD_ROWS + ROWS) * cellPx;
+
+  // Grass fill — same grassLight as start verge row 0
+  ctx.fillStyle = PAL.grassLight;
+  ctx.fillRect(0, bandY, W, bandH);
+
+  // Repeating grass stripe pattern matching drawSafeRow
+  ctx.fillStyle = PAL.grassStripe;
+  for (let x = 0; x < W; x += 16) {
+    ctx.fillRect(x, bandY + bandH * 0.25, 8, bandH * 0.18);
+    ctx.fillRect(x + 4, bandY + bandH * 0.55, 8, bandH * 0.18);
+  }
+
+  // Thin top edge line to visually separate from timer bar
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(0, bandY, W, 2);
+}
+
 // ── HUD ──────────────────────────────────────────────────────────────
 
 function drawHUD(
@@ -472,10 +588,12 @@ function drawHUD(
   W: number,
   cellPx: number,
   fontLoaded: boolean,
+  topBandH: number = 0,
 ): void {
+  const hudY = topBandH;
   const hudH = HUD_ROWS * cellPx;
   ctx.fillStyle = PAL.hudBg;
-  ctx.fillRect(0, 0, W, hudH);
+  ctx.fillRect(0, hudY, W, hudH);
 
   const pxFont = fontLoaded ? 'Press Start 2P' : 'monospace';
   const fontSize = Math.max(8, Math.floor(cellPx * 0.42));
@@ -483,8 +601,8 @@ function drawHUD(
   ctx.font = `${fontSize}px "${pxFont}"`;
   ctx.textBaseline = 'middle';
 
-  const row1Y = cellPx * 0.5;
-  const row2Y = cellPx * 1.5;
+  const row1Y = hudY + cellPx * 0.5;
+  const row2Y = hudY + cellPx * 1.5;
 
   // SCORE
   ctx.fillStyle = PAL.hudMuted;
@@ -537,11 +655,11 @@ function drawTimerBar(
   ctx: CanvasRenderingContext2D,
   state: FroggerState,
   W: number,
-  H: number,
+  boardBottomY: number,
   _cellPx: number,
 ): void {
   const barH = 4;
-  const barY = H - barH;
+  const barY = boardBottomY - barH;
   // Background
   ctx.fillStyle = 'rgba(255,255,255,0.08)';
   ctx.fillRect(0, barY, W, barH);

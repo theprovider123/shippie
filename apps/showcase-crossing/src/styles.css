@@ -70,29 +70,36 @@ button { font: inherit; cursor: pointer; }
 .canvas-wrap {
   flex: 1;
   min-height: 0;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #060a0f;
   touch-action: none;
+  overflow: hidden;
 }
 canvas {
   display: block;
-  /* CSS size set by JS to the largest square that fits */
+  /* CSS size set by JS */
 }
 
 /* ── Hint line ────────────────────────────────────────────────────── */
+/* On portrait phones the canvas fills the full wrapper; the hint sits
+   over the bottom-band grass continuation via absolute positioning.   */
 .hint {
+  position: absolute;
+  bottom: max(8px, env(safe-area-inset-bottom, 8px));
+  left: 0;
+  right: 0;
   text-align: center;
   font-size: 10px;
   color: var(--muted);
-  padding: 5px 0 max(5px, env(safe-area-inset-bottom, 5px));
-  flex-shrink: 0;
+  pointer-events: none;
   transition: opacity 600ms ease;
   font-family: var(--font-mono);
   letter-spacing: 0.08em;
 }
-.hint.faded { opacity: 0; pointer-events: none; }
+.hint.faded { opacity: 0; }
 
 /* ── Safe-area padding for bar ────────────────────────────────────── */
 .bar {
