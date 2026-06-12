@@ -5,6 +5,12 @@
  * `apps:{slug}:active` (and `apps:{slug}:csp`) KV entry that disagrees.
  * Backstops the deploy hot-path's non-atomic three-key KV write sequence.
  *
+ * Also reconciles `visibility_scope` / `organization_id` inside the
+ * `apps:{slug}:meta` blob. The wrapper's access gate reads visibility
+ * from KV only, so a lost patch (visibility toggle raced by a deploy's
+ * full-blob rewrite, or a swallowed KV error) would otherwise serve a
+ * public app as private — or vice versa — until the next deploy.
+ *
  * Idempotent: a converged DB ↔ KV state is a no-op.
  *
  * Errors per-app are caught so one bad row never stops the sweep.
@@ -22,6 +28,7 @@ export interface ReconcileKvResult {
   checked: number;
   updated: string[];
   csp_updated: string[];
+  meta_updated: string[];
   missing_version: string[];
   errors: Array<{ slug: string; reason: string }>;
 }
@@ -30,6 +37,8 @@ export interface ReconcileRow {
   slug: string;
   version: number | null;
   cspHeader: string | null;
+  visibilityScope: string;
+  organizationId: string | null;
 }
 
 /** Page fetcher. Default reads via drizzle; tests inject a stub. */
@@ -44,6 +53,8 @@ async function defaultFetchPage(env: ReconcileKvEnv, offset: number, limit: numb
       slug: schema.apps.slug,
       version: schema.deploys.version,
       cspHeader: schema.deploys.cspHeader,
+      visibilityScope: schema.apps.visibilityScope,
+      organizationId: schema.apps.organizationId,
     })
     .from(schema.apps)
     .leftJoin(schema.deploys, eq(schema.deploys.id, schema.apps.activeDeployId))
@@ -61,6 +72,7 @@ export async function reconcileKv(
     checked: 0,
     updated: [],
     csp_updated: [],
+    meta_updated: [],
     missing_version: [],
     errors: [],
   };
@@ -93,6 +105,28 @@ export async function reconcileKv(
             result.csp_updated.push(row.slug);
           }
         }
+        // Meta blob: visibility/org must track D1 — the access gate reads
+        // KV only. Patch-only (no blob ⇒ skip): a missing blob means the
+        // app isn't serving, and the next deploy writes the full row.
+        const rawMeta = await env.CACHE.get(`apps:${row.slug}:meta`);
+        if (rawMeta) {
+          let meta: Record<string, unknown> | null = null;
+          try {
+            meta = JSON.parse(rawMeta) as Record<string, unknown>;
+          } catch {
+            meta = null;
+          }
+          if (meta) {
+            const wantOrg = row.organizationId ?? undefined;
+            if (meta.visibility_scope !== row.visibilityScope || meta.organization_id !== wantOrg) {
+              await env.CACHE.put(
+                `apps:${row.slug}:meta`,
+                JSON.stringify({ ...meta, visibility_scope: row.visibilityScope, organization_id: wantOrg }),
+              );
+              result.meta_updated.push(row.slug);
+            }
+          }
+        }
       } catch (err) {
         result.errors.push({ slug: row.slug, reason: (err as Error).message });
       }
@@ -104,7 +138,7 @@ export async function reconcileKv(
   }
 
   console.log(
-    `[cron:reconcile-kv] checked=${result.checked} updated=${result.updated.length} csp_updated=${result.csp_updated.length} missing=${result.missing_version.length} errors=${result.errors.length}`,
+    `[cron:reconcile-kv] checked=${result.checked} updated=${result.updated.length} csp_updated=${result.csp_updated.length} meta_updated=${result.meta_updated.length} missing=${result.missing_version.length} errors=${result.errors.length}`,
   );
   return result;
 }

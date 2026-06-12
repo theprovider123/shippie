@@ -80,8 +80,9 @@ export async function setAppVisibility(input: SetAppVisibilityInput): Promise<Se
     };
   }
 
+  let patched = false;
   try {
-    await patchAppMeta(input.cache, input.app.slug, {
+    patched = await patchAppMeta(input.cache, input.app.slug, {
       slug: input.app.slug,
       visibility_scope: after.visibilityScope,
       organization_id: after.organizationId ?? undefined,
@@ -103,9 +104,12 @@ export async function setAppVisibility(input: SetAppVisibilityInput): Promise<Se
     throw err;
   }
 
+  // patched=false means the app has no meta blob (never deployed) — it
+  // isn't serving, so D1 alone is correct; report unsynced and let the
+  // reconcile-kv cron converge once a deploy writes the blob.
   return {
     changed,
-    metadataSynced: true,
+    metadataSynced: patched,
     before,
     after,
   };

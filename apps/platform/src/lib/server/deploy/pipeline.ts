@@ -364,6 +364,12 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     manifestVisibility: manifest.visibility,
     existingVisibility: appRow?.visibilityScope,
   });
+  // When neither the form nor the manifest set visibility, the resolved
+  // value is just the row as it stood at pipeline start. Deploys can run
+  // for a while (R2 upload, scans) — a visibility toggle landing mid-deploy
+  // must not be clobbered by the final writes, so those re-read the row.
+  const visibilityWasExplicit =
+    input.visibilityScope != null || manifest.visibility != null;
 
   if (!appRow) {
     const [inserted] = await db
@@ -538,13 +544,22 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     })
     .where(eq(schema.deploys.id, deployRow.id));
 
+  let finalVisibilityScope = resolvedVisibilityScope;
+  if (!visibilityWasExplicit) {
+    const freshRow = await db.query.apps.findFirst({
+      where: eq(schema.apps.id, appRow.id),
+      columns: { visibilityScope: true },
+    });
+    if (freshRow) finalVisibilityScope = normalizeVisibilityScope(freshRow.visibilityScope);
+  }
+
   await db
     .update(schema.apps)
     .set({
       activeDeployId: deployRow.id,
       latestDeployId: deployRow.id,
       latestDeployStatus: 'success',
-      visibilityScope: resolvedVisibilityScope,
+      visibilityScope: finalVisibilityScope,
       organizationId: input.organizationId ?? appRow.organizationId,
       lastDeployedAt: completedAt,
       firstPublishedAt: appRow.firstPublishedAt ?? completedAt,
@@ -565,7 +580,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
       slug: input.slug,
       deployId: deployRow.id,
       version,
-      visibilityScope: resolvedVisibilityScope,
+      visibilityScope: finalVisibilityScope,
       sourceType: 'zip',
     },
   });
@@ -616,7 +631,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     theme_color: manifest.theme_color ?? '#E8603C',
     background_color: manifest.background_color ?? '#ffffff',
     version,
-    visibility_scope: resolvedVisibilityScope,
+    visibility_scope: finalVisibilityScope,
     organization_id: input.organizationId ?? appRow.organizationId ?? undefined,
     permissions: manifest.permissions ?? {
       auth: false,
@@ -736,7 +751,7 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     totalBytes: upload.totalBytes,
     preflight,
     liveUrl,
-    visibilityScope: resolvedVisibilityScope,
+    visibilityScope: finalVisibilityScope,
     appId: appRow.id,
     deployId: deployRow.id,
     notes: manifestResult.notes.length > 0 ? manifestResult.notes : undefined,

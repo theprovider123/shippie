@@ -65,15 +65,21 @@ export async function readAppMeta(
 
 /**
  * Patch a subset of fields in the meta row. Used by visibility flips, etc.
+ *
+ * Returns false (without writing) when no meta blob exists — an app that
+ * has never deployed has nothing to patch, and fabricating a partial blob
+ * here would hand the wrapper a meta row missing name/version/permissions.
  */
 export async function patchAppMeta(
   kv: KVNamespace,
   slug: string,
   patch: Partial<AppMeta>,
-): Promise<void> {
+): Promise<boolean> {
   const existing = await kv.get(`apps:${slug}:meta`);
-  const current: Record<string, unknown> = existing ? (JSON.parse(existing) as Record<string, unknown>) : {};
+  if (!existing) return false;
+  const current = JSON.parse(existing) as Record<string, unknown>;
   await kv.put(`apps:${slug}:meta`, JSON.stringify({ ...current, ...patch }));
+  return true;
 }
 
 export async function writeActivePointer(
