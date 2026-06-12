@@ -477,14 +477,16 @@
   addEventListener('keyup',e=>{keys[e.key]=false;});
   $('ready').onclick=()=>{if(phase==='prep')startDefend();};
   $('pulse').onclick=()=>{if(pulsePower<50){flash('Pulse needs 50 power',1);return;}pulsePower-=50;pulseRing=1;for(const e of enemies){if(e.dead)continue;const dx=e.gx-CORE.x,dy=e.gy-CORE.y,d=Math.hypot(dx,dy)||1;e.gx+=dx/d*1.6;e.gy+=dy/d*1.6;e.slow=1.4;hit(e,4);}flash('◎ Pulse — gunk shoved back!');};
-  function updPulse(){$('pulse').disabled=pulsePower<50;$('pulse').textContent='◎ PULSE '+Math.round(pulsePower);}const pulseTimer=setInterval(updPulse,200);
+  function updPulse(){$('pulse').disabled=pulsePower<50;$('pulse').textContent='◎ PULSE '+Math.round(pulsePower);}
   $('slam').onclick=()=>{if(AV.down){flash('Captain is down',1);return;}if(slamCd>0){flash('Slam recharging…',1);return;}slamCd=6;fxs.push({x:AV.x,y:AV.y-8,life:.45,kind:'slamring'});
     const ct=invIso(AV.x,AV.y-TH/2);for(const e of enemies){if(e.dead)continue;if(Math.hypot(e.x-AV.x,(e.y-8)-(AV.y-12))<TW*1.6){hit(e,AV.dmg*2);const dx=e.gx-ct.gx,dy=e.gy-ct.gy,d=Math.hypot(dx,dy)||1;e.gx+=dx/d*1.4;e.gy+=dy/d*1.4;e.slow=Math.max(e.slow,.7);}}flash('⊛ SLAM!');};
-  function updSlam(){const b=$('slam');if(!b)return;b.disabled=slamCd>0;b.textContent=slamCd>0?'⊛ '+Math.ceil(slamCd)+'s':'⊛ SLAM';}const slamTimer=setInterval(updSlam,200);
-  // Cleanup: clear always-on HUD intervals when the iframe is torn down or backgrounded so they don't leak.
+  function updSlam(){const b=$('slam');if(!b)return;b.disabled=slamCd>0;b.textContent=slamCd>0?'⊛ '+Math.ceil(slamCd)+'s':'⊛ SLAM';}
+  // Mutable refs so we can stop and restart the HUD intervals across visibility changes.
+  let pulseTimer=setInterval(updPulse,200),slamTimer=setInterval(updSlam,200);
   function clearTimers(){clearInterval(pulseTimer);clearInterval(slamTimer);}
+  function restartTimers(){clearTimers();pulseTimer=setInterval(updPulse,200);slamTimer=setInterval(updSlam,200);}
   addEventListener('pagehide',clearTimers);
-  addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')clearTimers();});
+  addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')clearTimers();else restartTimers();});
   function resetRun(){round=1;tokens=140;gems=0;MAX_HEARTS=3;hearts=3;pulsePower=40;over=false;enemies=[];shots=[];fxs=[];floats=[];spawnQ=[];coachShown=false;MOD.income=1;MOD.dmg=1;MOD.cost=1;
     Object.assign(AV,{dmg:9,range:1.6,maxHp:70,hp:70,evolved:false,down:false,downT:0,weapon:'wrench',owned:{wrench:1},powBonus:0,rangeBonus:0,fx:'melee',cdBase:.45});
     const sp=chosenSpecial;chosenSpecial=null;if(sp)applySpecial(sp); // keep the once-per-player Special
