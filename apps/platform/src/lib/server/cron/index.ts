@@ -7,7 +7,7 @@
  *
  * Cloudflare scheduled triggers:
  *
- *   *\/5 * * * *   reconcile-kv
+ *   *\/5 * * * *   reconcile-kv + cannon-ingest
  *   0 * * * *     reap-trials + rollups (both fire on the hour)
  *   0 4 * * *     retention (daily 4am UTC)
  */
@@ -20,6 +20,7 @@ import { capabilityBadges } from './capability-badges';
 import { kindRollup } from './kind-rollup';
 import { runCron } from './run';
 import { opsMaintenance } from './ops-maintenance';
+import { cannonIngest } from './cannon-ingest';
 
 export interface CronEnv {
   DB: import('@cloudflare/workers-types').D1Database;
@@ -41,6 +42,7 @@ export interface CronHandlers {
   capabilityBadges?: (env: CronEnv) => Promise<unknown>;
   kindRollup?: (env: CronEnv) => Promise<unknown>;
   opsMaintenance?: (env: CronEnv) => Promise<unknown>;
+  cannonIngest?: (env: CronEnv) => Promise<unknown>;
 }
 
 export async function handleScheduled(
@@ -57,13 +59,23 @@ export async function handleScheduled(
     capabilityBadges: handlers.capabilityBadges ?? capabilityBadges,
     kindRollup: handlers.kindRollup ?? kindRollup,
     opsMaintenance: handlers.opsMaintenance ?? opsMaintenance,
+    cannonIngest: handlers.cannonIngest ?? cannonIngest,
   };
   console.log(`[cron] firing cron='${cron}' scheduled_time=${controller.scheduledTime}`);
 
   try {
     switch (cron) {
       case '*/5 * * * *': {
-        await runCron(env, { cronString: cron, handler: 'reconcileKv', run: h.reconcileKv });
+        // KV reconcile + Cannon season ingest share the 5-minute tick.
+        const settled = await Promise.allSettled([
+          runCron(env, { cronString: cron, handler: 'reconcileKv', run: h.reconcileKv }),
+          runCron(env, { cronString: cron, handler: 'cannonIngest', run: h.cannonIngest }),
+        ]);
+        for (const r of settled) {
+          if (r.status === 'rejected') {
+            console.error('[cron] 5-minute handler rejected', r.reason);
+          }
+        }
         return;
       }
       case '0 * * * *': {

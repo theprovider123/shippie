@@ -2,12 +2,14 @@ import type { Heat, Take } from './types';
 
 /**
  * Heat is earned, not declared: derived from upvotes so fresh takes start
- * cold and climb. Thresholds reproduce the design's seed states exactly
- * (567 → warm, 1,247 → scorching, 234 → cold).
+ * cold and climb. Thresholds are sized for a real fan community (tens of
+ * voters), not the demo's fictional thousands — 10 nods is warm, 50 is
+ * scorching. The historic seed takes carry launch-era counts and read
+ * scorching, which is exactly right for the all-time bangers they are.
  */
 export function heatFor(up: number): Heat {
-  if (up >= 1000) return 'scorching';
-  if (up >= 400) return 'warm';
+  if (up >= 50) return 'scorching';
+  if (up >= 10) return 'warm';
   return 'cold';
 }
 

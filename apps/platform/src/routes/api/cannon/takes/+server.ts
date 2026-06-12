@@ -14,9 +14,11 @@ import {
   LIST_LIMIT,
   MAX_TEXT,
   THREADS,
+  containsBlockedTerm,
   cors,
   isValidAnonKey,
   isValidHandle,
+  isValidMatchId,
   publicTake,
   type TakeRow,
 } from '$lib/server/cannon';
@@ -28,20 +30,27 @@ export const GET: RequestHandler = async ({ url, platform }) => {
   if (!db) return json({ takes: [] }, { headers: cors });
 
   const thread = url.searchParams.get('thread');
+  const match = url.searchParams.get('match');
   const anonKey = url.searchParams.get('anonKey');
 
-  const stmt =
-    thread && THREADS.has(thread)
-      ? db
-          .prepare(
-            'SELECT id, handle, thread, text, up, down, created_at FROM cannon_takes WHERE thread = ?1 ORDER BY created_at DESC LIMIT ?2',
-          )
-          .bind(thread, LIST_LIMIT)
-      : db
-          .prepare(
-            'SELECT id, handle, thread, text, up, down, created_at FROM cannon_takes ORDER BY created_at DESC LIMIT ?1',
-          )
-          .bind(LIST_LIMIT);
+  // Moderated-out takes never leave the server. Filters compose: a match
+  // thread is `?match=`, the general feed is no match filter at all.
+  const where: string[] = ["status = 'visible'"];
+  const binds: unknown[] = [];
+  if (thread && THREADS.has(thread)) {
+    where.push('thread = ?');
+    binds.push(thread);
+  }
+  if (isValidMatchId(match)) {
+    where.push('match_id = ?');
+    binds.push(match);
+  }
+  binds.push(LIST_LIMIT);
+  const stmt = db
+    .prepare(
+      `SELECT id, handle, thread, text, match_id, up, down, created_at FROM cannon_takes WHERE ${where.join(' AND ')} ORDER BY created_at DESC LIMIT ?`,
+    )
+    .bind(...binds);
 
   const rows = ((await stmt.all()).results ?? []) as unknown as TakeRow[];
 
@@ -76,7 +85,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     return json({ error: 'invalid-json' }, { status: 400, headers: cors });
   }
 
-  const { handle, anonKey, thread, text } = body;
+  const { handle, anonKey, thread, text, matchId } = body as Record<string, unknown>;
   if (!isValidHandle(handle)) {
     return json({ error: 'invalid-handle' }, { status: 400, headers: cors });
   }
@@ -86,12 +95,18 @@ export const POST: RequestHandler = async ({ request, platform }) => {
   if (typeof thread !== 'string' || !THREADS.has(thread)) {
     return json({ error: 'invalid-thread' }, { status: 400, headers: cors });
   }
+  if (matchId != null && !isValidMatchId(matchId)) {
+    return json({ error: 'invalid-match' }, { status: 400, headers: cors });
+  }
   if (typeof text !== 'string' || text.trim().length === 0) {
     return json({ error: 'empty-text' }, { status: 400, headers: cors });
   }
   const trimmed = text.trim();
   if (trimmed.length > MAX_TEXT) {
     return json({ error: 'text-too-long', max: MAX_TEXT }, { status: 400, headers: cors });
+  }
+  if (containsBlockedTerm(trimmed)) {
+    return json({ error: 'blocked-language' }, { status: 400, headers: cors });
   }
 
   const now = Date.now();
@@ -104,17 +119,18 @@ export const POST: RequestHandler = async ({ request, platform }) => {
   }
 
   const id = crypto.randomUUID();
+  const match = matchId == null ? null : (matchId as string);
   await db
     .prepare(
-      'INSERT INTO cannon_takes (id, handle, anon_key, thread, text, up, down, created_at) VALUES (?1, ?2, ?3, ?4, ?5, 0, 0, ?6)',
+      "INSERT INTO cannon_takes (id, handle, anon_key, thread, text, match_id, status, report_count, up, down, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'visible', 0, 0, 0, ?7)",
     )
-    .bind(id, handle, anonKey, thread, trimmed, now)
+    .bind(id, handle, anonKey, thread, trimmed, match, now)
     .run();
 
   return json(
     {
       take: publicTake(
-        { id, handle, thread, text: trimmed, up: 0, down: 0, created_at: now },
+        { id, handle, thread, text: trimmed, match_id: match, up: 0, down: 0, created_at: now },
         null,
       ),
     },

@@ -7,10 +7,24 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./icon.svg" />
-    <title>The Cannon — Arsenal Fan OS</title>
+    <title>The Cannon — the Arsenal matchday companion</title>
     <meta
       name="description"
-      content="The Arsenal fan companion. The Oracle briefing, the Terrace, the Gauge, fixtures, and the Club. Champions of England, 2025/26."
+      content="What's happening with Arsenal right now: countdown, live score, the Terrace fan feed, the post-match Gauge, fixtures, and the squad. Works offline."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="The Cannon" />
+    <meta property="og:title" content="The Cannon — the Arsenal matchday companion" />
+    <meta
+      property="og:description"
+      content="Countdown to kick-off, live score, the Terrace fan feed, the post-match Gauge, the full season's fixtures, and the squad. Works offline."
+    />
+    <meta property="og:url" content="https://shippie.app/cannon" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="The Cannon — the Arsenal matchday companion" />
+    <meta
+      name="twitter:description"
+      content="Countdown to kick-off, live score, the Terrace fan feed, the post-match Gauge, fixtures, and the squad."
     />
     <meta name="application-name" content="The Cannon" />
     <meta name="apple-mobile-web-app-title" content="The Cannon" />
@@ -18,11 +32,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   </head>
   <body>
-    <div class="bg-wordmark" aria-hidden="true">THE CANNON</div>
-    <div class="phone-frame">
-      <div class="dynamic-island" aria-hidden="true"></div>
-      <div id="root"></div>
-    </div>
+    <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

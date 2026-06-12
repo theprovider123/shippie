@@ -11,6 +11,9 @@ export interface TakeRec {
   anon_key: string;
   thread: string;
   text: string;
+  match_id?: string | null;
+  status?: string;
+  report_count?: number;
   up: number;
   down: number;
   created_at: number;
@@ -32,24 +35,50 @@ export interface GaugeRec {
   updated_at: number;
 }
 
+export interface ReportRec {
+  take_id: string;
+  anon_key: string;
+  reason: string;
+  created_at: number;
+}
+
+export interface PredictionRec {
+  match_id: string;
+  anon_key: string;
+  pick: string;
+  created_at: number;
+}
+
 export function fakeCannonDb(seed: {
   takes?: TakeRec[];
   votes?: VoteRec[];
   gauge?: GaugeRec[];
+  reports?: ReportRec[];
+  predictions?: PredictionRec[];
 } = {}) {
   const takes: TakeRec[] = [...(seed.takes ?? [])];
   const votes: VoteRec[] = [...(seed.votes ?? [])];
   const gauge: GaugeRec[] = [...(seed.gauge ?? [])];
+  const reports: ReportRec[] = [...(seed.reports ?? [])];
+  const predictions: PredictionRec[] = [...(seed.predictions ?? [])];
+
+  const statusOf = (t: TakeRec) => t.status ?? 'visible';
 
   function all(sql: string, args: unknown[]): unknown[] {
-    if (sql.includes('FROM cannon_takes WHERE thread')) {
-      return takes
-        .filter((t) => t.thread === args[0])
-        .sort((a, b) => b.created_at - a.created_at)
-        .slice(0, args[1] as number);
-    }
-    if (sql.includes('FROM cannon_takes ORDER BY created_at')) {
-      return [...takes].sort((a, b) => b.created_at - a.created_at).slice(0, args[0] as number);
+    if (sql.includes('FROM cannon_takes WHERE')) {
+      // The takes list: WHERE status = 'visible' [AND thread = ?] [AND match_id = ?] LIMIT ?
+      let rows = takes.filter((t) => statusOf(t) === 'visible');
+      let i = 0;
+      if (sql.includes('thread = ?')) {
+        const th = args[i++];
+        rows = rows.filter((t) => t.thread === th);
+      }
+      if (sql.includes('match_id = ?')) {
+        const m = args[i++];
+        rows = rows.filter((t) => t.match_id === m);
+      }
+      const limit = args[i] as number;
+      return rows.sort((a, b) => b.created_at - a.created_at).slice(0, limit);
     }
     if (sql.includes('SELECT take_id, dir FROM cannon_votes')) {
       const ids = new Set(args.slice(1) as string[]);
@@ -66,6 +95,13 @@ export function fakeCannonDb(seed: {
       }
       return [...counts.entries()].map(([mood, n]) => ({ mood, n }));
     }
+    if (sql.includes('SELECT pick, COUNT(*)')) {
+      const counts = new Map<string, number>();
+      for (const p of predictions) {
+        if (p.match_id === args[0]) counts.set(p.pick, (counts.get(p.pick) ?? 0) + 1);
+      }
+      return [...counts.entries()].map(([pick, n]) => ({ pick, n }));
+    }
     throw new Error(`fakeCannonDb: unrecognised all() SQL: ${sql}`);
   }
 
@@ -76,9 +112,9 @@ export function fakeCannonDb(seed: {
         .sort((a, b) => b.created_at - a.created_at);
       return mine.length > 0 ? { created_at: mine[0].created_at } : null;
     }
-    if (sql.includes('SELECT id FROM cannon_takes WHERE id')) {
+    if (sql.includes('SELECT id, status FROM cannon_takes WHERE id')) {
       const t = takes.find((t) => t.id === args[0]);
-      return t ? { id: t.id } : null;
+      return t ? { id: t.id, status: statusOf(t) } : null;
     }
     if (sql.includes('SELECT up, down FROM cannon_takes WHERE id')) {
       const t = takes.find((t) => t.id === args[0]);
@@ -99,6 +135,13 @@ export function fakeCannonDb(seed: {
       const g = gauge.find((g) => g.match_id === args[0] && g.anon_key === args[1]);
       return g ? { rating: g.rating, mood: g.mood, moment: g.moment } : null;
     }
+    if (sql.includes('SELECT COUNT(*) AS n FROM cannon_reports')) {
+      return { n: reports.filter((r) => r.take_id === args[0]).length };
+    }
+    if (sql.includes('SELECT pick FROM cannon_predictions')) {
+      const p = predictions.find((p) => p.match_id === args[0] && p.anon_key === args[1]);
+      return p ? { pick: p.pick } : null;
+    }
     throw new Error(`fakeCannonDb: unrecognised first() SQL: ${sql}`);
   }
 
@@ -110,9 +153,12 @@ export function fakeCannonDb(seed: {
         anon_key: args[2] as string,
         thread: args[3] as string,
         text: args[4] as string,
+        match_id: (args[5] as string | null) ?? null,
+        status: 'visible',
+        report_count: 0,
         up: 0,
         down: 0,
-        created_at: args[5] as number,
+        created_at: args[6] as number,
       });
       return;
     }
@@ -163,6 +209,46 @@ export function fakeCannonDb(seed: {
       }
       return;
     }
+    if (sql.includes('INSERT OR IGNORE INTO cannon_reports')) {
+      const exists = reports.some((r) => r.take_id === args[0] && r.anon_key === args[1]);
+      if (!exists) {
+        reports.push({
+          take_id: args[0] as string,
+          anon_key: args[1] as string,
+          reason: args[2] as string,
+          created_at: args[3] as number,
+        });
+      }
+      return;
+    }
+    if (sql.includes('UPDATE cannon_takes SET report_count')) {
+      const t = takes.find((t) => t.id === args[0]);
+      if (t) {
+        t.report_count = args[1] as number;
+        if (sql.includes("status = 'hidden'")) t.status = 'hidden';
+      }
+      return;
+    }
+    if (sql.includes('DELETE FROM cannon_predictions')) {
+      const i = predictions.findIndex((p) => p.match_id === args[0] && p.anon_key === args[1]);
+      if (i >= 0) predictions.splice(i, 1);
+      return;
+    }
+    if (sql.includes('INSERT INTO cannon_predictions')) {
+      const existing = predictions.find((p) => p.match_id === args[0] && p.anon_key === args[1]);
+      if (existing) {
+        existing.pick = args[2] as string;
+        existing.created_at = args[3] as number;
+      } else {
+        predictions.push({
+          match_id: args[0] as string,
+          anon_key: args[1] as string,
+          pick: args[2] as string,
+          created_at: args[3] as number,
+        });
+      }
+      return;
+    }
     throw new Error(`fakeCannonDb: unrecognised run() SQL: ${sql}`);
   }
 
@@ -181,6 +267,8 @@ export function fakeCannonDb(seed: {
     takes,
     votes,
     gauge,
+    reports,
+    predictions,
     prepare(sql: string) {
       return {
         ...statement(sql, []),

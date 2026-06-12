@@ -266,6 +266,10 @@ export const LEGACY_INTENT_ALIASES = {
   'workout-completed': 'workout.session.v1',
   'workout-started': 'workout.session.v1',
   'world-cup-bracket': 'live.event.v1',
+  // The Cannon — Arsenal matchday companion.
+  'match-starting': 'live.event.v1',
+  'score-updated': 'live.event.v1',
+  'fan-reaction': 'live.event.v1',
 } as const satisfies Record<string, CanonicalIntentId>;
 
 export type LegacyIntentId = keyof typeof LEGACY_INTENT_ALIASES;

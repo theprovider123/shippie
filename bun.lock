@@ -243,8 +243,10 @@
     },
     "apps/showcase-cannon": {
       "name": "@shippie/showcase-cannon",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
+        "@shippie/iframe-sdk": "workspace:*",
+        "@shippie/sdk": "workspace:*",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
       },

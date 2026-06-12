@@ -165,6 +165,12 @@ const ALLOWED_ORPHAN_PROVIDERS = new Set<string>([
   // future match-day surfaces. No curated iframe app consumes them yet.
   'world-cup-bracket',
   'share-card',
+  // The Cannon — matchday signals (kickoff imminent, score change, terrace
+  // pulse) publish for /today + future fan surfaces; no curated in-tree
+  // iframe app consumes them yet.
+  'match-starting',
+  'score-updated',
+  'fan-reaction',
   // Corporate demo — feedback is emitted for shell/admin summaries and
   // maker reporting, not a curated iframe-to-iframe consumer.
   'event.feedback',

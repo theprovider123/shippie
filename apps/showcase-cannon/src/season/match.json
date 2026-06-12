@@ -1,0 +1,30 @@
+{
+  "phase": "idle",
+  "matchId": "cs-mci-2026-08-16",
+  "kickoffUtc": "2026-08-16T14:00:00Z",
+  "comp": "Community Shield",
+  "opponent": "Man City",
+  "opponentShort": "MCI",
+  "venue": "N",
+  "ground": "Principality Stadium, Cardiff",
+  "score": null,
+  "minute": null,
+  "events": [],
+  "lineups": null,
+  "preview": {
+    "quote": "City have rebuilt in silence. But the press has evolved into something genuinely elite — and this squad carries the mentality of champions now. We fancy this.",
+    "confidence": 74,
+    "keyBattle": "Rice vs Rodri"
+  },
+  "lastResult": {
+    "matchId": "arsenal-newcastle-2026-05",
+    "label": "Arsenal 2–1 Newcastle",
+    "opponent": "Newcastle",
+    "opponentShort": "NEW",
+    "venue": "H",
+    "comp": "Premier League",
+    "score": { "home": 2, "away": 1 },
+    "playedAt": "2026-05-24T15:00:00Z",
+    "postMatch": "Slightly nervy but ultimately convincing. Raya was immense. Two half-chances they will punish need addressing before September."
+  }
+}

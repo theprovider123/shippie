@@ -32,8 +32,8 @@ const HANDLE_KEY = 'cannon_handle';
 const ANON_KEY = 'cannon_anon';
 
 export function generateHandle(random: () => number = Math.random): string {
-  const pre = PREFIXES[Math.floor(random() * PREFIXES.length)];
-  const suf = SUFFIXES[Math.floor(random() * SUFFIXES.length)];
+  const pre = PREFIXES[Math.floor(random() * PREFIXES.length)] ?? 'NorthBank';
+  const suf = SUFFIXES[Math.floor(random() * SUFFIXES.length)] ?? 'Nelson';
   return pre + suf;
 }
 

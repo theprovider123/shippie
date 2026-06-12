@@ -2,7 +2,7 @@
   "$schema": "https://shippie.app/schemas/app.json",
   "name": "The Cannon",
   "slug": "cannon",
-  "description": "Arsenal Fan OS — the Oracle briefing, the Terrace takes feed with anonymous matchday handles, the post-match Gauge dial, fixtures with head-to-head drill-downs, and the Club archive. Champions of England, 2025/26.",
+  "description": "The Arsenal matchday companion. Live match state with a countdown that becomes a scoreline, the full 2026/27 fixture list with head-to-head history, the anonymous Terrace fan feed with match threads, the post-match Gauge, and the squad with availability and form. Works offline; updates itself when online.",
   "icon": "/icon.svg",
   "theme_color": "#EF0107",
   "background_color": "#F8F4EE",
@@ -14,9 +14,16 @@
     "shippie.app"
   ],
   "intents": {
-    "provides": [],
+    "provides": ["match-starting", "score-updated", "fan-reaction"],
     "consumes": []
   },
+  "feeds": [
+    { "id": "fixtures", "dataSchema": "cannon.fixtures.v1", "refresh": "1h", "staleAfter": "26h", "visibility": "public", "offline": true },
+    { "id": "match-live", "dataSchema": "cannon.match.v1", "refresh": "5m", "staleAfter": "6h", "visibility": "public", "offline": true },
+    { "id": "squad", "dataSchema": "cannon.squad.v1", "refresh": "24h", "staleAfter": "8d", "visibility": "public", "offline": true },
+    { "id": "news", "dataSchema": "cannon.news.v1", "refresh": "1h", "staleAfter": "26h", "visibility": "public", "offline": true },
+    { "id": "club", "dataSchema": "cannon.club.v1", "refresh": "24h", "staleAfter": "60d", "visibility": "public", "offline": true }
+  ],
   "curation": {
     "surface": "featured",
     "category": "social",
@@ -27,6 +34,6 @@
   "remix_allowed": true,
   "data_passport": {
     "family": "cannon",
-    "schema": "cannon.v1"
+    "schema": "cannon.v2"
   }
 }

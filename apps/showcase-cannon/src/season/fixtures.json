@@ -1,0 +1,98 @@
+{
+  "season": "2026/27",
+  "club": "Arsenal",
+  "clubShort": "ARS",
+  "tablePosition": null,
+  "fixtures": [
+    { "id": "cs-mci-2026-08-16", "kickoffUtc": "2026-08-16T14:00:00Z", "comp": "Community Shield", "opponent": "Man City", "opponentShort": "MCI", "venue": "N", "ground": "Principality Stadium, Cardiff", "tv": null, "status": "scheduled", "score": null, "difficulty": "hard" },
+    { "id": "pl-ful-2026-08-22", "kickoffUtc": "2026-08-22T14:00:00Z", "comp": "Premier League", "opponent": "Fulham", "opponentShort": "FUL", "venue": "H", "ground": "Emirates Stadium", "tv": null, "status": "scheduled", "score": null, "difficulty": "winnable" },
+    { "id": "pl-wol-2026-08-26", "kickoffUtc": "2026-08-26T18:45:00Z", "comp": "Premier League", "opponent": "Wolves", "opponentShort": "WOL", "venue": "A", "ground": "Molineux", "tv": null, "status": "scheduled", "score": null, "difficulty": "winnable" },
+    { "id": "pl-che-2026-08-30", "kickoffUtc": "2026-08-30T15:30:00Z", "comp": "Premier League", "opponent": "Chelsea", "opponentShort": "CHE", "venue": "H", "ground": "Emirates Stadium", "tv": null, "status": "scheduled", "score": null, "difficulty": "hard" },
+    { "id": "pl-liv-2026-09-13", "kickoffUtc": "2026-09-13T11:30:00Z", "comp": "Premier League", "opponent": "Liverpool", "opponentShort": "LIV", "venue": "A", "ground": "Anfield", "tv": null, "status": "scheduled", "score": null, "difficulty": "hard" },
+    { "id": "pl-tot-2026-09-20", "kickoffUtc": "2026-09-20T13:00:00Z", "comp": "Premier League", "opponent": "Spurs", "opponentShort": "TOT", "venue": "H", "ground": "Emirates Stadium", "tv": null, "status": "scheduled", "score": null, "difficulty": "hard" },
+    { "id": "ucl-psg-2026-09-24", "kickoffUtc": "2026-09-24T19:00:00Z", "comp": "Champions League", "opponent": "PSG", "opponentShort": "PSG", "venue": "H", "ground": "Emirates Stadium", "tv": null, "status": "scheduled", "score": null, "difficulty": "hard" },
+    { "id": "pl-lei-2026-09-27", "kickoffUtc": "2026-09-27T14:00:00Z", "comp": "Premier League", "opponent": "Leicester", "opponentShort": "LEI", "venue": "H", "ground": "Emirates Stadium", "tv": null, "status": "scheduled", "score": null, "difficulty": "winnable" },
+    { "id": "pl-mci-2026-09-30", "kickoffUtc": "2026-09-30T19:00:00Z", "comp": "Premier League", "opponent": "Man City", "opponentShort": "MCI", "venue": "A", "ground": "Etihad Stadium", "tv": null, "status": "scheduled", "score": null, "difficulty": "hard" },
+    { "id": "pl-avl-2026-10-04", "kickoffUtc": "2026-10-04T14:00:00Z", "comp": "Premier League", "opponent": "Aston Villa", "opponentShort": "AVL", "venue": "H", "ground": "Emirates Stadium", "tv": null, "status": "scheduled", "score": null, "difficulty": "mid" },
+    { "id": "ucl-atm-2026-10-07", "kickoffUtc": "2026-10-07T19:00:00Z", "comp": "Champions League", "opponent": "Atlético Madrid", "opponentShort": "ATM", "venue": "A", "ground": "Metropolitano", "tv": null, "status": "scheduled", "score": null, "difficulty": "hard" },
+    { "id": "pl-eve-2026-10-18", "kickoffUtc": "2026-10-18T14:00:00Z", "comp": "Premier League", "opponent": "Everton", "opponentShort": "EVE", "venue": "A", "ground": "Hill Dickinson Stadium", "tv": null, "status": "scheduled", "score": null, "difficulty": "winnable" },
+    { "id": "pl-bha-2026-10-25", "kickoffUtc": "2026-10-25T14:00:00Z", "comp": "Premier League", "opponent": "Brighton", "opponentShort": "BHA", "venue": "H", "ground": "Emirates Stadium", "tv": null, "status": "scheduled", "score": null, "difficulty": "mid" },
+    { "id": "pl-mun-2026-11-01", "kickoffUtc": "2026-11-01T16:30:00Z", "comp": "Premier League", "opponent": "Man United", "opponentShort": "MUN", "venue": "H", "ground": "Emirates Stadium", "tv": null, "status": "scheduled", "score": null, "difficulty": "mid" },
+    { "id": "pl-new-2026-11-08", "kickoffUtc": "2026-11-08T14:00:00Z", "comp": "Premier League", "opponent": "Newcastle", "opponentShort": "NEW", "venue": "A", "ground": "St James' Park", "tv": null, "status": "scheduled", "score": null, "difficulty": "hard" },
+    { "id": "pl-bre-2026-11-22", "kickoffUtc": "2026-11-22T15:00:00Z", "comp": "Premier League", "opponent": "Brentford", "opponentShort": "BRE", "venue": "H", "ground": "Emirates Stadium", "tv": null, "status": "scheduled", "score": null, "difficulty": "winnable" },
+    { "id": "pl-cry-2026-11-29", "kickoffUtc": "2026-11-29T15:00:00Z", "comp": "Premier League", "opponent": "Crystal Palace", "opponentShort": "CRY", "venue": "A", "ground": "Selhurst Park", "tv": null, "status": "scheduled", "score": null, "difficulty": "mid" },
+    { "id": "pl-nfo-2026-12-06", "kickoffUtc": "2026-12-06T15:00:00Z", "comp": "Premier League", "opponent": "Nottm Forest", "opponentShort": "NFO", "venue": "H", "ground": "Emirates Stadium", "tv": null, "status": "scheduled", "score": null, "difficulty": "winnable" },
+    { "id": "pl-whu-2026-12-13", "kickoffUtc": "2026-12-13T15:00:00Z", "comp": "Premier League", "opponent": "West Ham", "opponentShort": "WHU", "venue": "A", "ground": "London Stadium", "tv": null, "status": "scheduled", "score": null, "difficulty": "mid" },
+    { "id": "pl-liv-2026-12-21", "kickoffUtc": "2026-12-21T16:30:00Z", "comp": "Premier League", "opponent": "Liverpool", "opponentShort": "LIV", "venue": "H", "ground": "Emirates Stadium", "tv": null, "status": "scheduled", "score": null, "difficulty": "hard" },
+    { "id": "pl-bou-2026-12-26", "kickoffUtc": "2026-12-26T15:00:00Z", "comp": "Premier League", "opponent": "Bournemouth", "opponentShort": "BOU", "venue": "A", "ground": "Vitality Stadium", "tv": null, "status": "scheduled", "score": null, "difficulty": "mid" },
+    { "id": "pl-mci-2026-12-29", "kickoffUtc": "2026-12-29T20:00:00Z", "comp": "Premier League", "opponent": "Man City", "opponentShort": "MCI", "venue": "H", "ground": "Emirates Stadium", "tv": null, "status": "scheduled", "score": null, "difficulty": "hard" }
+  ],
+  "h2h": {
+    "Man City": {
+      "record": { "w": 4, "d": 3, "l": 2 },
+      "recent": [
+        { "date": "Apr 2026", "home": false, "score": "2–0", "r": "W" },
+        { "date": "Feb 2026", "home": true, "score": "1–1", "r": "D" },
+        { "date": "Oct 2025", "home": false, "score": "1–2", "r": "L" },
+        { "date": "Mar 2025", "home": true, "score": "5–1", "r": "W" },
+        { "date": "Sep 2024", "home": false, "score": "2–2", "r": "D" }
+      ],
+      "insight": "The away win in April broke the Etihad hoodoo — first league win there in over a decade. The press triggers that worked then (forcing their keeper long, doubling the left half-space) are repeatable."
+    },
+    "Liverpool": {
+      "record": { "w": 3, "d": 4, "l": 2 },
+      "recent": [
+        { "date": "Mar 2026", "home": true, "score": "2–1", "r": "W" },
+        { "date": "Nov 2025", "home": false, "score": "1–1", "r": "D" },
+        { "date": "Apr 2025", "home": true, "score": "2–2", "r": "D" },
+        { "date": "Dec 2024", "home": false, "score": "0–2", "r": "L" },
+        { "date": "Feb 2024", "home": true, "score": "3–1", "r": "W" }
+      ],
+      "insight": "Anfield remains the hardest fixture on the calendar, but last season's home win came from controlling transitions — keeping Rice deeper than usual and refusing to chase the game."
+    },
+    "Spurs": {
+      "record": { "w": 6, "d": 2, "l": 1 },
+      "recent": [
+        { "date": "Apr 2026", "home": true, "score": "4–1", "r": "W" },
+        { "date": "Jan 2026", "home": false, "score": "2–1", "r": "W" },
+        { "date": "Sep 2025", "home": true, "score": "1–0", "r": "W" },
+        { "date": "Apr 2025", "home": false, "score": "1–1", "r": "D" },
+        { "date": "Sep 2024", "home": true, "score": "3–2", "r": "W" }
+      ],
+      "insight": "Four derby wins on the spin. Their high line keeps gifting space in behind — every one of the last four wins featured a goal from a runner beyond the last defender."
+    },
+    "Chelsea": {
+      "record": { "w": 5, "d": 3, "l": 1 },
+      "recent": [
+        { "date": "Mar 2026", "home": true, "score": "1–1", "r": "D" },
+        { "date": "Nov 2025", "home": false, "score": "3–1", "r": "W" },
+        { "date": "Mar 2025", "home": true, "score": "2–0", "r": "W" },
+        { "date": "Nov 2024", "home": false, "score": "1–1", "r": "D" },
+        { "date": "Apr 2024", "home": true, "score": "5–0", "r": "W" }
+      ],
+      "insight": "Unbeaten in nine against them. They rebuild every summer; the pattern that endures is their fullbacks stepping into midfield — the 3–1 at the Bridge came entirely from attacking the space they leave."
+    },
+    "Newcastle": {
+      "record": { "w": 4, "d": 2, "l": 3 },
+      "recent": [
+        { "date": "May 2026", "home": true, "score": "2–1", "r": "W" },
+        { "date": "Jan 2026", "home": false, "score": "0–1", "r": "L" },
+        { "date": "Aug 2025", "home": true, "score": "1–0", "r": "W" },
+        { "date": "Feb 2025", "home": false, "score": "0–2", "r": "L" },
+        { "date": "Nov 2024", "home": true, "score": "1–0", "r": "W" }
+      ],
+      "insight": "St James' under the lights is a genuine fortress problem — both recent away defeats came from conceding inside the opening fifteen minutes. Survive the start and the game opens up."
+    },
+    "Man United": {
+      "record": { "w": 5, "d": 3, "l": 1 },
+      "recent": [
+        { "date": "Feb 2026", "home": false, "score": "2–0", "r": "W" },
+        { "date": "Oct 2025", "home": true, "score": "3–1", "r": "W" },
+        { "date": "Mar 2025", "home": false, "score": "1–1", "r": "D" },
+        { "date": "Dec 2024", "home": true, "score": "2–0", "r": "W" },
+        { "date": "May 2024", "home": false, "score": "1–0", "r": "W" }
+      ],
+      "insight": "Four wins in the last five. Whatever shape they arrive in, the gap in midfield control has decided every recent meeting by the hour mark."
+    }
+  }
+}

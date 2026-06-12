@@ -32,10 +32,29 @@ export const CANNON_SUFFIXES = [
 
 export const THREADS = new Set(['MATCH', 'ANALYSIS', 'HISTORY']);
 export const MOODS = new Set(['buzzing', 'relieved', 'anxious', 'frustrated']);
+export const PICKS = new Set(['W', 'D', 'L']);
+export const REPORT_REASONS = new Set(['abuse', 'spam', 'off-topic', 'other']);
 
 export const MAX_TEXT = 280;
 export const LIST_LIMIT = 50;
 export const COMPOSE_COOLDOWN_MS = 30_000;
+/** Distinct anonymous reporters needed before a take auto-hides pending review. */
+export const REPORT_HIDE_THRESHOLD = 3;
+
+/**
+ * Server-side language gate for an anonymous public feed. Deliberately short:
+ * slurs and direct-harm phrases only — banter and swearing-at-the-ref
+ * territory stays a community matter (downvotes dim, reports hide).
+ */
+const BLOCKED_TERMS = [
+  'nigger', 'nigga', 'faggot', 'tranny', 'paki', 'spastic', 'retard',
+  'kill yourself', 'kys', 'rape',
+];
+const BLOCKED_RE = new RegExp(`(?:^|[^a-z])(?:${BLOCKED_TERMS.join('|')})(?:[^a-z]|$)`, 'i');
+
+export function containsBlockedTerm(text: string): boolean {
+  return BLOCKED_RE.test(text);
+}
 
 export const cors = {
   'access-control-allow-origin': '*',
@@ -67,6 +86,7 @@ export interface TakeRow {
   handle: string;
   thread: string;
   text: string;
+  match_id?: string | null;
   up: number;
   down: number;
   created_at: number;
@@ -78,6 +98,7 @@ export function publicTake(row: TakeRow, myVote: 'up' | 'down' | null = null) {
     handle: row.handle,
     thread: row.thread,
     text: row.text,
+    matchId: row.match_id ?? null,
     up: row.up,
     down: row.down,
     createdAt: row.created_at,
