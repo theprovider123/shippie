@@ -267,6 +267,18 @@ export const ARCADE_GAMES: readonly ArcadeGame[] = [
     controls: 'Tap',
     description: 'Play the computer or a local opponent, with board flip and PGN export.',
   },
+  {
+    id: 'docklands',
+    name: 'Docklands',
+    shortName: 'Docklands',
+    initials: 'DL',
+    lane: 'strategy',
+    accent: '#7FD4D0',
+    loop: 'Tide rounds',
+    tempo: '15 min',
+    controls: 'Tap / WASD',
+    description: 'Isometric tower-defense survival. Build a dock maze, hold the Beacon, chase your best round.',
+  },
 ] as const;
 
 export const DEFAULT_GAME_ID = 'snake';

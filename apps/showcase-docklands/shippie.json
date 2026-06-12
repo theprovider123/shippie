@@ -8,7 +8,7 @@
   "icon": "/icon.svg",
   "theme_color": "#0B2228",
   "background_color": "#06181C",
-  "visibility": "private",
+  "visibility": "public",
   "display_mode": "standalone",
   "orientation": "portrait",
   "lifecycle": "manual",
@@ -30,9 +30,9 @@
     "consumes": []
   },
   "curation": {
-    "surface": "archived",
+    "surface": "arcade",
     "category": "games",
-    "tier": "private-flagship",
+    "tier": "arcade",
     "subcategory": "strategy"
   },
   "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-docklands",

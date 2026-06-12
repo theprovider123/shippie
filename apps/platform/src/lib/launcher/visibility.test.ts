@@ -59,13 +59,13 @@ describe('launcher visibility helpers', () => {
     expect(withOverride.has('lift')).toBe(false);
   });
 
-  it('shows a baked-private/archived app when the D1 override publishes it (docklands)', () => {
+  it('shows a baked-private/archived app when the D1 override publishes it', () => {
     const withoutOverride = buildLauncherVisibleSlugSet(mergeCatalog(curatedApps, []), 'prelaunch');
-    expect(withoutOverride.has('docklands')).toBe(false);
+    expect(withoutOverride.has('corporate-demo')).toBe(false);
 
-    const overrides = new Map([['docklands', { visibility: 'public', surface: 'featured' as const }]]);
+    const overrides = new Map([['corporate-demo', { visibility: 'public', surface: 'featured' as const }]]);
     const withOverride = buildLauncherVisibleSlugSet(mergeCatalog(curatedApps, [], overrides), 'prelaunch');
-    expect(withOverride.has('docklands')).toBe(true);
+    expect(withOverride.has('corporate-demo')).toBe(true);
   });
 
   it('applies overrides to DB rows as well as curated entries', () => {
