@@ -62,6 +62,23 @@ function recoveryResponse() {
   });
 }
 
+// Slow-network budgets for network-first HTML. With the capsule holding a
+// copy of the document the network only gets a short head start before we
+// serve the saved copy; with nothing cached we wait longer before the
+// recovery page.
+const DOC_TIMEOUT_WITH_FALLBACK_MS = 3500;
+const DOC_TIMEOUT_WITHOUT_FALLBACK_MS = 8000;
+
+async function fetchWithTimeout(req, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(req, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function expectedResponse(req, res) {
   if (!res || !res.ok) return false;
   const url = new URL(req.url);
@@ -182,17 +199,21 @@ self.addEventListener('fetch', (event) => {
       if (repair) {
         await cacheManifestAssets();
       }
+      // Network-first with a slow-network budget: when the capsule already
+      // holds this document the network only gets ~3.5s before we serve the
+      // saved copy; with no fallback we wait longer before the recovery page.
+      const cache = active && active.cache;
+      const cached =
+        (cache && ((await cache.match(req)) ||
+        (await cache.match('/')) ||
+        (await cache.match('/index.html')))) || null;
+      const budgetMs = cached ? DOC_TIMEOUT_WITH_FALLBACK_MS : DOC_TIMEOUT_WITHOUT_FALLBACK_MS;
       try {
         const networkReq = repair ? new Request(req, { cache: 'reload' }) : req;
-        const res = await fetch(networkReq);
+        const res = await fetchWithTimeout(networkReq, budgetMs);
         if (expectedResponse(req, res) && active) active.cache.put(req, res.clone()).catch(() => {});
         return res;
       } catch {
-        const cache = active && active.cache;
-        const cached =
-          (cache && ((await cache.match(req)) ||
-          (await cache.match('/')) ||
-          (await cache.match('/index.html'))));
         return cached || recoveryResponse();
       }
     })());

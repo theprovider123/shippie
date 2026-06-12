@@ -105,7 +105,24 @@ function iconUrlFromManifest(manifest) {
   return typeof icon === 'string' ? icon : icon && icon.url;
 }
 
-async function offlineHomeApps() {
+// Offline saved-tool links should open the dock shell focused route
+// (/dock?app=<slug>&focused=1) so the in-tool switcher pull-tab exists,
+// but only when the shell document is actually cached — otherwise the
+// link would dead-end and the direct capsule launch is the better deal.
+function dockFocusedHref(slug) {
+  return '/dock?app=' + encodeURIComponent(slug) + '&focused=1';
+}
+
+async function dockShellAvailable(shellCache, slug) {
+  if (!shellCache) return false;
+  const keys = [absoluteUrl(dockFocusedHref(slug)), absoluteUrl('/dock')];
+  for (const key of keys) {
+    if (await shellCache.match(key)) return true;
+  }
+  return false;
+}
+
+async function offlineHomeApps(shellCache) {
   const pointers = await ShippieOfflineCapsule.listPointers().catch(() => []);
   const apps = [];
   for (const pointer of pointers) {
@@ -159,6 +176,7 @@ async function offlineHomeApps() {
       iconUrl: iconUrlFromManifest(manifest),
       totalBytes: pointer.totalBytes || manifest.totalBytes || 0,
       sealedAt: pointer.sealedAt || pointer.updatedAt || '',
+      shellHref: (await dockShellAvailable(shellCache, pointer.slug)) ? dockFocusedHref(pointer.slug) : null,
     });
   }
   return apps.sort((a, b) => {
@@ -174,7 +192,7 @@ function offlineHomeHtml(apps) {
   const count = readyCount === 1 ? '1 saved tool is' : readyCount + ' saved tools are';
   const appMarkup = hasApps
     ? '<section class="apps" aria-label="Saved tools">' + apps.map((app) => {
-        const href = '/run/' + encodeURIComponent(app.slug) + '/';
+        const href = app.shellHref || ('/run/' + encodeURIComponent(app.slug) + '/');
         const bytes = formatBytes(app.totalBytes);
         const detail = app.ready ? (bytes || 'Ready offline') : (bytes ? app.status + ' · ' + bytes : app.status);
         const icon = app.iconUrl
@@ -196,7 +214,8 @@ function offlineHomeHtml(apps) {
 }
 
 async function offlineResponse() {
-  const apps = await offlineHomeApps();
+  const shellCache = await caches.open(CACHE).catch(() => null);
+  const apps = await offlineHomeApps(shellCache);
   return new Response(offlineHomeHtml(apps), {
     // A PWA navigation should never become the generic SvelteKit 500/503
     // error surface just because the device is briefly offline. This is a
@@ -238,6 +257,43 @@ function expectedDocumentResponse(res) {
 
 function browserReportsOffline() {
   return self.navigator && self.navigator.onLine === false;
+}
+
+// Slow-network budgets for network-first shell documents. With a saved
+// copy in cache the network only gets a short head start before we serve
+// the stale document; with nothing cached we wait much longer before
+// surrendering to the offline surface.
+const DOC_TIMEOUT_WITH_FALLBACK_MS = 3500;
+const DOC_TIMEOUT_WITHOUT_FALLBACK_MS = 12000;
+
+async function fetchWithTimeout(req, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(req, { signal: controller.signal });
+  } catch (err) {
+    if (controller.signal.aborted) {
+      const timedOut = new Error('document fetch exceeded ' + timeoutMs + 'ms');
+      timedOut.name = 'ShippieSlowNetworkTimeout';
+      throw timedOut;
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Tell every window that we just served a stale document because the
+// network blew its budget — the shell flips its slow-network state and
+// toasts once. Same broadcast shape as OFFLINE_CAPSULE_INCOMPLETE.
+async function notifySlowNetworkFallback(resource) {
+  try {
+    if (!self.clients || !self.clients.matchAll) return;
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of wins) client.postMessage({ type: 'SLOW_NETWORK_FALLBACK', resource });
+  } catch {
+    /* advisory only */
+  }
 }
 
 function absoluteUrl(path) {
@@ -1262,13 +1318,32 @@ self.addEventListener('fetch', (e) => {
   if (isDoc) {
     e.respondWith((async () => {
       const cache = await caches.open(CACHE);
-      if (browserReportsOffline()) return offlineResponse();
+      if (browserReportsOffline()) {
+        // Offline-home saved-tool links open /dock?app=<slug>&focused=1 so
+        // the in-tool switcher exists. Serve the cached dock shell for those
+        // instead of bouncing back to the offline home. The query string is
+        // handled by shellKeysForRequest (exact match first, then /dock).
+        if (url.pathname === '/dock' && url.searchParams.get('app')) {
+          const cachedDock = await cachedShellDocument(cache, req);
+          if (cachedDock) return cachedDock;
+        }
+        return offlineResponse();
+      }
+      // Network-first with a slow-network budget: a saved copy in cache
+      // means the network only gets ~3.5s before we serve the stale doc;
+      // no copy means we wait longer before the offline surface.
+      const cachedDoc = await cachedShellDocument(cache, req);
+      const budgetMs = cachedDoc ? DOC_TIMEOUT_WITH_FALLBACK_MS : DOC_TIMEOUT_WITHOUT_FALLBACK_MS;
       try {
-        const res = await fetch(req);
+        const res = await fetchWithTimeout(req, budgetMs);
         if (expectedDocumentResponse(res)) cacheShellDocument(cache, req, res.clone()).catch(() => {});
         return res;
-      } catch {
-        return (await cachedShellDocument(cache, req)) || offlineResponse();
+      } catch (err) {
+        if (cachedDoc) {
+          if (err && err.name === 'ShippieSlowNetworkTimeout') notifySlowNetworkFallback(url.pathname);
+          return cachedDoc;
+        }
+        return offlineResponse();
       }
     })());
   }

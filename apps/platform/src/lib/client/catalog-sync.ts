@@ -13,6 +13,9 @@ export function startCatalogSync(options: {
   if (typeof window === 'undefined') return () => {};
 
   const intervalMs = options.intervalMs ?? 25_000;
+  // Background poll only — on a slow link it must never pile up behind
+  // user-facing requests, so give it a short hard budget and bail.
+  const pollTimeoutMs = 3_000;
   let stopped = false;
   let lastVersion: string | null = null;
   let inFlight = false;
@@ -20,12 +23,17 @@ export function startCatalogSync(options: {
 
   async function check() {
     if (stopped || inFlight) return;
+    // Skip entirely while hidden or offline — the visibilitychange and
+    // `online` listeners below re-run the check when conditions change.
     if (document.hidden || navigator.onLine === false) return;
     inFlight = true;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), pollTimeoutMs);
     try {
       const response = await fetch('/api/apps/catalog-state', {
         cache: 'no-store',
         headers: { accept: 'application/json' },
+        signal: controller.signal,
       });
       if (!response.ok) return;
       const state = (await response.json()) as Partial<CatalogSyncState>;
@@ -39,9 +47,11 @@ export function startCatalogSync(options: {
       await invalidate('app:apps');
       options.onUpdate?.(state as CatalogSyncState);
     } catch {
-      // Network changes are expected while installed. The next interval
-      // or `online` event will reconcile the catalogue.
+      // Network changes (and the abort timeout above) are expected while
+      // installed. The next interval or `online` event will reconcile
+      // the catalogue.
     } finally {
+      window.clearTimeout(timeout);
       inFlight = false;
     }
   }

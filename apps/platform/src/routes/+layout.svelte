@@ -9,7 +9,7 @@
   import Footer from '$lib/components/layout/Footer.svelte';
   import Toast from '$lib/components/ui/Toast.svelte';
   import { installOfflineRepairLoop } from '$lib/stores/cached-slugs';
-  import { isOnline } from '$lib/stores/network-status';
+  import { installSlowNetworkListener, isOnline, isSlowNetwork } from '$lib/stores/network-status';
   import { toast } from '$lib/stores/toast';
   import { matchesStandalone } from '$lib/util/standalone';
   import { track } from '$lib/util/track';
@@ -143,6 +143,21 @@
     );
   });
 
+  // Slow-network toast. The store stays true for the whole episode (saveData/
+  // 2g, or 30s after the SW served a saved copy), so gate on the rising edge
+  // — one toast per episode, and only while online (offline has its own).
+  let slowToastShown = false;
+  $effect(() => {
+    const slow = $isSlowNetwork;
+    if (!slow) {
+      slowToastShown = false;
+      return;
+    }
+    if (slowToastShown || !$isOnline) return;
+    slowToastShown = true;
+    toast.push({ kind: 'info', message: 'Slow connection — showing saved copies where possible.' });
+  });
+
   $effect(() => {
     const mobileDockChrome = showBottomDock($page.url);
     const mobileAppChrome = hideNavOnMobile($page.url);
@@ -192,6 +207,7 @@
 
     document.body.dataset.appReady = 'true';
     installOfflineRepairLoop();
+    installSlowNetworkListener();
 
     // Per-session telemetry. Gated by sessionStorage so each event
     // fires once per tab/PWA session.
