@@ -7,6 +7,15 @@ export default defineConfig({
   worker: {
     format: 'es',
   },
+  build: {
+    rollupOptions: {
+      // Leave the resvg wasm import intact in the server bundle — wrangler's
+      // CompiledWasm rule turns it into a WebAssembly.Module at deploy
+      // bundling. Workers can't compile wasm from bytes at runtime, so this
+      // import path is the only production route (see lib/server/og/).
+      external: (id) => id.endsWith('index_bg.wasm'),
+    },
+  },
   server: {
     port: 4101 // distinct from apps/web (4100) so both can run side-by-side during canary
   },
