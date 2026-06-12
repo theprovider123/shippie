@@ -232,7 +232,7 @@ function ScanRow({ onScanned }: { onScanned: (barcode: string, roaster?: string)
         onClick={scanning ? stop : start}
         style={{
           width: '100%',
-          height: 40,
+          height: 44,
           borderRadius: 8,
           background: C.creamDark,
           border: `1px solid ${C.tanLight}`,

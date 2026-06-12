@@ -32,6 +32,7 @@ import { OriginNode } from './screens/OriginNode.tsx';
 import { VarietyNode, ProcessNode, RoasterNode } from './screens/WorldNode.tsx';
 import { NodeList } from './screens/NodeList.tsx';
 import { BagDetail } from './screens/BagDetail.tsx';
+import { CoffeeSplash } from './components/CoffeeSplash.tsx';
 import { SwitchBagSheet } from './components/SwitchBagSheet.tsx';
 import { AddBagSheet } from './components/AddBagSheet.tsx';
 import { CupScoreSheet, draftToScore, type CupScoreDraft } from './components/CupScoreSheet.tsx';
@@ -336,7 +337,12 @@ export function App() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: C.cream }}>
-      <div style={{ flex: 1, overflowY: 'auto', paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+      {/* Fixed decorative layer (z-index 0, pointer-events none); the scroll
+          column and nav sit above it on z-index 1. Screens paint C.cream
+          backgrounds of their own, so the texture shows through the body
+          background at the edges and behind transparent regions. */}
+      <CoffeeSplash />
+      <div style={{ flex: 1, overflowY: 'auto', paddingTop: 'env(safe-area-inset-top, 0px)', position: 'relative', zIndex: 1 }}>
         <div key={screenKey} className={rise ? 'slide-up' : 'screen-enter'}>
           {content}
         </div>
@@ -356,7 +362,7 @@ export function App() {
 
 function EmptyBrew({ onAdd }: { onAdd: () => void }) {
   return (
-    <div style={{ padding: '60px 24px', textAlign: 'center', background: C.cream, minHeight: '100%' }}>
+    <div style={{ padding: '60px 24px', textAlign: 'center', minHeight: '100%' }}>
       <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, fontStyle: 'italic', color: C.espressoMid, marginBottom: 10 }}>Nothing brewing</div>
       <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: C.espressoLight, marginBottom: 20, lineHeight: 1.6 }}>
         Add a bag to your shelf and lot. will keep its freshness, recipe, and palate.

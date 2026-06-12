@@ -11,8 +11,9 @@ export const inputStyle: CSSProperties = {
   borderRadius: 8,
   color: C.espresso,
   fontFamily: F.sans,
-  fontSize: 14,
+  fontSize: 16, // >= 16px so iOS Safari doesn't zoom on focus
   padding: '10px 12px',
+  minHeight: 44,
   outline: 'none',
 };
 
@@ -54,6 +55,8 @@ export const ghostBtnStyle: CSSProperties = {
   fontSize: 12,
   color: C.espressoLight,
   cursor: 'pointer',
+  minHeight: 44, // comfortable thumb target
+  padding: '0 12px',
 };
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -84,8 +87,8 @@ export function Chip({
         color: active ? C.cream : C.espressoMid,
         background: active ? C.terracotta : C.creamDark,
         border: `1px solid ${active ? C.terracotta : C.tanLight}`,
-        borderRadius: 20,
-        padding: '5px 13px',
+        borderRadius: 22,
+        padding: '11px 16px', // >= 44px tap target
         cursor: 'pointer',
       }}
     >

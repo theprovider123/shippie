@@ -33,9 +33,9 @@ export interface NodeListProps {
 export function NodeList({ label, onBack, onOpen }: NodeListProps) {
   const rows = rowsFor(label);
   return (
-    <div style={{ background: C.cream, minHeight: '100%', padding: '10px 20px 32px' }}>
+    <div style={{ minHeight: '100%', padding: '10px 20px 32px' }}>
       <div style={{ marginBottom: 12 }}>
-        <button type="button" onClick={onBack} style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: 5, fontFamily: F.sans, fontSize: 13, color: C.terracotta, cursor: 'pointer' }}>
+        <button type="button" className="tap-target" onClick={onBack} style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: 5, fontFamily: F.sans, fontSize: 13, color: C.terracotta, cursor: 'pointer' }}>
           <ChevronLeft />
           World
         </button>

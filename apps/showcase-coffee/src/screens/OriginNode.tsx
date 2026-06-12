@@ -31,15 +31,17 @@ export interface OriginNodeProps {
 export function OriginNode({ origin, palateLabels, onBack, onOpenVariety, onOpenRoaster }: OriginNodeProps) {
   const flavour = flavourFor(origin.slug);
   return (
-    <div style={{ background: C.cream, minHeight: '100%' }}>
+    <div style={{ minHeight: '100%' }}>
       <div style={{ padding: '10px 20px 8px', display: 'flex', alignItems: 'center' }}>
-        <button type="button" onClick={onBack} style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: 5, fontFamily: F.sans, fontSize: 13, color: C.terracotta, cursor: 'pointer' }}>
+        <button type="button" className="tap-target" onClick={onBack} style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: 5, fontFamily: F.sans, fontSize: 13, color: C.terracotta, cursor: 'pointer' }}>
           <ChevronLeft />
           World
         </button>
       </div>
 
-      <div style={{ marginInline: -20 }}>
+      {/* Full-bleed map: fixed height, fluid width (the old fixed 390px width
+          overflowed 360px phones horizontally). */}
+      <div style={{ height: 130 }}>
         <TopoMap width={390} height={130} />
       </div>
 
@@ -129,7 +131,7 @@ const chipStyle = {
   color: C.espresso,
   background: C.creamDark,
   border: `1px solid ${C.tanLight}`,
-  borderRadius: 20,
-  padding: '6px 14px',
+  borderRadius: 22,
+  padding: '11px 16px', // >= 44px tap target
   cursor: 'pointer',
 } as const;

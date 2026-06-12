@@ -18,7 +18,7 @@ function SectionLabel({ children, action, onAction }: { children: string; action
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
       <span style={{ fontFamily: F.sans, fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.espressoLight }}>{children}</span>
       {action && (
-        <button type="button" onClick={onAction} style={{ background: 'none', border: 'none', fontFamily: F.sans, fontSize: 12, color: C.terracotta, cursor: 'pointer' }}>
+        <button type="button" className="tap-target" onClick={onAction} style={{ background: 'none', border: 'none', fontFamily: F.sans, fontSize: 12, color: C.terracotta, cursor: 'pointer' }}>
           {action}
         </button>
       )}
@@ -47,7 +47,7 @@ export function WorldScreen({ featured, cellarLinks, onOpenOrigin, onOpenNodeLis
   const featuredFlavour = flavourFor(featured.slug);
 
   return (
-    <div style={{ padding: '10px 20px 28px', background: C.cream, minHeight: '100%' }}>
+    <div style={{ padding: '10px 20px 28px', minHeight: '100%' }}>
       <div style={{ fontFamily: F.mono, fontSize: 12, color: C.tan, letterSpacing: '0.16em', marginBottom: 16 }}>lot.</div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 9, background: C.creamDark, border: `1px solid ${C.tanLight}`, borderRadius: 22, padding: '10px 16px', marginBottom: 12 }}>
@@ -57,10 +57,10 @@ export function WorldScreen({ featured, cellarLinks, onOpenOrigin, onOpenNodeLis
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Ethiopia, Yirgacheffe, Square Mile…"
           aria-label="Search the coffee world"
-          style={{ flex: 1, background: 'none', border: 'none', outline: 'none', fontFamily: F.sans, fontSize: 13, color: C.espresso }}
+          style={{ flex: 1, background: 'none', border: 'none', outline: 'none', fontFamily: F.sans, fontSize: 16, color: C.espresso, minWidth: 0 }}
         />
         {query && (
-          <button type="button" onClick={() => setQuery('')} aria-label="Clear search" style={{ background: 'none', border: 'none', color: C.espressoLight, fontFamily: F.sans, fontSize: 16, cursor: 'pointer', lineHeight: 1 }}>
+          <button type="button" className="tap-target" onClick={() => setQuery('')} aria-label="Clear search" style={{ background: 'none', border: 'none', color: C.espressoLight, fontFamily: F.sans, fontSize: 16, cursor: 'pointer', lineHeight: 1 }}>
             ×
           </button>
         )}
@@ -160,7 +160,7 @@ export function WorldScreen({ featured, cellarLinks, onOpenOrigin, onOpenNodeLis
                   key={`${link.bag}-${link.slug}`}
                   type="button"
                   onClick={() => onOpenHit(link.type, link.slug)}
-                  style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: 'none', border: 'none', borderTop: i > 0 ? `1px solid ${C.tanLight}` : 'none', cursor: 'pointer' }}
+                  style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', minHeight: 44, background: 'none', border: 'none', borderTop: i > 0 ? `1px solid ${C.tanLight}` : 'none', cursor: 'pointer' }}
                 >
                   <span style={{ fontFamily: F.sans, fontSize: 12, color: C.espressoMid, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 12 }}>{link.bag}</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>

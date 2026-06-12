@@ -9,7 +9,7 @@ import { originBySlug, type WorldProcess, type WorldRoaster, type WorldVariety }
 function NodeHeader({ onBack }: { onBack: () => void }) {
   return (
     <div style={{ padding: '10px 20px 8px', display: 'flex', alignItems: 'center' }}>
-      <button type="button" onClick={onBack} style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: 5, fontFamily: F.sans, fontSize: 13, color: C.terracotta, cursor: 'pointer' }}>
+      <button type="button" className="tap-target" onClick={onBack} style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: 5, fontFamily: F.sans, fontSize: 13, color: C.terracotta, cursor: 'pointer' }}>
         <ChevronLeft />
         World
       </button>
@@ -49,7 +49,7 @@ const PALATE_LABELS = ['Brightness', 'Body', 'Sweetness', 'Complexity', 'Clean']
 export function VarietyNode({ variety, onBack, onOpenOrigin }: { variety: WorldVariety; onBack: () => void; onOpenOrigin: (slug: string) => void }) {
   const home = originBySlug(variety.originSlug);
   return (
-    <div style={{ background: C.cream, minHeight: '100%' }}>
+    <div style={{ minHeight: '100%' }}>
       <NodeHeader onBack={onBack} />
       <div style={{ padding: '8px 20px 32px' }}>
         <h2 style={h2Style}>{variety.name}</h2>
@@ -79,7 +79,7 @@ export function VarietyNode({ variety, onBack, onOpenOrigin }: { variety: WorldV
 
 export function ProcessNode({ process, onBack }: { process: WorldProcess; onBack: () => void }) {
   return (
-    <div style={{ background: C.cream, minHeight: '100%' }}>
+    <div style={{ minHeight: '100%' }}>
       <NodeHeader onBack={onBack} />
       <div style={{ padding: '8px 20px 32px' }}>
         <h2 style={h2Style}>{process.name}</h2>
@@ -102,7 +102,7 @@ export function ProcessNode({ process, onBack }: { process: WorldProcess; onBack
 
 export function RoasterNode({ roaster, onBack }: { roaster: WorldRoaster; onBack: () => void }) {
   return (
-    <div style={{ background: C.cream, minHeight: '100%' }}>
+    <div style={{ minHeight: '100%' }}>
       <NodeHeader onBack={onBack} />
       <div style={{ padding: '8px 20px 32px' }}>
         <h2 style={h2Style}>{roaster.name}</h2>
@@ -141,7 +141,7 @@ const chip = {
   color: C.espresso,
   background: C.creamDark,
   border: `1px solid ${C.tanLight}`,
-  borderRadius: 20,
-  padding: '6px 14px',
+  borderRadius: 22,
+  padding: '11px 16px', // >= 44px tap target
   cursor: 'pointer',
 } as const;

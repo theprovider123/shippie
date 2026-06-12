@@ -29,6 +29,8 @@ export function NavBar({ active, onNav }: NavBarProps) {
         paddingTop: 6,
         paddingBottom: `calc(10px + env(safe-area-inset-bottom, 0px))`,
         flexShrink: 0,
+        position: 'relative',
+        zIndex: 1,
       }}
     >
       {TABS.map((t) => {

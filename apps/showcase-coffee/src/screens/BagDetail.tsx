@@ -34,9 +34,9 @@ export function BagDetail({ bag, recipes, brews, scores, onBack, onBrewThis, onL
   const node = bag.worldNodeSlug ? originBySlug(bag.worldNodeSlug) : undefined;
 
   return (
-    <div style={{ background: C.cream, minHeight: '100%', padding: '10px 20px 32px' }}>
+    <div style={{ minHeight: '100%', padding: '10px 20px 32px' }}>
       <div style={{ marginBottom: 12 }}>
-        <button type="button" onClick={onBack} style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: 5, fontFamily: F.sans, fontSize: 13, color: C.terracotta, cursor: 'pointer' }}>
+        <button type="button" className="tap-target" onClick={onBack} style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: 5, fontFamily: F.sans, fontSize: 13, color: C.terracotta, cursor: 'pointer' }}>
           <ChevronLeft />
           Cellar
         </button>
@@ -63,11 +63,11 @@ export function BagDetail({ bag, recipes, brews, scores, onBack, onBrewThis, onL
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 26 }}>
         {bag.status !== 'finished' && (
-          <button type="button" onClick={onBrewThis} style={{ flex: 1, height: 42, borderRadius: 8, background: 'rgba(196,99,58,0.06)', color: C.terracotta, border: '1px solid rgba(196,99,58,0.5)', fontFamily: F.serif, fontStyle: 'italic', fontSize: 14, cursor: 'pointer' }}>
+          <button type="button" onClick={onBrewThis} style={{ flex: 1, height: 44, borderRadius: 8, background: 'rgba(196,99,58,0.06)', color: C.terracotta, border: '1px solid rgba(196,99,58,0.5)', fontFamily: F.serif, fontStyle: 'italic', fontSize: 14, cursor: 'pointer' }}>
             Brew this
           </button>
         )}
-        <button type="button" onClick={onLogCup} style={{ flex: 1, height: 42, borderRadius: 8, background: C.creamDark, color: C.espressoMid, border: `1px solid ${C.tanLight}`, fontFamily: F.sans, fontSize: 13, cursor: 'pointer' }}>
+        <button type="button" onClick={onLogCup} style={{ flex: 1, height: 44, borderRadius: 8, background: C.creamDark, color: C.espressoMid, border: `1px solid ${C.tanLight}`, fontFamily: F.sans, fontSize: 13, cursor: 'pointer' }}>
           Log a cup
         </button>
       </div>
@@ -119,7 +119,7 @@ export function BagDetail({ bag, recipes, brews, scores, onBack, onBrewThis, onL
       )}
 
       <div style={{ display: 'flex', justifyContent: 'center' }}>
-        <button type="button" onClick={onToggleFinished} style={{ background: 'none', border: 'none', fontFamily: F.sans, fontSize: 12, color: C.espressoLight, cursor: 'pointer' }}>
+        <button type="button" onClick={onToggleFinished} style={{ background: 'none', border: 'none', fontFamily: F.sans, fontSize: 12, color: C.espressoLight, cursor: 'pointer', minHeight: 44, padding: '0 12px' }}>
           {bag.status === 'finished' ? 'Move back to shelf' : 'Mark as finished'}
         </button>
       </div>

@@ -52,7 +52,7 @@ export function CupScoreSheet({ bag, onClose, onSave }: CupScoreSheetProps) {
               value={axes[axis]}
               onChange={(e) => setAxes((prev) => ({ ...prev, [axis]: Number(e.target.value) }))}
               aria-label={CUP_AXIS_LABELS[axis]}
-              style={{ width: '100%', accentColor: C.terracotta }}
+              style={{ width: '100%', accentColor: C.terracotta, height: 32, display: 'block' }}
             />
           </div>
         ))}
@@ -69,7 +69,7 @@ export function CupScoreSheet({ bag, onClose, onSave }: CupScoreSheetProps) {
         ))}
       </div>
 
-      <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, cursor: 'pointer' }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, cursor: 'pointer', minHeight: 44 }}>
         <input type="checkbox" checked={publish} onChange={(e) => setPublish(e.target.checked)} style={{ accentColor: C.sage, width: 16, height: 16 }} />
         <span style={{ fontFamily: F.sans, fontSize: 13, color: C.espressoMid }}>
           Publish anonymously to the community cup score

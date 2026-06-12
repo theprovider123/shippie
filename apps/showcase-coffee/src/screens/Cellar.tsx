@@ -27,7 +27,7 @@ export function CellarScreen({ bags, activeBagId, palate, brewCount, originCount
   const history = bags.filter((b) => b.status === 'finished');
 
   return (
-    <div style={{ padding: '10px 20px 28px', background: C.cream, minHeight: '100%' }}>
+    <div style={{ padding: '10px 20px 28px', minHeight: '100%' }}>
       <div style={{ fontFamily: F.mono, fontSize: 12, color: C.tan, letterSpacing: '0.16em', marginBottom: 14 }}>lot.</div>
       <h1 style={{ fontFamily: F.serif, fontSize: 28, fontWeight: 600, color: C.espresso, marginBottom: 18 }}>Cellar</h1>
 
@@ -49,6 +49,7 @@ export function CellarScreen({ bags, activeBagId, palate, brewCount, originCount
                 fontWeight: on ? 500 : 400,
                 color: on ? C.espresso : C.espressoLight,
                 padding: '8px 0 10px',
+                minHeight: 44,
                 borderBottom: on ? `2px solid ${C.terracotta}` : '2px solid transparent',
                 marginBottom: -1,
                 cursor: 'pointer',
@@ -65,7 +66,7 @@ export function CellarScreen({ bags, activeBagId, palate, brewCount, originCount
           {active.map((bag) => (
             <BagCard key={bag.id} bag={bag} isActive={bag.id === activeBagId} onSelect={() => onOpenBag(bag.id)} />
           ))}
-          <button type="button" onClick={onAddBag} style={{ width: '100%', background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: 14, padding: '12px 2px', cursor: 'pointer' }}>
+          <button type="button" onClick={onAddBag} style={{ width: '100%', background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: 14, padding: '12px 2px', minHeight: 44, cursor: 'pointer' }}>
             <div style={{ flex: 1, height: 1, background: C.tanLight }} />
             <span style={{ fontFamily: F.sans, fontSize: 12, color: C.espressoLight, letterSpacing: '0.05em', flexShrink: 0 }}>add a bag</span>
             <div style={{ flex: 1, height: 1, background: C.tanLight }} />

@@ -1,5 +1,9 @@
 // Ported from lot-components.jsx — a generated SVG topographic tile used as
 // the origin "map". No external map API; pure contour paths over a gradient.
+//
+// width/height define the drawing coordinate space (viewBox); the SVG itself
+// fills its container (100%/100%, preserveAspectRatio="none") so a fixed
+// drawing width never overflows a narrow phone. Give the wrapper a height.
 
 export interface TopoMapProps {
   width?: number;
@@ -18,7 +22,7 @@ export function TopoMap({ width = 350, height = 160 }: TopoMapProps) {
     `M 0 ${h * 0.9} C 90 ${h * 0.86} 180 ${h * 0.92} ${w} ${h * 0.88}`,
   ];
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: 'block' }} aria-hidden="true">
+    <svg width="100%" height="100%" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ display: 'block' }} aria-hidden="true">
       <defs>
         <linearGradient id="topoG" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#C9AA80" />

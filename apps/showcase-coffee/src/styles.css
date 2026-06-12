@@ -137,6 +137,9 @@ input[type='number'] {
   }
 }
 
+/* ── Decorative coffee texture (CoffeeSplash, mounted in App.tsx) ─────────
+   Fixed behind the content column (which sits on z-index 1). Static SVG —
+   the only motion is the one-off entrance fade. */
 .coffee-splash {
   position: fixed; pointer-events: none; z-index: 0;
   opacity: 0; animation: splashEnter 1.2s ease forwards;
@@ -148,7 +151,32 @@ input[type='number'] {
 .coffee-splash-large { bottom: -8vw; right: -8vw; width: 48vw; max-width: 260px; }
 .coffee-splash-small { top: -4vw; left: -4vw; width: 24vw; max-width: 130px; animation-delay: 0.3s; }
 
+/* Sparse deterministic bean scatter — each bean carries its own low opacity;
+   the container only fades in once. */
+.coffee-beans {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  opacity: 0; animation: beansEnter 1.2s ease 0.45s forwards;
+}
+@keyframes beansEnter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ── Tap-target helper ────────────────────────────────────────────────────
+   Expands the hit area of small text buttons to ~44px without changing
+   their visual size (the ::after is out of flow, so flex buttons are safe). */
+.tap-target {
+  position: relative;
+}
+.tap-target::after {
+  content: '';
+  position: absolute;
+  inset: -12px -8px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   body::before { display: none; }
   .screen-enter, .slide-up { animation: none; }
+  .coffee-splash { animation: none; opacity: 0.12; transform: none; }
+  .coffee-beans { animation: none; opacity: 1; }
 }
