@@ -16,6 +16,8 @@ export interface RailTool {
   name: string;
   icon: string;
   accent: string;
+  iconUrl?: string | null;
+  themeColor?: string | null;
   category?: string;
 }
 

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { pickTrivia } from "../../data/trivia";
+import { useEffect, useRef, useState } from "react";
+import { drawTrivia, type TriviaQ } from "../../data/trivia";
 import { tap as hapticTap, confirmBuzz, celebrate } from "../../lib/haptics";
 
 const SECONDS = 30;
@@ -11,14 +11,13 @@ const SECONDS = 30;
  */
 export function BeatTheClock() {
   const [phase, setPhase] = useState<"ready" | "play" | "over">("ready");
-  const [round, setRound] = useState(0);
   const [t, setT] = useState(SECONDS);
   const [i, setI] = useState(0);
   const [score, setScore] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
+  const [deck, setDeck] = useState<TriviaQ[]>([]);
   const tRef = useRef(SECONDS);
 
-  const deck = useMemo(() => pickTrivia(80), [round]);
   const item = deck[i % deck.length];
 
   useEffect(() => {
@@ -33,12 +32,13 @@ export function BeatTheClock() {
   }, [phase]);
 
   function start() {
+    setDeck(drawTrivia(80));
     setScore(0); setI(0); setT(SECONDS); tRef.current = SECONDS; setPicked(null);
-    setRound((r) => r + 1); setPhase("play");
+    setPhase("play");
   }
 
   function pick(idx: number) {
-    if (picked !== null || phase !== "play") return;
+    if (!item || picked !== null || phase !== "play") return;
     hapticTap();
     const right = idx === item.answer;
     if (right) { setScore((s) => s + 1); celebrate(); }
@@ -71,6 +71,8 @@ export function BeatTheClock() {
   }
 
   const pct = (tRef.current / SECONDS) * 100;
+  if (!item) return null;
+
   return (
     <div className="game-stage quiz-stage">
       <div className="quiz-head">

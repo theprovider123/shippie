@@ -9,6 +9,18 @@ describe("venueFor", () => {
   it("is stable for a given fixture id", () => {
     expect(venueFor("G-A-1")).toEqual(venueFor("G-A-1"));
   });
+  it("uses official venue data for World Cup fixture ids", () => {
+    expect(venueFor("m01")).toMatchObject({
+      stadium: "Mexico City Stadium",
+      city: "Mexico City",
+      country: "MEX",
+      tz: "America/Mexico_City",
+    });
+    expect(venueFor("400021449")).toMatchObject({
+      stadium: "Toronto Stadium",
+      city: "Toronto",
+    });
+  });
   it("spreads fixtures across multiple venues", () => {
     const used = new Set(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"].map((s) => venueFor(`G-${s}-1`).stadium));
     expect(used.size).toBeGreaterThan(1);

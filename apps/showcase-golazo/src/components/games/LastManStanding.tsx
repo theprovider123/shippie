@@ -245,7 +245,7 @@ function FixturePick({
   const k = formatKickoff(fixture.kickoff, zone);
   return (
     <div className="lastman-fixture">
-      <span className="lastman-time">{k.time}</span>
+      <span className="lastman-time">{k.time} {k.zoneName}</span>
       {[fixture.home, fixture.away].map((teamId) => {
         const selected = pick?.fixtureId === fixture.id && pick.teamId === teamId;
         const unavailable = used.has(teamId) && !selected;

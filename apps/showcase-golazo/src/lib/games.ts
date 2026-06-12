@@ -2,7 +2,7 @@
 // and travel by challenge link, exactly like the rest of Golazo. A worldwide
 // board lights up on top when a leaderboard endpoint is reachable (leaderboard.ts).
 
-export type GameId = "keepy" | "topbins" | "freekick" | "god" | "lastman";
+export type GameId = "penalty" | "keepy" | "god" | "lastman";
 
 export interface GameMeta {
   id: GameId;
@@ -15,25 +15,18 @@ export interface GameMeta {
 
 export const GAMES: GameMeta[] = [
   {
+    id: "penalty",
+    name: "Penalty Kick",
+    tagline: "Beat the top ten",
+    how: "Swipe fast to strike, drag across the ball to curl it past better keepers",
+    unit: "goals",
+  },
+  {
     id: "keepy",
     name: "Keepy Uppy",
     tagline: "Don't let it drop",
     how: "Tap the ball to keep it in the air",
     unit: "kick-ups",
-  },
-  {
-    id: "topbins",
-    name: "Top Bins",
-    tagline: "Beat the keeper",
-    how: "Swipe to shoot — aim for the top corners",
-    unit: "goals",
-  },
-  {
-    id: "freekick",
-    name: "Spot Kick",
-    tagline: "Free kick or penalty — your call",
-    how: "Swipe to bend a free kick, or go 1v1 in a penalty shootout",
-    unit: "goals",
   },
   {
     id: "god",
@@ -123,7 +116,7 @@ export function encodeChallenge(c: Challenge): string {
 }
 
 export function decodeChallenge(code: string): Challenge | null {
-  const m = /^(keepy|topbins|freekick|god|lastman)~(\d+)~(.*)$/.exec(code.trim());
+  const m = /^(penalty|keepy|god|lastman)~(\d+)~(.*)$/.exec(code.trim());
   if (!m) return null;
   return { game: m[1] as GameId, score: Number(m[2]), name: decodeURIComponent(m[3]) || "A mate" };
 }
@@ -131,7 +124,7 @@ export function decodeChallenge(code: string): Challenge | null {
 export function challengeUrl(c: Challenge, base?: string): string {
   const root =
     base ??
-    (typeof location !== "undefined" ? location.origin + location.pathname : "https://shippie.app/run/golazo/");
+    (typeof location !== "undefined" ? location.origin + location.pathname : "https://shippie.app/golazo");
   return `${root}#play=${encodeChallenge(c)}`;
 }
 

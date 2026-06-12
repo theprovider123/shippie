@@ -39,8 +39,13 @@ export function deviceZone(): string {
 
 /** Resolve a stored watchZone ("auto"/undefined → device zone) to an IANA id. */
 export function resolveZone(watchZone: string | undefined): string {
-  if (!watchZone || watchZone === "auto") return deviceZone();
-  return watchZone;
+  const zone = !watchZone || watchZone === "auto" ? deviceZone() : watchZone;
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: zone }).format(0);
+    return zone;
+  } catch {
+    return "UTC";
+  }
 }
 
 /** Friendly short label for a resolved zone (city tail of the IANA id). */
@@ -66,9 +71,41 @@ function dayIndex(ms: number, zone: string): number {
   return Math.floor(Date.UTC(get("year"), get("month") - 1, get("day")) / 86_400_000);
 }
 
+function offsetLike(name: string): boolean {
+  return /^GMT(?:[+-]\d{1,2}(?::\d{2})?)?$/.test(name);
+}
+
+function shortZoneName(ms: number, zone: string): string {
+  const locales = ["en-GB", "en-US"];
+  for (const locale of locales) {
+    const name =
+      new Intl.DateTimeFormat(locale, {
+        timeZone: zone,
+        timeZoneName: "short",
+      })
+        .formatToParts(ms)
+        .find((part) => part.type === "timeZoneName")?.value;
+    if (name && !offsetLike(name)) return name;
+  }
+  const hint = ZONE_OPTIONS.find((option) => option.id === zone)?.hint;
+  if (hint) return hint;
+  return (
+    new Intl.DateTimeFormat(undefined, {
+      timeZone: zone,
+      timeZoneName: "short",
+    })
+      .formatToParts(ms)
+      .find((part) => part.type === "timeZoneName")?.value ?? zone
+  );
+}
+
 export interface Kickoff {
   /** Local clock time, e.g. "5:00 PM". */
   time: string;
+  /** Resolved IANA timezone id used for formatting. */
+  zone: string;
+  /** Short timezone name, e.g. "BST", "ET", "GMT+9". */
+  zoneName: string;
   /** Day label: "Today", "Tomorrow", "Sat 13 Jun", etc. */
   day: string;
   /** Relative hint: "in 3h", "in 2 days", "kicked off". */
@@ -93,6 +130,7 @@ export function formatKickoff(
     hour: "numeric",
     minute: "2-digit",
   }).format(ms);
+  const zoneName = shortZoneName(ms, zone);
 
   const dDiff = dayIndex(ms, zone) - dayIndex(nowMs, zone);
   let day: string;
@@ -114,5 +152,5 @@ export function formatKickoff(
   else if (diff < 86_400_000) rel = `in ${Math.round(diff / 3_600_000)}h`;
   else rel = `in ${Math.round(diff / 86_400_000)} days`;
 
-  return { time, day, rel, isToday: dDiff === 0, past: diff <= 0 };
+  return { time, zone, zoneName, day, rel, isToday: dDiff === 0, past: diff <= 0 };
 }

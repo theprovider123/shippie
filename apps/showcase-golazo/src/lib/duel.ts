@@ -63,17 +63,86 @@ export function normaliseShotPlacement(input: ShotPlacement | undefined, fallbac
   };
 }
 
-export function penaltyShotSaved(shot: ShotPlacement, keeperDive: Zone): boolean {
+export function penaltyShotSavedWithReach(shot: ShotPlacement, keeperDive: Zone, reachScale = 1): boolean {
+  const reach = clamp(reachScale, 0.75, 1.35);
   const keeperX = keeperDive === -1 ? 0.24 : keeperDive === 1 ? 0.76 : 0.5;
-  const keeperY = keeperDive === 0 ? 0.36 : 0.46;
-  const slowBonus = (1 - shot.power) * 0.08;
-  const reachX = (keeperDive === 0 ? 0.17 : 0.22) + slowBonus;
-  const reachY = 0.31 + slowBonus;
+  const keeperY = keeperDive === 0 ? 0.39 : 0.52;
+  const sameZone = keeperDive === shot.zone;
+  const centralShot = Math.abs(shot.x - 0.5) < 0.14;
+  const weakShot = 1 - shot.power;
+  const slowBonus = weakShot * 0.12;
+  const lowBonus = shot.y < 0.34 ? 0.07 : 0;
+  const centreBonus = shot.zone === 0 ? 0.07 : 0;
+
+  // Even when wrong-footed, a keeper should still stop tame scuffs through the
+  // middle with a trailing boot/body. Anything quick, curled, or away from the
+  // middle still beats the wrong dive.
+  if (keeperDive !== shot.zone && centralShot) {
+    const recoveryX = 0.12 + weakShot * 0.08 * reach;
+    const recoveryY = 0.42 + weakShot * 0.24 * reach;
+    if (
+      Math.abs(shot.x - 0.5) < recoveryX &&
+      shot.y < recoveryY &&
+      shot.power < 0.78 &&
+      Math.abs(shot.bend) < 0.35
+    ) {
+      return true;
+    }
+  }
+
+  // Match the visible keeper: not just gloves, the head, torso, hips and legs
+  // should all block shots. These normalized ellipses are deliberately smaller
+  // than the sprite, then padded by a small ball radius so grazes still count.
+  const ball = 0.026 + weakShot * 0.018;
+  const hitBody = (cx: number, cy: number, rx: number, ry: number): boolean => {
+    const dx = (shot.x - cx) / (rx * reach + ball);
+    const dy = (shot.y - cy) / (ry * reach + ball * 0.82);
+    return dx * dx + dy * dy <= 1;
+  };
+  const bodyCanSave = keeperDive === shot.zone || keeperDive === 0 || centralShot;
+  if (bodyCanSave) {
+    if (keeperDive === 0) {
+      if (
+        hitBody(0.5, 0.48, 0.12, 0.2) ||
+        hitBody(0.5, 0.68, 0.06, 0.07) ||
+        hitBody(0.39, 0.49, 0.08, 0.13) ||
+        hitBody(0.61, 0.49, 0.08, 0.13) ||
+        hitBody(0.45, 0.23, 0.06, 0.13) ||
+        hitBody(0.55, 0.23, 0.06, 0.13)
+      ) {
+        return true;
+      }
+    } else {
+      const dir = keeperDive;
+      if (
+        hitBody(keeperX, 0.5, 0.1, 0.21) ||
+        hitBody(keeperX, 0.7, 0.055, 0.07) ||
+        hitBody(keeperX + dir * 0.11, 0.58, 0.075, 0.15) ||
+        hitBody(keeperX + dir * 0.18, 0.65, 0.06, 0.12) ||
+        hitBody(keeperX - dir * 0.07, 0.44, 0.07, 0.15) ||
+        hitBody(keeperX - dir * 0.02, 0.26, 0.075, 0.16) ||
+        hitBody(keeperX - dir * 0.1, 0.2, 0.055, 0.12)
+      ) {
+        return true;
+      }
+    }
+  }
+
+  const reachX = ((keeperDive === 0 ? 0.2 : 0.25) + slowBonus + lowBonus + centreBonus) * reach;
+  const reachY = ((keeperDive === 0 ? 0.34 : 0.39) + slowBonus + (sameZone ? 0.03 : 0)) * reach;
   const dx = Math.abs(shot.x - keeperX) / reachX;
   const dy = Math.abs(shot.y - keeperY) / reachY;
-  const bendPenalty = Math.abs(shot.bend) * 0.08;
-  const powerPenalty = shot.power * 0.07;
-  return dx * dx + dy * dy < 1 - bendPenalty - powerPenalty;
+  const topCornerEscape =
+    Math.max(0, Math.abs(shot.x - 0.5) - 0.34) * 0.55 +
+    Math.max(0, shot.y - 0.76) * 0.45;
+  const bendEscape = Math.abs(shot.bend) * 0.12;
+  const powerEscape = shot.power * 0.08;
+  const wrongZonePenalty = keeperDive !== shot.zone ? 0.34 : 0;
+  return dx * dx + dy * dy < 1.08 - topCornerEscape - bendEscape - powerEscape - wrongZonePenalty;
+}
+
+export function penaltyShotSaved(shot: ShotPlacement, keeperDive: Zone): boolean {
+  return penaltyShotSavedWithReach(shot, keeperDive, 1);
 }
 
 /** Goals: old links keep zone scoring; new links use placement, height and pace. */
@@ -235,7 +304,7 @@ export function decodeDuel(code: string): Duel | null {
 export function duelUrl(d: Duel, base?: string): string {
   const root =
     base ??
-    (typeof location !== "undefined" ? location.origin + location.pathname : "https://shippie.app/run/golazo/");
+    (typeof location !== "undefined" ? location.origin + location.pathname : "https://shippie.app/golazo");
   return `${root}#duel=${encodeDuel(d)}`;
 }
 

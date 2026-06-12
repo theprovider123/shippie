@@ -86,6 +86,7 @@ import {
   checkArcadePurity,
   checkArcadeConnectDomains,
 } from './arcade-purity-check';
+import { checkAppSlugAvailability } from '$server/apps/slug-availability';
 
 const IMMERSIVE_BASE_STYLE = `<style data-shippie-immersive-base>
 :root{--shippie-safe-top:env(safe-area-inset-top,0px);--shippie-safe-right:env(safe-area-inset-right,0px);--shippie-safe-bottom:env(safe-area-inset-bottom,0px);--shippie-safe-left:env(safe-area-inset-left,0px)}
@@ -339,6 +340,13 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
   let appRow = await db.query.apps.findFirst({
     where: eq(schema.apps.slug, input.slug),
   });
+  const slugAvailability = await checkAppSlugAvailability(db, input.slug, {
+    excludeAppId: appRow?.makerId === input.makerId ? appRow.id : null,
+    reservedSlugs: input.reservedSlugs,
+  });
+  if (!slugAvailability.available) {
+    return failReport(input.slug, unavailableSlugReason(input.slug, slugAvailability.reason));
+  }
 
   // Resolve marketplace surface BEFORE the insert/update so it lands
   // in D1 atomically with the rest of the row. Resolution priority is
@@ -351,8 +359,11 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     formOverride: input.surfaceOverride,
     existingSurface: appRow?.surface,
   });
-  const resolvedVisibilityScope =
-    input.visibilityScope ?? normalizeVisibilityScope(manifest.visibility ?? appRow?.visibilityScope ?? 'public');
+  const resolvedVisibilityScope = resolveDeployVisibilityScope({
+    inputVisibility: input.visibilityScope,
+    manifestVisibility: manifest.visibility,
+    existingVisibility: appRow?.visibilityScope,
+  });
 
   if (!appRow) {
     const [inserted] = await db
@@ -778,10 +789,28 @@ function failReport(slug: string, reason: string): DeployStaticResult {
   };
 }
 
+export function resolveDeployVisibilityScope(input: {
+  inputVisibility?: DeployStaticInput['visibilityScope'];
+  manifestVisibility?: string;
+  existingVisibility?: string | null;
+}): NonNullable<DeployStaticResult['visibilityScope']> {
+  return normalizeVisibilityScope(
+    input.inputVisibility ?? input.manifestVisibility ?? input.existingVisibility ?? 'unlisted',
+  );
+}
+
 function normalizeVisibilityScope(value: string): NonNullable<DeployStaticResult['visibilityScope']> {
   if (value === 'private' || value === 'unlisted' || value === 'team') return value;
   if (value === 'local') return 'private';
   return 'public';
+}
+
+function unavailableSlugReason(slug: string, reason: string): string {
+  if (reason === 'reserved' || reason === 'first_party') return `Slug '${slug}' is reserved.`;
+  if (reason === 'retired_alias' || reason === 'legacy_redirect') {
+    return `Slug '${slug}' is reserved as an existing app redirect.`;
+  }
+  return `Slug '${slug}' is already claimed by another maker.`;
 }
 
 function appHostFromPublicOrigin(publicOrigin: string, slug: string): string | null {
@@ -921,11 +950,20 @@ function compactConnectionGuardForMeta(report: ConnectionGuardReport): Pick<
 
 /**
  * Resolve the public live URL for a slug. Examples:
- *   publicOrigin = "https://shippie.app"        → "https://chiwit.shippie.app/"
- *   publicOrigin = "https://next.shippie.app"   → "https://chiwit.next.shippie.app/"
- *   publicOrigin = "http://localhost:5173"      → "http://chiwit.localhost:5173/"
+ *   publicOrigin = "https://shippie.app"        → "https://shippie.app/chiwit"
+ *   publicOrigin = "https://next.shippie.app"   → "https://next.shippie.app/chiwit"
+ *   publicOrigin = "http://localhost:5173"      → "http://localhost:5173/chiwit"
  */
 export function resolveLiveUrl(publicOrigin: string, slug: string): string {
+  try {
+    const u = new URL(publicOrigin);
+    return new URL(`/${encodeURIComponent(slug)}`, u).toString();
+  } catch {
+    return `https://shippie.app/${encodeURIComponent(slug)}`;
+  }
+}
+
+export function resolveRuntimeSubdomainUrl(publicOrigin: string, slug: string): string {
   try {
     const u = new URL(publicOrigin);
     const portSuffix = u.port ? `:${u.port}` : '';

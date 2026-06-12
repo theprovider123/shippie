@@ -28,7 +28,10 @@
   let editIconEmoji = $state(iconEmoji ?? '');
   let iconTab = $state<'colour' | 'emoji' | 'upload'>('colour');
   let slugAvailable = $state<boolean | null>(null);
+  let slugReason = $state<string | null>(null);
   let checkingSlug = $state(false);
+  let slugTouched = $state(false);
+  let slugCheckSeq = 0;
   let saving = $state(false);
   let uploadPreview = $state<string | null>(null);
   let newIconUrl = $state(iconUrl ?? '');
@@ -52,26 +55,50 @@
 
   let slugDebounce: ReturnType<typeof setTimeout> | null = null;
 
+  function scheduleSlugCheck(value: string) {
+    if (slugDebounce) clearTimeout(slugDebounce);
+    slugDebounce = setTimeout(() => checkSlug(value), 300);
+  }
+
   async function checkSlug(val: string) {
-    if (val === slug) { slugAvailable = null; return; }
-    if (!SLUG_RE.test(val)) { slugAvailable = false; return; }
+    const seq = ++slugCheckSeq;
+    if (val === slug) {
+      slugAvailable = null;
+      slugReason = null;
+      return;
+    }
+    if (!SLUG_RE.test(val)) {
+      slugAvailable = false;
+      slugReason = 'invalid';
+      return;
+    }
     checkingSlug = true;
-    const res = await fetch(`/api/apps/slug-check?slug=${encodeURIComponent(val)}&exclude=${encodeURIComponent(slug)}`);
-    const data = (await res.json()) as { available: boolean };
-    slugAvailable = data.available;
-    checkingSlug = false;
+    try {
+      const res = await fetch(`/api/apps/slug-check?slug=${encodeURIComponent(val)}&exclude=${encodeURIComponent(slug)}`);
+      const data = (await res.json()) as { available: boolean; reason?: string | null };
+      if (seq !== slugCheckSeq) return;
+      slugAvailable = data.available;
+      slugReason = data.reason ?? null;
+    } catch {
+      if (seq !== slugCheckSeq) return;
+      slugAvailable = false;
+      slugReason = 'unavailable';
+    } finally {
+      if (seq === slugCheckSeq) checkingSlug = false;
+    }
   }
 
   function onSlugInput(e: Event) {
+    slugTouched = true;
     editSlug = (e.target as HTMLInputElement).value.toLowerCase().replace(/[^a-z0-9-]/g, '-');
-    if (slugDebounce) clearTimeout(slugDebounce);
-    slugDebounce = setTimeout(() => checkSlug(editSlug), 400);
+    scheduleSlugCheck(editSlug);
   }
 
   function onNameInput(e: Event) {
     editName = (e.target as HTMLInputElement).value.slice(0, 64);
-    if (editSlug === slug) {
+    if (!slugTouched || editSlug === slug) {
       editSlug = editName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64);
+      scheduleSlugCheck(editSlug);
     }
   }
 
@@ -93,7 +120,7 @@
   async function save() {
     if (!editName.trim()) return;
     if (!slugValid) return;
-    if (slugChanged && slugAvailable === false) return;
+    if (slugChanged && slugAvailable !== true) return;
     saving = true;
     const body: Record<string, unknown> = { name: editName, slug: editSlug, themeColor: editThemeColor };
     if (iconTab === 'emoji' && editIconEmoji) body.iconEmoji = editIconEmoji;
@@ -142,11 +169,12 @@
       {:else if slugChanged && slugAvailable === true}
         <span class="slug-state ok">✓ available</span>
       {:else if slugChanged && slugAvailable === false}
-        <span class="slug-state err">✗ taken</span>
+        <span class="slug-state err">✗ {slugReason === 'reserved' || slugReason === 'first_party' ? 'reserved' : 'taken'}</span>
       {/if}
     </div>
+    <p class="slug-preview">shippie.app/{editSlug || 'my-app'}</p>
     {#if slugChanged}
-      <p class="slug-warn">Old URL ({slug}.shippie.app) will redirect for 30 days.</p>
+      <p class="slug-warn">Old URL (shippie.app/{slug}) will redirect for 30 days.</p>
     {/if}
   </label>
 
@@ -202,7 +230,7 @@
       type="button"
       class="btn btn-primary"
       onclick={save}
-      disabled={saving || !editName.trim() || !slugValid || (slugChanged && slugAvailable === false)}
+      disabled={saving || checkingSlug || !editName.trim() || !slugValid || (slugChanged && slugAvailable !== true)}
     >{saving ? 'Saving…' : 'Save'}</button>
   </div>
 </Sheet>
@@ -276,6 +304,12 @@
     font-family: var(--font-mono);
     font-size: var(--text-caption);
     color: var(--marigold, #e8c547);
+  }
+  .slug-preview {
+    margin: 0.15rem 0 0;
+    color: var(--text-muted-warm);
+    font-family: var(--font-mono);
+    font-size: var(--text-small);
   }
   .icon-tabs {
     border: 1px solid var(--border-light);

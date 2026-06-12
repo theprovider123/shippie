@@ -131,7 +131,7 @@
   }
 
   function runHref(slug: string): string {
-    return `/run/${encodeURIComponent(slug)}`;
+    return `/${encodeURIComponent(slug)}`;
   }
 </script>
 

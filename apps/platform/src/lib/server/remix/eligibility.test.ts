@@ -109,15 +109,16 @@ describe('remixEligibilityForSlug', () => {
   });
 
   test('allows current first-party catalog apps without a D1 app row', async () => {
+    // 'snake' canonicalises to the Arcade cabinet since the games consolidation.
     await expect(remixEligibilityForSlug(dbReturning(undefined), 'snake')).resolves.toEqual({
       ok: true,
       app: {
         id: null,
-        slug: 'snake',
-        name: 'Snake',
+        slug: 'arcade',
+        name: 'Arcade',
         tagline: null,
-        templateId: 'showcase:snake',
-        sourceRepo: 'https://github.com/theprovider123/shippie/tree/main/apps/showcase-snake',
+        templateId: 'showcase:arcade',
+        sourceRepo: 'https://github.com/theprovider123/shippie/tree/main/apps/showcase-arcade',
         license: 'AGPL-3.0-or-later',
         latestVersion: null,
         dataFamily: null,

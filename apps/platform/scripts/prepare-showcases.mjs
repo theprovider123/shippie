@@ -98,7 +98,6 @@ const AI_RUNTIME_ASSETS = ['https://esm.sh/@huggingface/transformers@3.0.0'];
 const PUBLIC_FLAGSHIP_ORDER = [
   'palate',
   'chiwit',
-  'mise',
   'symptom-diary',
   'lift',
   'golazo',
@@ -110,7 +109,10 @@ const PUBLIC_FLAGSHIP_ORDER = [
   'match-room',
 ];
 
-const SKIP = new Set(['platform', 'shippie-ai']);
+const SKIP = new Set([
+  'platform',
+  'shippie-ai',
+]);
 
 function buildSdkRuntime() {
   const sdkDir = join(REPO_ROOT, 'packages', 'sdk');

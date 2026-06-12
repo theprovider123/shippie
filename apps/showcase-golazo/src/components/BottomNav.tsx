@@ -28,7 +28,7 @@ const ITEMS: { id: Tab; label: string; icon: JSX.Element }[] = [
   },
   {
     id: "pools",
-    label: "Your Lot",
+    label: "Groups",
     icon: (
       <>
         <circle cx="8.5" cy="5.5" r="3.5" />

@@ -61,8 +61,8 @@ describe("App smoke", () => {
     localStorage.clear();
     mount();
     clickButton("Play now");
-    expect(container.textContent).toContain("Keepy Uppy");
-    expect(container.textContent).toContain("Top Bins");
+    expect(container.textContent).toContain("Penalty Kick");
+    expect(container.textContent).toContain("World Cup trivia");
     expect(localStorage.getItem("golazo:profile")).toContain("Player");
   });
 
@@ -85,7 +85,8 @@ describe("App smoke", () => {
 
     // Games-first: lands on Play (the game select) with the bottom nav.
     expect(container.querySelector(".bottom-nav")).not.toBeNull();
-    expect(container.querySelector(".game-grid")).not.toBeNull();
+    expect(container.querySelector(".game-list")).not.toBeNull();
+    expect(container.querySelector(".game-row")).not.toBeNull();
 
     // Navigate by nav item (label match), which is unambiguous.
     const nav = (label: string) => {
@@ -98,8 +99,8 @@ describe("App smoke", () => {
 
     nav("Predict");
     expect(container.textContent).toContain("The Groups");
-    nav("Your Lot");
-    expect(container.textContent).toContain("Your Lot");
+    nav("Groups");
+    expect(container.textContent).toContain("Groups");
     nav("You");
     expect(container.querySelector(".home")).not.toBeNull();
     expect(container.textContent).toContain("Tester");

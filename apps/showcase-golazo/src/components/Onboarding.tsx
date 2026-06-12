@@ -48,7 +48,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
       <section className="arcade-entry" aria-label="Arcade">
         <div>
           <span className="arcade-kicker">Arcade is live</span>
-          <h2>Keepy Uppy · Free Kick · Pub Games</h2>
+          <h2>Penalty Kick · World Cup trivia · matchday picks</h2>
         </div>
         <button className="arcade-play" type="button" onClick={playNow}>
           Play now →

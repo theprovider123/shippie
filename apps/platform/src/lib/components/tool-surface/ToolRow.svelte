@@ -63,7 +63,7 @@
   }: Props = $props();
 
   const safeName = $derived(app.display?.safeName ?? titleCap(app.name));
-  const launchHref = $derived(href ?? `/run/${encodeURIComponent(app.slug)}`);
+  const launchHref = $derived(href ?? `/${encodeURIComponent(app.slug)}`);
 
   const relLabel = $derived(relationshipLabel(state.relationship));
   const showRel = $derived(!hideRelationship && relLabel !== '');

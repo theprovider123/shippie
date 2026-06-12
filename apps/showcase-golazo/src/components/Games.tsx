@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { KeepyUppy } from "./games/KeepyUppy";
-import { TopBins } from "./games/TopBins";
-import { SpotKick } from "./games/SpotKick";
-import { PenaltyRoulette } from "./games/PenaltyRoulette";
+import { PenaltyDuel } from "./games/PenaltyDuel";
 import { WhoAreYa } from "./games/WhoAreYa";
 import { GuessNation } from "./games/GuessNation";
 import { GroupOfDeath } from "./games/GroupOfDeath";
@@ -34,20 +32,17 @@ import { tap } from "../lib/haptics";
 
 type Sel =
   | GameId
-  | "penalty"
-  | "roulette"
   | "trivia"
   | "nation"
   | "cardhappy"
   | "tnap"
   | "beatclock"
   | null;
-type PubId = "roulette" | "trivia" | "nation" | "cardhappy" | "tnap" | "beatclock";
+type PubId = "trivia" | "nation" | "cardhappy" | "tnap" | "beatclock";
 const PUB: { id: PubId; emoji: string; name: string; how: string }[] = [
   { id: "trivia", emoji: "🧠", name: "Who Are Ya?", how: "World Cup trivia, no Googling" },
   { id: "beatclock", emoji: "⏱️", name: "Beat the Clock", how: "As many as you can in 30 seconds" },
   { id: "nation", emoji: "🌍", name: "Guess the Nation", how: "See the flag, name the country" },
-  { id: "roulette", emoji: "🎯", name: "Penalty Roulette", how: "Pass the phone — get saved, you're out" },
   { id: "cardhappy", emoji: "🟨", name: "Card Happy", how: "Yellow or red? Best ref in the room wins" },
   { id: "tnap", emoji: "🤌", name: "That's Never A Pen", how: "Vote pen or no pen, then argue about it" },
 ];
@@ -61,10 +56,9 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
   );
   const [global, setGlobal] = useState<ScoreEntry[]>([]);
   const [copied, setCopied] = useState(false);
-  const [diff, setDiff] = useState<"casual" | "pro">("casual");
   const [boardGame, setBoardGame] = useState<GameId | null>(null);
 
-  const soloGame: GameId | null = sel === "keepy" || sel === "topbins" || sel === "freekick" || sel === "god" ? sel as GameId : null;
+  const soloGame: GameId | null = sel === "penalty" || sel === "keepy" || sel === "god" ? sel : null;
 
   useEffect(() => {
     if (!soloGame) return;
@@ -104,7 +98,7 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
     const best = bestScore(store.scores, soloGame);
     const url = challengeUrl({ game: soloGame, name: playerName, score: best });
     const text = `⚽️ I got ${best} ${meta.unit} on ${meta.name} in Golazo. Beat me → ${url}`;
-    const emoji = soloGame === "keepy" ? "⚽️" : soloGame === "topbins" ? "🥅" : soloGame === "god" ? "💀" : "⚽";
+    const emoji = soloGame === "penalty" ? "🥅" : soloGame === "keepy" ? "⚽️" : soloGame === "god" ? "💀" : "⚽";
     // Share the viral card image + link first; fall back to text/copy.
     try {
       const blob = await gameCardBlob({ emoji, game: meta.name, score: best, unit: meta.unit, playerName });
@@ -122,52 +116,54 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
     return (
       <div className="games">
         <h2 className="section-title">Play</h2>
-        <p className="games-intro">Quick footy games. No login — your bests live on this phone, challenge a mate by link.</p>
+        <p className="games-intro">Penalty Kick is the main event now: a mobile-first top-ten country ladder with persistent bests, world boards, and offline-safe scores.</p>
 
-        <div className="god-hero-wrap">
-          <button className="god-hero" onClick={() => { tap(); setSel("god"); }}>
-            <span className="god-hero-tag">Daily test · worldwide</span>
-            <span className="god-hero-name">Group of Death</span>
-            <span className="god-hero-how">Flap through the gaps, pick the right answer at every gate. Knowledge + nerve.</span>
-            <span className="god-hero-foot">
-              <span className="god-hero-best">Best {bestScore(store.scores, "god")} caps</span>
-              <span className="god-hero-cta">Play →</span>
+        <div className="penalty-hero-wrap">
+          <button className="penalty-hero" onClick={() => { tap(); setSel("penalty"); }}>
+            <span className="penalty-hero-tag">Top-ten ladder</span>
+            <span className="penalty-hero-name">Penalty Kick</span>
+            <span className="penalty-hero-how">Beat ten ranked countries. Swipe fast, bend it round the keeper, and survive seven shots per flag.</span>
+            <span className="penalty-hero-scene" aria-hidden>
+              <span className="penalty-hero-net" />
+              <span className="penalty-hero-keeper" />
+              <span className="penalty-hero-ball" />
+            </span>
+            <span className="penalty-hero-foot">
+              <span>Best {bestScore(store.scores, "penalty")} goals · 10 countries · 7 shots</span>
+              <span className="penalty-hero-cta">Swipe to kick →</span>
             </span>
           </button>
-          <button className="game-board-btn" aria-label="Group of Death world leaderboard" onClick={() => { tap(); setBoardGame("god"); }}>🏆</button>
+          <button className="game-board-btn" aria-label="Penalty Kick world leaderboard" onClick={() => { tap(); setBoardGame("penalty"); }}>🏆</button>
         </div>
 
-        <span className="field-label" style={{ marginTop: 22 }}>⚽️ Solo &amp; head-to-head</span>
-        <div className="game-grid">
-          {GAMES.filter((g) => g.id !== "god" && g.id !== "lastman").map((g) => (
-            <div key={g.id} className="game-card-wrap">
-              <button className="game-card" onClick={() => { tap(); setSel(g.id); }}>
-                <span className="game-card-emoji">{g.id === "keepy" ? "⚽️" : g.id === "topbins" ? "🥅" : g.id === "freekick" ? "⚽" : "🎮"}</span>
-                <span className="game-card-name">{g.name}</span>
-                <span className="game-card-how">{g.how}</span>
-                <span className="game-card-best">Best {bestScore(store.scores, g.id)}</span>
+        <span className="field-label" style={{ marginTop: 22 }}>🏆 Matchday challenges</span>
+        <div className="game-list matchday-list">
+          {GAMES.filter((g) => g.id === "god" || g.id === "lastman" || g.id === "keepy").map((g) => (
+            <div key={g.id} className={`game-card-wrap${g.id === "lastman" ? " survival-card-wrap" : ""}`}>
+              <button className={`game-card game-row${g.id === "lastman" ? " survival" : ""}`} onClick={() => { tap(); setSel(g.id); }}>
+                <span className="game-row-icon">{g.id === "god" ? "💀" : g.id === "lastman" ? "🧍" : "⚽️"}</span>
+                <span className="game-row-copy">
+                  <span className="game-card-name">{g.name}</span>
+                  <span className="game-card-how">{g.how}</span>
+                </span>
+                <span className="game-card-best">{g.id === "lastman" && !bestScore(store.scores, "lastman") ? "World survivors" : `Best ${bestScore(store.scores, g.id)} ${gameMeta(g.id).unit}`}</span>
+                <span className="game-row-arrow" aria-hidden>→</span>
               </button>
               <button className="game-board-btn" aria-label={`${g.name} world leaderboard`} onClick={() => { tap(); setBoardGame(g.id); }}>🏆</button>
             </div>
           ))}
-          <div className="game-card-wrap survival-card-wrap">
-            <button className="game-card survival" onClick={() => { tap(); setSel("lastman"); }}>
-              <span className="game-card-emoji">🧍</span>
-              <span className="game-card-name">Last Man Standing</span>
-              <span className="game-card-how">Pick one winner each matchday. Draw or defeat and you're out</span>
-              <span className="game-card-best">{bestScore(store.scores, "lastman") ? `${bestScore(store.scores, "lastman")} days alive` : "World survivors"}</span>
-            </button>
-            <button className="game-board-btn" aria-label="Last Man Standing world leaderboard" onClick={() => { tap(); setBoardGame("lastman"); }}>🏆</button>
-          </div>
         </div>
 
-        <span className="field-label" style={{ marginTop: 22 }}>🍺 Pub games — trivia &amp; pass the phone</span>
-        <div className="game-grid">
+        <span className="field-label" style={{ marginTop: 22 }}>🧠 Trivia &amp; pub calls</span>
+        <div className="game-list trivia-list">
           {PUB.map((g) => (
-            <button key={g.id} className="game-card pub" onClick={() => { tap(); setSel(g.id); }}>
-              <span className="game-card-emoji">{g.emoji}</span>
-              <span className="game-card-name">{g.name}</span>
-              <span className="game-card-how">{g.how}</span>
+            <button key={g.id} className="game-card game-row pub" onClick={() => { tap(); setSel(g.id); }}>
+              <span className="game-row-icon">{g.emoji}</span>
+              <span className="game-row-copy">
+                <span className="game-card-name">{g.name}</span>
+                <span className="game-card-how">{g.how}</span>
+              </span>
+              <span className="game-row-arrow" aria-hidden>→</span>
             </button>
           ))}
         </div>
@@ -178,11 +174,10 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
   }
 
   // ── Pub games (full-screen, local, no leaderboard) ──
-  if (sel === "roulette" || sel === "trivia" || sel === "nation" || sel === "cardhappy" || sel === "tnap" || sel === "beatclock") {
+  if (sel === "trivia" || sel === "nation" || sel === "cardhappy" || sel === "tnap" || sel === "beatclock") {
     return (
       <div className="games">
         <button className="back-btn" onClick={() => { tap(); setSel(null); }}>← Games</button>
-        {sel === "roulette" && <PenaltyRoulette />}
         {sel === "cardhappy" && <CardHappy />}
         {sel === "tnap" && <ThatsNeverAPen />}
         {sel === "trivia" && <WhoAreYa />}
@@ -197,12 +192,12 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
     return <LastManStanding onBack={() => setSel(null)} />;
   }
 
-  // ── Duel link: open Spot Kick directly in penalty mode ──
+  // ── Penalty ladder + duel links ──
   if (sel === "penalty") {
     return (
       <div className="games">
         <button className="back-btn" onClick={() => { tap(); setSel(null); }}>← Games</button>
-        <SpotKick duel={duel} playerName={playerName} onGameOver={() => {}} difficulty={0.3} />
+        <PenaltyDuel duel={duel} playerName={playerName} onGameOver={onGameOver} />
       </div>
     );
   }
@@ -213,26 +208,12 @@ export function Games({ challenge, duel }: { challenge?: Challenge | null; duel?
   const board = mergeBoards(store.scores, global, soloGame!).slice(0, 10);
   const target = challenge && challenge.game === soloGame ? challenge.score : undefined;
 
-  const diffValue = diff === "pro" ? 0.7 : 0.3;
-  const hasKeeper = soloGame === "topbins" || soloGame === "freekick";
-
   return (
     <div className="games">
       <div className="game-top">
         <button className="back-btn" onClick={() => { tap(); setSel(null); }}>← Games</button>
-        {hasKeeper && (
-          <div className="diff-toggle" role="tablist" aria-label="Difficulty">
-            {(["casual", "pro"] as const).map((d) => (
-              <button key={d} role="tab" aria-selected={diff === d} className={diff === d ? "is-sel" : ""} onClick={() => { tap(); setDiff(d); }}>
-                {d === "casual" ? "Casual" : "Pro"}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
       {soloGame === "keepy" && <KeepyUppy key={`k-${target ?? "x"}`} onGameOver={onGameOver} target={target} />}
-      {soloGame === "topbins" && <TopBins key={`t-${diff}-${target ?? "x"}`} onGameOver={onGameOver} target={target} difficulty={diffValue} />}
-      {soloGame === "freekick" && <SpotKick key={`f-${diff}-${target ?? "x"}`} onGameOver={onGameOver} target={target} difficulty={diffValue} playerName={playerName} />}
       {soloGame === "god" && <GroupOfDeath key={`g-${target ?? "x"}`} onGameOver={onGameOver} target={target} playerName={playerName} />}
 
       <div className="game-meta-row">

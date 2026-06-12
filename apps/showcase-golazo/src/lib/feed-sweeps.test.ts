@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { drawSweep } from "./sweeps";
-import { emptyFeed, feedHasResults, normalizeFeed } from "./feed";
+import { emptyFeed, feedHasResults, mergeResults, normalizeFeed, resultCount } from "./feed";
 import { TEAMS } from "../data/teams";
 import { formatKickoff } from "./zones";
 
@@ -55,7 +55,7 @@ describe("tournament feed", () => {
       news: [{ at: "t", text: "Brazil through" }, { text: "" }],
       live: [
         {
-          matchId: "A1-MEX-CRO",
+          matchId: "m01",
           home: "MEX",
           away: "CRO",
           homeGoals: 2,
@@ -77,20 +77,53 @@ describe("tournament feed", () => {
   it("empty feed has no results", () => {
     expect(feedHasResults(emptyFeed())).toBe(false);
   });
+
+  it("merges partial score updates without deleting known results", () => {
+    const current = {
+      groups: { A: ["MEX", "RSA", "KOR", "NOR"] },
+      knockout: { "R32-0": "MEX" },
+    };
+    const incoming = {
+      groups: { B: ["ITA", "GER", "SUI", "SWE"] },
+      knockout: { "R32-0": "RSA", "R32-1": "ITA" },
+      topScorer: "ARG",
+    };
+    const merged = mergeResults(current, incoming);
+
+    expect(merged.groups.A).toEqual(["MEX", "RSA", "KOR", "NOR"]);
+    expect(merged.groups.B).toEqual(["ITA", "GER", "SUI", "SWE"]);
+    expect(merged.knockout["R32-0"]).toBe("RSA");
+    expect(merged.knockout["R32-1"]).toBe("ITA");
+    expect(merged.topScorer).toBe("ARG");
+    expect(resultCount(merged)).toBe(5);
+  });
 });
 
 describe("local kickoff formatting", () => {
   it("renders the same instant differently per timezone", () => {
-    const iso = "2026-06-11T16:00:00Z"; // opener
+    const iso = "2026-06-11T19:00:00Z"; // Mexico v South Africa
     const la = formatKickoff(iso, "America/Los_Angeles", Date.parse("2026-06-10T00:00:00Z"));
     const tokyo = formatKickoff(iso, "Asia/Tokyo", Date.parse("2026-06-10T00:00:00Z"));
     expect(la.time).not.toBe(tokyo.time);
+    expect(la.zoneName).toBe("PDT");
+    expect(tokyo.zoneName).toBe("JST");
     expect(la.past).toBe(false);
   });
 
+  it("uses familiar short labels where Intl locale output would be an offset", () => {
+    const iso = "2026-06-11T19:00:00Z";
+    expect(formatKickoff(iso, "Europe/London").zoneName).toBe("BST");
+    expect(formatKickoff(iso, "America/New_York").zoneName).toBe("EDT");
+  });
+
   it("flags a past kickoff", () => {
-    const k = formatKickoff("2026-06-11T16:00:00Z", "Europe/London", Date.parse("2026-06-12T00:00:00Z"));
+    const k = formatKickoff("2026-06-11T19:00:00Z", "Europe/London", Date.parse("2026-06-12T00:00:00Z"));
     expect(k.past).toBe(true);
     expect(k.rel).toBe("kicked off");
+  });
+
+  it("falls back to UTC for an invalid stored zone", () => {
+    const k = formatKickoff("2026-06-11T19:00:00Z", "Not/AZone", Date.parse("2026-06-10T00:00:00Z"));
+    expect(k.zone).toBe("UTC");
   });
 });

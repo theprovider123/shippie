@@ -24,6 +24,9 @@ import {
   type AppReceipt,
   type TrustReport,
 } from '@shippie/app-package-contract';
+import { ARCADE_GAME_SLUGS } from '$lib/showcase-slugs';
+
+const INTERNAL_ARCADE_GAME_SLUGS: ReadonlySet<string> = new Set(ARCADE_GAME_SLUGS);
 
 export type ContainerSection = 'home' | 'create' | 'data' | 'access';
 export type ContainerVisibility = 'public' | 'unlisted' | 'private' | 'team' | 'local';
@@ -556,6 +559,23 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     intents: {
       provides: ['matchday-prediction-stats'],
       consumes: ['fantasy-team.saved'],
+    },
+  },
+  {
+    slug: 'arcade',
+    name: 'Arcade',
+    shortName: 'Arcade',
+    description: 'One Shippie cabinet for the small games: daily puzzles, reflex runs, room games, and strategy.',
+    appKind: 'local',
+    icon: 'AR',
+    accent: '#F2B94B',
+    category: 'games',
+    port: 5269,
+    intents: {
+      provides: ['game.completed', 'puzzle.cleared', 'wave.cleared', 'preference.choice', 'fantasy-team.saved'],
+      // World Cup Fantasy lives inside the cabinet and reads match-room's
+      // prediction stats — the cabinet absorbs its consume like its provides.
+      consumes: ['matchday-prediction-stats'],
     },
   },
   {
@@ -1259,18 +1279,21 @@ import type {
   CurationTier as _CurationTier,
 } from '$lib/_generated/first-party-curation';
 
-export const curatedApps: ContainerApp[] = curatedAppSpecs.map(curatedApp).map((app) => {
-  const entry = curationFor(app.slug);
-  return entry
-    ? {
-        ...app,
-        surface: entry.surface,
-        visibility: entry.visibility,
-        tier: entry.tier,
-        category: entry.category,
-      }
-    : app;
-});
+export const curatedApps: ContainerApp[] = curatedAppSpecs
+  .map(curatedApp)
+  .filter((app) => !INTERNAL_ARCADE_GAME_SLUGS.has(app.slug))
+  .map((app) => {
+    const entry = curationFor(app.slug);
+    return entry
+      ? {
+          ...app,
+          surface: entry.surface,
+          visibility: entry.visibility,
+          tier: entry.tier,
+          category: entry.category,
+        }
+      : app;
+  });
 
 /**
  * Curated apps filtered to a specific marketplace surface. Use this

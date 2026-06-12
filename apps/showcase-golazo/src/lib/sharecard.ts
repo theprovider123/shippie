@@ -9,7 +9,7 @@ import { championOf } from "./bracket";
 import type { Prediction, Profile } from "./types";
 
 /** Where every share card points — scan to play. */
-const APP_URL = "https://shippie.app/run/golazo";
+const APP_URL = "https://shippie.app/golazo";
 
 // ── Palette ──────────────────────────────────────────────────────────────────
 const PITCH = "#0d1f0f";

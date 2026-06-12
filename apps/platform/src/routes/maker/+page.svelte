@@ -48,11 +48,15 @@
   }
 
   async function shareApp(slug: string) {
-    const url = `https://${slug}.shippie.app`;
-    if ('share' in navigator) {
-      await (navigator as Navigator & { share: (data: { url: string }) => Promise<void> }).share({ url }).catch(() => {});
+    const url = `https://shippie.app/${encodeURIComponent(slug)}`;
+    const nav = navigator as Navigator & {
+      share?: (data: { url: string }) => Promise<void>;
+      clipboard?: Clipboard;
+    };
+    if (typeof nav.share === 'function') {
+      await nav.share({ url }).catch(() => {});
     } else {
-      await navigator.clipboard.writeText(url).catch(() => {});
+      await nav.clipboard?.writeText(url).catch(() => {});
       toast.push({ kind: 'success', message: 'Link copied.' });
     }
     kebabOpen = null;
@@ -138,7 +142,7 @@
               <button type="button" class="kebab" onclick={(e) => toggleKebab(e, app.slug)} aria-label={`Actions for ${app.name}`}>⋮</button>
               {#if kebabOpen === app.slug}
                 <div class="kebab-menu" role="menu">
-                  <a href={`/run/${app.slug}`} target="_blank" rel="noopener" role="menuitem">Open</a>
+                  <a href={`/${app.slug}`} target="_blank" rel="noopener" role="menuitem">Open</a>
                   <button type="button" onclick={() => shareApp(app.slug)} role="menuitem">Share</button>
                   <button type="button" onclick={() => openIdentity(app)} role="menuitem">Edit identity</button>
                   <a href={`/maker/apps/${app.slug}`} role="menuitem">Manage</a>

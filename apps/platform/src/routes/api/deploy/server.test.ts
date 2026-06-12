@@ -3,6 +3,7 @@ import { POST } from './+server';
 
 const mocks = vi.hoisted(() => ({
   resolveRequestUserId: vi.fn(async () => ({ userId: 'user-1' })),
+  checkRateLimit: vi.fn(() => ({ ok: true, retryAfterMs: 0 })),
 }));
 
 vi.mock('$server/auth/resolve-user', () => ({
@@ -10,7 +11,7 @@ vi.mock('$server/auth/resolve-user', () => ({
 }));
 
 vi.mock('$server/wrapper/rate-limit', () => ({
-  checkRateLimit: () => ({ ok: true, retryAfterMs: 0 }),
+  checkRateLimit: mocks.checkRateLimit,
 }));
 
 function eventFor(form: FormData) {
@@ -30,6 +31,21 @@ function eventFor(form: FormData) {
 }
 
 describe('POST /api/deploy', () => {
+  test('rate-limits authenticated deploys by maker id', async () => {
+    const form = new FormData();
+    form.set('slug', 'recipe-saver');
+    form.set('remix_from', 'recipe-saver');
+    form.set('zip', new File(['zip'], 'app.zip', { type: 'application/zip' }));
+
+    await POST(eventFor(form));
+
+    expect(mocks.checkRateLimit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: 'deploy:maker:user-1',
+      }),
+    );
+  });
+
   test('rejects self-remix before deploy side effects', async () => {
     const form = new FormData();
     form.set('slug', 'recipe-saver');

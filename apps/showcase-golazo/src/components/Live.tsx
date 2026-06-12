@@ -18,7 +18,7 @@ interface Float {
 }
 
 export function Live() {
-  const { profile, feed } = useStore();
+  const { profile, feed, online, feedSync, refreshFeed } = useStore();
   const uid = profile?.uid ?? "me";
   const name = profile?.name ?? "You";
   const zone = profile?.watchZone;
@@ -86,6 +86,13 @@ export function Live() {
   const activeScore = liveById[active.id];
   const venue = venueFor(active.id);
   const channel = channelFor(active.id, zone);
+  const feedLabel = feedSync.refreshing
+    ? "Checking"
+    : feed.updatedAt
+      ? formatFeedStamp(feed.updatedAt, zone)
+      : online
+        ? "Checked"
+        : "Offline";
 
   return (
     <div className="live">
@@ -94,10 +101,27 @@ export function Live() {
           <h2 className="section-title">Match Week</h2>
           <p className="section-hint">React live with everyone in the room.</p>
         </div>
-        <span className="presence">
-          <i className="presence-dot" />
-          {watching} watching
-        </span>
+        <div className="live-tools">
+          <span className="presence">
+            <i className="presence-dot" />
+            {watching} watching
+          </span>
+          <span className={`feed-status${online ? " is-online" : ""}`} title={feedSync.message}>
+            {feedLabel}
+          </span>
+          <button
+            className="score-refresh"
+            aria-label="Refresh scores"
+            title="Refresh scores"
+            disabled={feedSync.refreshing}
+            onClick={() => {
+              tap();
+              void refreshFeed();
+            }}
+          >
+            ↻
+          </button>
+        </div>
       </div>
 
       <div className="fixture-rail">
@@ -124,7 +148,7 @@ export function Live() {
                   ? fs!.status === "live"
                     ? fs!.minute ?? "live"
                     : "full time"
-                  : `${fk.day} · ${fk.time}`}
+                : `${fk.day} · ${fk.time} ${fk.zoneName}`}
               </span>
             </button>
           );
@@ -161,7 +185,7 @@ export function Live() {
             ) : (
               <>
                 <span className="live-kick">{k.day}</span>
-                <span className="live-time">{k.time}</span>
+                <span className="live-time">{k.time} {k.zoneName}</span>
                 <span className="live-rel">{k.rel}</span>
               </>
             )}
@@ -194,11 +218,32 @@ export function Live() {
       </div>
 
       <p className="live-note">
-        Reactions sync instantly to every Golazo open on this device — and
-        across the room when you're all on the same screen. No server, no login.
+        Scores check on launch, hourly while open, and when you tap refresh.
+        Your calls, groups, draws, and bests stay on this phone.
       </p>
     </div>
   );
+}
+
+function formatFeedStamp(iso: string, zone?: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "Checked";
+  try {
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: zone && zone !== "auto" ? zone : undefined,
+    }).format(d);
+  } catch {
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(d);
+  }
 }
 
 function Side({ id }: { id: string }) {

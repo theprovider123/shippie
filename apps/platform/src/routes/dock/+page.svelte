@@ -183,7 +183,12 @@
   } from '$lib/container/local-package-store';
   import { startCatalogSync } from '$lib/client/catalog-sync';
 
-  let { data }: { data: PageData } = $props();
+  interface Props {
+    data: PageData;
+    suppressPageMeta?: boolean;
+  }
+
+  let { data, suppressPageMeta = false }: Props = $props();
   type PrivateJoinData = NonNullable<PageData['privateJoin']>;
 
   const initialFocusedApp = untrack(() => (
@@ -738,7 +743,7 @@
   }
   const activeToolUrl = $derived.by(() => {
     if (!activeApp || typeof window === 'undefined') return '';
-    return new URL(`/run/${encodeURIComponent(activeApp.slug)}`, window.location.origin).toString();
+    return new URL(`/${encodeURIComponent(activeApp.slug)}`, window.location.origin).toString();
   });
   // Dedupe QR generation by active app + URL while the switcher is open.
   // The switcher is now the active-tool share surface, so the QR is ready
@@ -829,7 +834,9 @@
       slug: a.slug,
       name: a.name,
       icon: a.icon ?? a.shortName ?? a.name.slice(0, 2),
-      accent: categoryColorFamily(a.category),
+      accent: a.themeColor ?? categoryColorFamily(a.category),
+      iconUrl: a.iconUrl ?? null,
+      themeColor: a.themeColor ?? categoryColorFamily(a.category),
       category: a.category,
     })),
   );
@@ -859,8 +866,8 @@
       slug: tool.slug,
       name: tool.name,
       category: tool.category ?? null,
-      iconUrl: null,
-      themeColor: tool.accent,
+      iconUrl: tool.iconUrl ?? null,
+      themeColor: tool.themeColor ?? tool.accent,
       glyph: tool.icon,
       firstPartySigned: false,
       badges: [],
@@ -1120,7 +1127,7 @@
 
   function replaceFocusedRunUrl(app: ContainerApp) {
     if (!data.focused || typeof window === 'undefined') return;
-    const href = `/run/${encodeURIComponent(app.slug)}`;
+    const href = `/${encodeURIComponent(app.slug)}`;
     if (window.location.pathname === href && !window.location.search) return;
     try {
       window.history.replaceState(
@@ -1256,8 +1263,8 @@
   async function shareActiveTool() {
     if (!activeApp || !activeToolUrl) return;
     const shareData = {
-      title: `${activeApp.name} on Shippie`,
-      text: activeApp.description || `Open ${activeApp.name} in Shippie.`,
+      title: activeApp.name,
+      text: activeApp.description || `Open ${activeApp.name}.`,
       url: activeToolUrl,
     };
     try {
@@ -3388,11 +3395,13 @@
 </script>
 
 <svelte:head>
-  <title>Shippie</title>
-  <meta
-    name="description"
-    content="Open your saved tools, manage local data, and keep Shippie apps ready on this device."
-  />
+  {#if !suppressPageMeta}
+    <title>Shippie</title>
+    <meta
+      name="description"
+      content="Open your saved tools, manage local data, and keep Shippie apps ready on this device."
+    />
+  {/if}
 </svelte:head>
 
 <svelte:window onresize={() => (viewportWidth = window.innerWidth)} onkeydown={handleFocusedShellKeydown} />
@@ -4481,6 +4490,28 @@
     }
     :global(html[data-keyboard-open="true"]) .focused-dock-nub-wrap {
       transform: translateY(-50%) translateX(120%);
+    }
+    .focused-dock-nub-wrap.input-region-all {
+      top: auto;
+      bottom: max(10px, env(safe-area-inset-bottom));
+      transform: none;
+      opacity: 0.62;
+    }
+    .focused-dock-nub-wrap.input-region-all .focused-dock-nub {
+      width: 16px;
+      height: 38px;
+      border-radius: 10px 0 0 10px;
+    }
+    .focused-dock-nub-wrap.input-region-all .focused-dock-nub img {
+      width: 11px;
+      height: 11px;
+    }
+    .focused-shell[data-chrome-idle='true'] .focused-dock-nub-wrap.input-region-all {
+      opacity: 0.24;
+      transform: none;
+    }
+    :global(html[data-keyboard-open="true"]) .focused-dock-nub-wrap.input-region-all {
+      transform: translateX(120%);
     }
   }
 

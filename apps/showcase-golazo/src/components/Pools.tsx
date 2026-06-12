@@ -28,10 +28,11 @@ interface Row {
 
 export function Pools() {
   const store = useStore();
-  const { profile, pools } = store;
+  const { profile, pools, prediction } = store;
   const [open, setOpen] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [joinCode, setJoinCode] = useState("");
+  const [joinErr, setJoinErr] = useState<string | null>(null);
   const [sweepMembers, setSweepMembers] = useState<string[] | null>(null);
 
   if (sweepMembers) {
@@ -60,28 +61,67 @@ export function Pools() {
     tap();
     setOpen(p.code);
   }
+
+  function normalizeJoinCode(raw: string): string {
+    return raw.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+  }
+
   function join() {
-    if (!joinCode.trim()) return;
-    const p = store.joinPool(joinCode);
+    const code = normalizeJoinCode(joinCode);
+    if (code.length < 4) {
+      setJoinErr("Enter the group code your mate sent.");
+      return;
+    }
+    const p = store.joinPool(code);
     setJoinCode("");
+    setJoinErr(null);
     tap();
     setOpen(p.code);
+  }
+
+  async function shareMyCall() {
+    if (!profile) return;
+    tap();
+    await shareBracket(profile, prediction, "story");
   }
 
   return (
     <div className="pools">
       <div className="section-head">
         <div>
-          <h2 className="section-title">Your Lot</h2>
-          <p className="section-hint">Settle it with your lot. No accounts, no faff.</p>
+          <h2 className="section-title">Groups</h2>
+          <p className="section-hint">Tables, invites, sweepstakes.</p>
+        </div>
+        <div className="pool-form">
+          <span className="field-label">Join with code</span>
+          <div className="pool-form-row">
+            <input
+              className="field-input mono"
+              value={joinCode}
+              placeholder="ABCDE"
+              onChange={(e) => {
+                setJoinCode(normalizeJoinCode(e.target.value));
+                setJoinErr(null);
+              }}
+              onKeyDown={(e) => e.key === "Enter" && join()}
+              autoComplete="off"
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              inputMode="text"
+            />
+            <button className="cta sm" onClick={join} disabled={!joinCode.trim()}>
+              Join
+            </button>
+          </div>
+          {joinErr && <p className="form-err">{joinErr}</p>}
         </div>
       </div>
 
       {pools.length === 0 && (
         <div className="empty-pools">
           <span className="empty-pools-emoji" aria-hidden>🏟️</span>
-          <p>Start a group, drop the link in the chat, and watch the table fill
-          up as your lot make their calls.</p>
+          <p>Start a group and add calls from the links your mates send back.</p>
         </div>
       )}
 
@@ -101,7 +141,7 @@ export function Pools() {
 
       <div className="pool-forms">
         <div className="pool-form">
-          <span className="field-label">Start a group</span>
+          <span className="field-label">New group</span>
           <div className="pool-form-row">
             <input
               className="field-input"
@@ -115,26 +155,21 @@ export function Pools() {
             </button>
           </div>
         </div>
-        <div className="pool-form">
-          <span className="field-label">Join with a code</span>
-          <div className="pool-form-row">
-            <input
-              className="field-input mono"
-              value={joinCode}
-              placeholder="ABCDE"
-              onChange={(e) => setJoinCode(e.target.value.toUpperCase().slice(0, 6))}
-              onKeyDown={(e) => e.key === "Enter" && join()}
-            />
-            <button className="cta sm" onClick={join} disabled={!joinCode.trim()}>
-              Join
-            </button>
-          </div>
-        </div>
       </div>
+
+      {profile && (
+        <button
+          className="cta wide"
+          style={{ marginTop: 12 }}
+          onClick={shareMyCall}
+        >
+          Share my call
+        </button>
+      )}
 
       <button
         className="ghost-btn wide"
-        style={{ marginTop: 18 }}
+        style={{ marginTop: 10 }}
         onClick={() => { tap(); setSweepMembers([]); }}
       >
         🎲 Run a sweepstake
@@ -142,8 +177,8 @@ export function Pools() {
 
       {profile && (
         <p className="pools-tip">
-          Tip: your group is a private table — add your lot by pasting the link
-          they send you. Your tips stay on this phone until you choose to share.
+          Groups are private tables on this phone. Add people by opening or
+          pasting their Golazo links.
         </p>
       )}
     </div>
@@ -296,7 +331,7 @@ function PoolDetail({
     <div className="pool-detail">
       <div className="pool-detail-head">
         <button className="back-btn" onClick={() => { tap(); onBack(); }}>
-          ← Your Lot
+          ← Groups
         </button>
         <button className="pool-code lg copyable" onClick={copyCode} title="Copy join code">
           {codeCopied ? "Copied ✓" : pool.code}
@@ -423,11 +458,11 @@ function PoolDetail({
       )}
 
       <div className="pool-add">
-        <p className="pool-scarcity">{pool.name} is filling up — drop the link in the chat.</p>
+        <p className="pool-scarcity">Share your call, then paste the links your mates send back.</p>
         <button className="cta wide" onClick={invite}>
-          Drop in the group chat
+          Share my call
         </button>
-        <span className="field-label">Add a mate's call</span>
+        <span className="field-label">Paste a Golazo link</span>
         <div className="pool-form-row">
           <input
             className="field-input"

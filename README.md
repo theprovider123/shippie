@@ -15,7 +15,7 @@ npx @shippie/cli deploy ./dist
 
 **Drop a zip:** [shippie.app/new](https://shippie.app/new)
 
-Live at `https://your-app.shippie.app` in under a minute.
+Live at `https://shippie.app/your-app` in under a minute. New apps default to unlisted so you can test before public discovery.
 
 **Remix a public tool:**
 ```bash
@@ -71,7 +71,7 @@ The platform runs on Cloudflare Workers + D1 + R2 + KV + Durable Objects. Local 
 ## How it works
 
 1. **Build any PWA** — plain HTML/JS, React, Svelte, whatever builds to a `dist/`.
-2. **Deploy in 60 seconds** — CLI or zip upload; Shippie serves it from a subdomain.
+2. **Deploy in 60 seconds** — CLI or zip upload; Shippie gives it a short `/slug` URL.
 3. **Users install it** — PWA install prompt, offline after first load, data stays on device.
 4. **Makers improve it** — push updates; users get them on next open, local data intact.
 
@@ -94,6 +94,8 @@ Tools opt into remixing by publishing source + a license. Shippie tracks lineage
 ## Docs
 
 - [Getting started](docs/getting-started.md)
+- [Convert an existing app](docs/makers/convert-to-shippie.md)
+- [What to build on Shippie](docs/makers/what-to-build.md)
 - [SDK reference](docs/sdk-reference.md)
 - [Architecture](docs/architecture.md)
 - [Self-hosting](docs/self-hosting.md)

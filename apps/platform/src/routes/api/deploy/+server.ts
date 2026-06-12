@@ -38,7 +38,7 @@ export const POST: RequestHandler = async (event) => {
   // for claimed makers; trial (anonymous) deploys go through /api/deploy/
   // trial which has its own per-IP throttle.
   const deployRate = checkRateLimit({
-    key: `deploy:maker:${who}`,
+    key: `deploy:maker:${who.userId}`,
     limit: 10,
     windowMs: 24 * 60 * 60 * 1000,
   });

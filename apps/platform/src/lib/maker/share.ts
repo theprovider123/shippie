@@ -25,7 +25,7 @@ export function isAppLive(app: Pick<ShareApp, 'latestDeployStatus' | 'activeDepl
 }
 
 export function publicUrlFor(slug: string): string {
-  return `https://${slug}.shippie.app/`;
+  return `https://shippie.app/${encodeURIComponent(slug)}`;
 }
 
 export function shareStateFor(app: ShareApp): ShareState {

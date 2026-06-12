@@ -76,13 +76,22 @@ describe("field", () => {
     for (const id of all) expect(() => team(id)).not.toThrow();
   });
 
-  it("generates 72 group fixtures", () => {
+  it("ships 72 official group fixtures", () => {
     expect(GROUP_FIXTURES).toHaveLength(72);
     // every fixture references real teams in its own group
     for (const f of GROUP_FIXTURES) {
       expect(GROUPS[f.group]).toContain(f.home);
       expect(GROUPS[f.group]).toContain(f.away);
     }
+    expect(GROUP_FIXTURES[0]).toMatchObject({
+      id: "m01",
+      fifaId: "400021443",
+      matchNumber: 1,
+      home: "MEX",
+      away: "RSA",
+      kickoff: "2026-06-11T19:00:00Z",
+      venue: { stadium: "Mexico City Stadium", tz: "America/Mexico_City" },
+    });
   });
 });
 
@@ -237,7 +246,7 @@ describe("share codec", () => {
   it("builds and reads back a share URL hash", () => {
     const pred = fullPrediction();
     const payload = { name: "Sam", uid: "u1", prediction: pred };
-    const url = shareUrl(payload, "https://shippie.app/run/golazo/");
+    const url = shareUrl(payload, "https://shippie.app/golazo");
     expect(url).toContain("#b=");
     const hash = url.slice(url.indexOf("#"));
     const back = readShareFromHash(hash);

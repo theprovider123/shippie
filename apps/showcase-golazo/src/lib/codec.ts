@@ -76,7 +76,7 @@ export function shareUrl(payload: SharePayload, base?: string): string {
     base ??
     (typeof location !== "undefined"
       ? location.origin + location.pathname
-      : "https://shippie.app/run/golazo/");
+      : "https://shippie.app/golazo");
   return `${root}#b=${encodeShare(payload)}`;
 }
 
@@ -148,7 +148,7 @@ export function sweepUrl(sweep: Sweep, base?: string): string {
     base ??
     (typeof location !== "undefined"
       ? location.origin + location.pathname
-      : "https://shippie.app/run/golazo/");
+      : "https://shippie.app/golazo");
   return `${root}#sweep=${encodeSweep(sweep)}`;
 }
 

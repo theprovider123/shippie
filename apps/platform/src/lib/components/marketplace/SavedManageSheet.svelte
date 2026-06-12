@@ -142,7 +142,7 @@
             <ToolRow
               app={launcherAppToToolDisplay(app)}
               state={stateFor(app)}
-              href={`/run/${encodeURIComponent(app.slug)}`}
+              href={`/${encodeURIComponent(app.slug)}`}
               caption={`${health.label}${bytesFor(app.slug) > 0 ? ` · ${formatBytes(bytesFor(app.slug))}` : ''}`}
               hideRelationship
               onOpen={onClose}

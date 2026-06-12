@@ -182,7 +182,10 @@ async function tryStaticBridge(
   const incoming = new URL(ctx.request.url);
   // Strip leading slash so we don't double up — pathname always starts with /.
   const targetPath = incoming.pathname === '/' ? '' : incoming.pathname;
-  const target = `https://shippie.app/run/${encodeURIComponent(slug)}${targetPath}${incoming.search}`;
+  const target =
+    incoming.pathname === '/'
+      ? `https://shippie.app/${encodeURIComponent(slug)}${incoming.search}`
+      : `https://shippie.app/run/${encodeURIComponent(slug)}${targetPath}${incoming.search}`;
   return new Response(null, {
     status: 302,
     headers: {

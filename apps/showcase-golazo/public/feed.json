@@ -1,9 +1,18 @@
 {
-  "updatedAt": "2026-05-29T00:00:00Z",
+  "updatedAt": "2026-06-11T08:00:00Z",
   "news": [
-    { "at": "2026-05-29T00:00:00Z", "text": "Build your bracket now — kick-off is June 11." },
-    { "at": "2026-05-29T00:00:00Z", "text": "Start a pool and share your link to fill the table." }
+    { "at": "2026-06-11T08:00:00Z", "text": "Opening day: Mexico v South Africa starts the tournament." },
+    { "at": "2026-06-11T08:00:00Z", "text": "Scores are checked lightly; your calls and groups stay on this phone." }
   ],
-  "live": [],
+  "live": [
+    {
+      "matchId": "m01",
+      "home": "MEX",
+      "away": "RSA",
+      "homeGoals": 0,
+      "awayGoals": 0,
+      "status": "upcoming"
+    }
+  ],
   "results": { "groups": {}, "knockout": {} }
 }

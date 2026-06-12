@@ -1,224 +1,366 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   PENS,
   resolveDuel,
   duelUrl,
-  defaultShotPlacement,
-  normaliseShotPlacement,
   penaltyShotSaved,
-  zoneFromX,
+  penaltyShotSavedWithReach,
   readShooter,
-  aiStrike,
   type Zone,
   type Duel,
   type DuelSide,
   type ShotPlacement,
 } from "../../lib/duel";
-import { drawStadium, drawBall, drawKeeper, Trail, Particles, Shake } from "../../lib/stadium";
+import { team, type Team } from "../../data/teams";
+import { drawBall, drawBallShadow, drawKeeper, Trail, Particles, Shake } from "../../lib/stadium";
 import { Hitstop, drawNetRipple } from "../../lib/juice";
 import { tap as hapticTap, confirmBuzz, celebrate } from "../../lib/haptics";
+import { penaltyPlacementFromSwipe, type SwipePoint } from "../../lib/shot-gesture";
+import { useStore } from "../../state";
 import * as sfx from "../../lib/sfx";
 
-/** Minimal pre-shot keeper state for drift/feint mind games. */
-interface KeeperMindState {
-  preDriftDir: -1 | 0 | 1;
-  preDriftFake: boolean;
-}
-function freshKeeperMind(rng = Math.random): KeeperMindState {
-  const dir: -1 | 0 | 1 = rng() < 0.4 ? 0 : rng() < 0.5 ? -1 : 1;
-  return { preDriftDir: dir, preDriftFake: dir !== 0 && rng() < 0.3 };
+type Phase = "shoot" | "level" | "result";
+type Anim = { placement: ShotPlacement; dive: Zone; t: number; goal: boolean };
+
+interface LadderLevel {
+  rank: number;
+  team: Team;
+  required: number;
+  readChance: number;
+  reach: number;
 }
 
-type Phase = "intro" | "shoot" | "keep" | "result";
-const ZONES: { z: Zone; label: string }[] = [
-  { z: -1, label: "Left" },
-  { z: 0, label: "Middle" },
-  { z: 1, label: "Right" },
-];
+const LADDER_IDS = ["FRA", "ESP", "ARG", "ENG", "POR", "BRA", "NED", "MAR", "BEL", "GER"] as const;
+const LADDER_SHOTS = 7;
+const PENALTY_LADDER: LadderLevel[] = LADDER_IDS.map((id, i) => ({
+  rank: i + 1,
+  team: team(id),
+  required: i < 2 ? 4 : i < 6 ? 5 : i < 9 ? 6 : 7,
+  readChance: 0.24 + i * 0.065,
+  reach: 1 + i * 0.038,
+}));
 
-type Anim = { placement: ShotPlacement; dive: Zone; t: number; goal: boolean; who: "me" | "ai" };
+function randomZone(): Zone {
+  return ([-1, 0, 1] as Zone[])[Math.floor(Math.random() * 3)] ?? 0;
+}
+
+function playerTeamAgainst(opponentId: string, favTeam?: string): string {
+  if (favTeam && favTeam !== opponentId) return favTeam;
+  if (opponentId !== "ENG") return "ENG";
+  return "USA";
+}
+
+function ladderKeeperDive(shot: ShotPlacement, history: readonly Zone[], level: LadderLevel): Zone {
+  const read = readShooter([...history]).dive;
+  const centralShot = Math.abs(shot.x - 0.5) < 0.14;
+  const tameShot = shot.power < 0.7 || shot.y < 0.38;
+  const postageStamp = Math.abs(shot.x - 0.5) > 0.36 && shot.y > 0.8 && shot.power > 0.82;
+  const readChance = Math.max(
+    0.08,
+    Math.min(
+      0.9,
+      level.readChance + (centralShot ? 0.18 : 0) + (tameShot ? 0.12 : 0) - (postageStamp ? 0.12 : 0) - Math.abs(shot.bend) * 0.08,
+    ),
+  );
+  if (Math.random() < readChance) return shot.zone;
+  if (centralShot && Math.random() < 0.48 + level.rank * 0.025) return 0;
+  if (Math.random() < 0.72) return read;
+  return randomZone();
+}
+
+function ladderShotSaved(shot: ShotPlacement, keeperDive: Zone, level: LadderLevel): boolean {
+  return penaltyShotSavedWithReach(shot, keeperDive, level.reach);
+}
+
+function shotSaved(shot: ShotPlacement, keeperDive: Zone, level?: LadderLevel | null): boolean {
+  return level ? ladderShotSaved(shot, keeperDive, level) : penaltyShotSaved(shot, keeperDive);
+}
+
+function autoKeeperDives(shots: readonly Zone[]): Zone[] {
+  const history: Zone[] = [];
+  return shots.slice(0, PENS).map(() => {
+    const dive = readShooter(history).dive;
+    history.push(shots[history.length] ?? 0);
+    return dive;
+  });
+}
+
+function outcomeDots(
+  shotDetails: readonly ShotPlacement[],
+  keeperDives: readonly Zone[],
+  level?: LadderLevel | null,
+  count = PENS,
+): ("goal" | "save" | "empty")[] {
+  return Array.from({ length: count }, (_, i) => {
+    const shot = shotDetails[i];
+    if (!shot) return "empty";
+    return shotSaved(shot, keeperDives[i] ?? 0, level) ? "save" : "goal";
+  });
+}
+
+function goalsForRound(
+  shotDetails: readonly ShotPlacement[],
+  keeperDives: readonly Zone[],
+  level?: LadderLevel | null,
+): number {
+  return shotDetails.filter((shot, i) => !shotSaved(shot, keeperDives[i] ?? 0, level)).length;
+}
 
 /**
- * Penalty Duel. Solo it's a full shootout vs a keeper that reads your tendencies and a striker
- * that shows a readable tell (sometimes a feint) — five each, then sudden death. By link it's
- * an async head-to-head: you beat the challenger's keeper, then set yours, and the duel travels
- * back in a URL. No backend either way.
+ * Penalty Duel: first-person penalty arcade. The player swipes through the
+ * foreground ball; gesture direction places the shot, speed adds pace, and
+ * gesture arc adds curl. Links still carry the completed five-shot duel;
+ * the solo country ladder uses longer seven-shot rounds.
  */
-export function PenaltyDuel({ duel: incoming, playerName }: { duel?: Duel | null; playerName: string }) {
-  const responding = Boolean(incoming?.a && !incoming?.b); // link: I face the challenger
-  const viewingResult = Boolean(incoming?.a && incoming?.b); // link: result came back
-  const solo = !incoming?.a; // no link → shootout vs AI
-  const oppDives = responding ? incoming!.a.dives : null; // keeper I shoot against (link)
+export function PenaltyDuel({
+  duel: incoming,
+  playerName,
+  onGameOver,
+}: {
+  duel?: Duel | null;
+  playerName: string;
+  onGameOver?: (score: number) => void;
+}) {
+  const store = useStore();
+  const responding = Boolean(incoming?.a && !incoming?.b);
+  const viewingResult = Boolean(incoming?.a && incoming?.b);
+  const duelMode = responding || viewingResult;
+  const opponentDives = responding ? incoming!.a.dives : null;
+  const challengeDives = useMemo(() => incoming?.a ? autoKeeperDives(incoming.a.shots) : [], [incoming]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [phase, setPhase] = useState<Phase>(viewingResult ? "result" : "intro");
+  const [phase, setPhase] = useState<Phase>(viewingResult ? "result" : "shoot");
+  const [levelIndex, setLevelIndex] = useState(0);
+  const [totalGoals, setTotalGoals] = useState(0);
+  const [finalRun, setFinalRun] = useState<{ score: number; cleared: number; complete: boolean } | null>(null);
   const [shots, setShots] = useState<Zone[]>([]);
   const [shotDetails, setShotDetails] = useState<ShotPlacement[]>([]);
-  const [dives, setDives] = useState<Zone[]>([]);
+  const [keeperDives, setKeeperDives] = useState<Zone[]>([]);
   const [anim, setAnim] = useState<Anim | null>(null);
   const [copied, setCopied] = useState(false);
   const [muted, setMutedState] = useState(sfx.isMuted());
 
-  // Solo shootout score (human vs AI), with sudden death once five each are level.
-  const [myGoals, setMyGoals] = useState(0);
-  const [aiGoals, setAiGoals] = useState(0);
-  const [tell, setTell] = useState<Zone | null>(null);
-  const [over, setOver] = useState<null | { won: boolean | null }>(null);
-  const myGoalsRef = useRef(0); const aiGoalsRef = useRef(0);
-  const myShotsRef = useRef<Zone[]>([]); const myDivesRef = useRef<Zone[]>([]);
-  const aiStrikeRef = useRef<ReturnType<typeof aiStrike> | null>(null);
-
-  const animRef = useRef(anim); animRef.current = anim;
-  const shotsRef = useRef(shots); shotsRef.current = shots;
+  const animRef = useRef(anim);
+  const phaseRef = useRef(phase);
+  const levelRef = useRef<LadderLevel | null>(null);
+  const levelIndexRef = useRef(levelIndex);
+  const totalGoalsRef = useRef(totalGoals);
+  const reportedScoreRef = useRef<number | null>(null);
+  const shotsRef = useRef(shots);
+  const shotDetailsRef = useRef(shotDetails);
+  const keeperDivesRef = useRef(keeperDives);
   const shootRef = useRef<(p: ShotPlacement) => void>(() => {});
-  const animDoneRef = useRef(false); // one resolution per shot (guards a double-fire)
-  const keeperMindRef = useRef<KeeperMindState>(freshKeeperMind());
+  const animDoneRef = useRef(false);
+  const promptDismissedRef = useRef(false);
 
-  // ── Canvas: one shot flight, keeper diving. Reused for my shots and the AI's. ──
+  animRef.current = anim;
+  phaseRef.current = phase;
+  levelIndexRef.current = levelIndex;
+  totalGoalsRef.current = totalGoals;
+  shotsRef.current = shots;
+  shotDetailsRef.current = shotDetails;
+  keeperDivesRef.current = keeperDives;
+
+  const ladderLevel = duelMode ? null : PENALTY_LADDER[levelIndex] ?? PENALTY_LADDER[PENALTY_LADDER.length - 1]!;
+  const activeLevel = ladderLevel ?? PENALTY_LADDER[0]!;
+  const roundShots = ladderLevel ? LADDER_SHOTS : PENS;
+  levelRef.current = ladderLevel;
+  const duelLeftTeam = store.profile?.favTeam ?? "ENG";
+  const rightTeam = duelMode ? (duelLeftTeam === "KSA" ? "ENG" : "KSA") : activeLevel.team.id;
+  const leftTeam = duelMode ? duelLeftTeam : playerTeamAgainst(rightTeam, store.profile?.favTeam);
+  const left = team(leftTeam);
+  const right = team(rightTeam);
+  const goals = goalsForRound(shotDetails, keeperDives, ladderLevel);
+  const saves = shotDetails.length - goals;
+  const dots = outcomeDots(shotDetails, keeperDives, ladderLevel, roundShots);
+  const nextLevel = ladderLevel ? PENALTY_LADDER[levelIndex + 1] : null;
+
   useEffect(() => {
-    if (phase !== "shoot" && phase !== "keep") return;
-    const canvas = canvasRef.current!;
-    const ctx = canvas.getContext("2d")!;
+    if (phase !== "shoot") return;
+    const canvasEl = canvasRef.current;
+    const ctxMaybe = canvasEl?.getContext("2d");
+    if (!canvasEl || !ctxMaybe) return;
+    const canvas: HTMLCanvasElement = canvasEl;
+    const ctx: CanvasRenderingContext2D = ctxMaybe;
+
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    let W = 0, H = 0, raf = 0;
+    let W = 0;
+    let H = 0;
+    let raf = 0;
     const particles = new Particles();
     const shake = new Shake();
-    const trail = new Trail(12);
+    const trail = new Trail(16);
     const hitstop = new Hitstop();
-    const startT = performance.now();
-    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
-    let drag: { x: number; y: number } | null = null;
-    let aim: { x: number; y: number } | null = null;
-    let path: { x: number; y: number }[] = [];
+    let drag: SwipePoint | null = null;
+    let aim: SwipePoint | null = null;
+    let path: SwipePoint[] = [];
     let ripple: { x: number; y: number; age: number } | null = null;
     let rippleFired = false;
-    const clamp = (n: number, lo: number, hi: number) => (n < lo ? lo : n > hi ? hi : n);
+
+    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+
     function size() {
       const r = canvas.getBoundingClientRect();
-      W = r.width; H = r.height;
-      canvas.width = W * dpr; canvas.height = H * dpr;
+      W = r.width;
+      H = r.height;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
-    size();
-    window.addEventListener("resize", size);
 
-    function zoneX(z: Zone) { const gl = W * 0.04, gr = W * 0.96; return z === -1 ? gl + (gr - gl) * 0.16 : z === 1 ? gr - (gr - gl) * 0.16 : W / 2; }
-    function curlFromPath(pts: { x: number; y: number }[]): number {
-      if (pts.length < 3) return 0;
-      const a = pts[0], b = pts[pts.length - 1], m = pts[Math.floor(pts.length / 2)];
-      const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-      const cross = ((b.x - a.x) * (a.y - m.y) - (b.y - a.y) * (a.x - m.x)) / len;
-      return clamp(-cross / (W * 0.16), -1, 1);
+    function geometry() {
+      const isPhone = W < 520;
+      const goalLeft = W * (isPhone ? 0.08 : 0.13);
+      const goalRight = W * (isPhone ? 0.92 : 0.87);
+      const goalTop = H * 0.11;
+      const goalHeight = H * (isPhone ? 0.35 : 0.33);
+      const spot = { x: W / 2, y: H * 0.78 };
+      return {
+        goalLeft,
+        goalRight,
+        goalTop,
+        goalHeight,
+        goalWidth: goalRight - goalLeft,
+        goalBottom: goalTop + goalHeight,
+        spot,
+        ballR: Math.min(W, H) * 0.105,
+      };
     }
-    function placementFromPath(pts: { x: number; y: number }[]): ShotPlacement | null {
-      const end = pts[pts.length - 1];
-      if (!end) return null;
-      const gl = W * 0.04, gr = W * 0.96, gy = H * 0.12, bh = H * 0.34;
-      const spotX = W / 2, spotY = H * 0.88;
-      const dx = end.x - spotX, dy = end.y - spotY;
-      if (dy > -18) return null;
-      const x = clamp((end.x - gl) / (gr - gl), 0.04, 0.96);
-      const y = clamp((gy + bh - end.y) / bh, 0.08, 0.96);
-      return normaliseShotPlacement({
-        zone: zoneFromX(x), x, y,
-        power: clamp(Math.hypot(dx, dy) / (H * 0.58), 0.42, 1),
-        bend: curlFromPath(pts),
-      }, zoneFromX(x), shotsRef.current.length);
+
+    function placementFromPath(points: SwipePoint[]): ShotPlacement | null {
+      const g = geometry();
+      return penaltyPlacementFromSwipe(
+        points,
+        { left: g.goalLeft, right: g.goalRight, top: g.goalTop, height: g.goalHeight },
+        g.spot,
+        { width: W, height: H },
+        shotsRef.current.length,
+      );
     }
+
     function onDown(e: PointerEvent) {
-      if (phase !== "shoot" || animRef.current || shotsRef.current.length >= PENS + 6) return;
+      const g = geometry();
+      const limit = levelRef.current ? LADDER_SHOTS : PENS;
+      if (phaseRef.current !== "shoot" || animRef.current || shotsRef.current.length >= limit) return;
       const r = canvas.getBoundingClientRect();
-      drag = { x: e.clientX - r.left, y: e.clientY - r.top };
-      aim = drag; path = [drag];
+      const p = { x: e.clientX - r.left, y: e.clientY - r.top, t: e.timeStamp };
+      const nearBall = Math.hypot(p.x - g.spot.x, p.y - g.spot.y) <= g.ballR * 2.3;
+      if (!nearBall && p.y < H * 0.54) return;
+      drag = p;
+      aim = p;
+      path = [p];
       canvas.setPointerCapture?.(e.pointerId);
     }
+
     function onMove(e: PointerEvent) {
       if (!drag) return;
       const r = canvas.getBoundingClientRect();
-      aim = { x: e.clientX - r.left, y: e.clientY - r.top };
+      aim = { x: e.clientX - r.left, y: e.clientY - r.top, t: e.timeStamp };
       path.push(aim);
     }
+
     function onUp() {
       if (drag && aim) {
         const placement = placementFromPath(path.length > 1 ? path : [drag, aim]);
         if (placement) shootRef.current(placement);
       }
-      drag = null; aim = null; path = [];
+      drag = null;
+      aim = null;
+      path = [];
     }
-    canvas.addEventListener("pointerdown", onDown);
-    canvas.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
 
-    function frame(now: number) {
-      const ts = hitstop.scale();
-      const gy = H * 0.12, gl = W * 0.04, gr = W * 0.96, bh = H * 0.34;
+    function drawScene(now: number) {
+      const g = geometry();
       const a = animRef.current;
-      const spotX = W / 2, spotY = H * 0.88;
-      const baseR = Math.min(W, H) * 0.038;
-      const mind = keeperMindRef.current;
-      // Pre-shot drift: keeper leans subtly toward their guessed side (or feints).
-      const preDriftOffset = !a && mind.preDriftDir !== 0 ? mind.preDriftDir * (gr - gl) * 0.055 : 0;
-      let ballX = spotX, ballY = spotY, keeperX = W / 2 + preDriftOffset, keeperTarget = W / 2, ballR = baseR;
+      const ts = hitstop.scale();
+      const [sx, sy] = shake.offset();
+      let ballX = g.spot.x;
+      let ballY = g.spot.y;
+      let ballR = g.ballR;
+      let keeperX = W / 2;
+      let keeperLean = 0;
+      let keeperDive = 0;
+      let targetX = W / 2;
+      let targetY = g.goalTop + g.goalHeight * 0.55;
+
       if (a) {
-        const targetX = gl + a.placement.x * (gr - gl);
-        const targetY = gy + bh - a.placement.y * bh;
-        const duration = 20 - a.placement.power * 5;
-        const raw = Math.min(1, a.t / duration);
+        targetX = g.goalLeft + a.placement.x * g.goalWidth;
+        targetY = g.goalBottom - a.placement.y * g.goalHeight;
+        const raw = Math.min(1, a.t / (24 - a.placement.power * 5));
         const k = easeOut(raw);
-        ballX = spotX + (targetX - spotX) * k + Math.sin(raw * Math.PI) * a.placement.bend * (gr - gl) * 0.13;
-        ballY = spotY + (targetY - spotY) * k - Math.sin(raw * Math.PI) * H * (0.06 + a.placement.power * 0.08);
-        ballR = baseR * (1 - 0.42 * k);
-        keeperTarget = a.dive === a.placement.zone ? targetX + (targetX > W / 2 ? -1 : 1) * (gr - gl) * 0.05 : zoneX(a.dive);
-        keeperX = W / 2 + (keeperTarget - W / 2) * easeOut(Math.min(1, a.t / 17));
+        const curl = Math.sin(raw * Math.PI) * a.placement.bend * g.goalWidth * 0.2;
+        ballX = g.spot.x + (targetX - g.spot.x) * k + curl;
+        ballY = g.spot.y + (targetY - g.spot.y) * k - Math.sin(raw * Math.PI) * H * (0.05 + a.placement.power * 0.06);
+        ballR = g.ballR * (1 - 0.68 * k);
+        const diveX = a.dive === -1 ? g.goalLeft + g.goalWidth * 0.22 : a.dive === 1 ? g.goalRight - g.goalWidth * 0.22 : W / 2;
+        keeperX = W / 2 + (diveX - W / 2) * easeOut(Math.min(1, a.t / 16));
+        keeperLean = (diveX - W / 2) / (W * 0.28);
+        keeperDive = Math.min(1, a.t / 17);
         if (raw < 1) trail.push(ballX, ballY);
         if (raw >= 1 && !rippleFired) {
           rippleFired = true;
-          if (a.goal) { particles.emit(targetX, targetY, "spark", 26); shake.kick(13); hitstop.kick(0.8, 4); ripple = { x: targetX, y: targetY, age: 0 }; sfx.net(); sfx.crowd(0.8); }
-          else { shake.kick(9); particles.emit(keeperX, gy + bh * 0.55, "dust", 12); hitstop.kick(0.5, 2); sfx.save(); }
-        }
-      } else { trail.clear(); rippleFired = false; ripple = null; }
-      const [sx, sy] = shake.offset();
-      ctx.save();
-      ctx.translate(sx, sy);
-      drawStadium(ctx, W, H, now - startT, { pitchTop: 0.55, markings: "penalty" });
-      ctx.strokeStyle = "rgba(255,255,255,0.16)"; ctx.lineWidth = 1;
-      for (let x = gl; x <= gr; x += (gr - gl) / 12) { ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x, gy + bh); ctx.stroke(); }
-      for (let y = gy; y <= gy + bh; y += bh / 4) { ctx.beginPath(); ctx.moveTo(gl, y); ctx.lineTo(gr, y); ctx.stroke(); }
-      ctx.strokeStyle = "#fff"; ctx.lineWidth = 5; ctx.lineCap = "round";
-      ctx.beginPath(); ctx.moveTo(gl, gy + bh); ctx.lineTo(gl, gy); ctx.lineTo(gr, gy); ctx.lineTo(gr, gy + bh); ctx.stroke();
-      if (ripple) { drawNetRipple(ctx, ripple.x, ripple.y, ripple.age, "rgba(120,240,170,"); ripple.age += ts; }
-      // Aim hints when idle in shoot phase
-      if (phase === "shoot" && !a) {
-        for (const { z } of ZONES) {
-          ctx.fillStyle = "rgba(22,240,139,0.1)";
-          const cx = zoneX(z), w = (gr - gl) / 3.4;
-          ctx.fillRect(cx - w / 2, gy, w, bh);
-        }
-        const placement = aim && drag ? placementFromPath(path.length > 1 ? path : [drag, aim]) : null;
-        if (placement) {
-          const targetX = gl + placement.x * (gr - gl), targetY = gy + bh - placement.y * bh;
-          for (let i = 1; i <= 18; i++) {
-            const raw = i / 18, k = easeOut(raw);
-            const px = spotX + (targetX - spotX) * k + Math.sin(raw * Math.PI) * placement.bend * (gr - gl) * 0.13;
-            const py = spotY + (targetY - spotY) * k - Math.sin(raw * Math.PI) * H * (0.06 + placement.power * 0.08);
-            ctx.fillStyle = `rgba(184,255,78,${0.58 - i * 0.02})`;
-            ctx.beginPath(); ctx.arc(px, py, 2.7 - i * 0.04, 0, Math.PI * 2); ctx.fill();
+          if (a.goal) {
+            celebrate();
+            particles.emit(targetX, targetY, "spark", 30);
+            ripple = { x: targetX, y: targetY, age: 0 };
+            shake.kick(12);
+            hitstop.kick(0.8, 4);
+            sfx.net();
+            sfx.crowd(0.8);
+          } else {
+            confirmBuzz();
+            particles.emit(keeperX, g.goalTop + g.goalHeight * 0.62, "dust", 18);
+            shake.kick(8);
+            hitstop.kick(0.5, 3);
+            sfx.save();
           }
         }
+      } else {
+        trail.clear();
+        rippleFired = false;
+        ripple = null;
       }
-      const lean = a ? (keeperTarget - W / 2) / (W * 0.3) : mind.preDriftDir * 0.18;
-      const dive = a ? Math.min(1, a.t / 16) : 0;
-      drawKeeper(ctx, keeperX, gy + bh * 0.62, (gr - gl) * 0.14, lean, bh * 0.44, dive);
+
+      ctx.save();
+      ctx.translate(sx, sy);
+      drawArcadeBackdrop(ctx, W, H, left, right);
+      drawGoal(ctx, g.goalLeft, g.goalTop, g.goalWidth, g.goalHeight, right.colors);
+      if (ripple) {
+        drawNetRipple(ctx, ripple.x, ripple.y, ripple.age, "rgba(184,255,78,");
+        ripple.age += ts;
+      }
+      drawKeeper(ctx, keeperX, g.goalTop + g.goalHeight * 0.72, g.goalWidth * (W < 520 ? 0.095 : 0.115), keeperLean, g.goalHeight * (W < 520 ? 0.64 : 0.72), keeperDive, right.colors[0]);
+
+      if (!a && phaseRef.current === "shoot" && shotsRef.current.length < (levelRef.current ? LADDER_SHOTS : PENS)) {
+        const placement = aim && drag ? placementFromPath(path.length > 1 ? path : [drag, aim]) : null;
+        if (placement) {
+          const tx = g.goalLeft + placement.x * g.goalWidth;
+          const ty = g.goalBottom - placement.y * g.goalHeight;
+          drawAimArc(ctx, g.spot.x, g.spot.y, tx, ty, placement.bend, W, H);
+        }
+        if (!promptDismissedRef.current) {
+          drawSwipePrompt(ctx, W, H, g.spot.y - g.ballR * 1.15);
+        }
+      }
+
       if (a) trail.draw(ctx, ballR);
-      drawBall(ctx, ballX, ballY, ballR, now / 90);
+      drawBallShadow(ctx, ballX, g.spot.y + g.ballR * 0.75, ballR, a ? 0.75 : 0);
+      drawBall(ctx, ballX, ballY, ballR, now / 90, a ? 1 : 0.92);
       if (ts > 0.5) particles.update();
       particles.draw(ctx);
       ctx.restore();
 
       if (a && ts > 0.5) setAnim((p) => (p ? { ...p, t: p.t + 1 } : p));
-      raf = requestAnimationFrame(frame);
+      raf = requestAnimationFrame(drawScene);
     }
-    raf = requestAnimationFrame(frame);
+
+    size();
+    window.addEventListener("resize", size);
+    canvas.addEventListener("pointerdown", onDown);
+    canvas.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    raf = requestAnimationFrame(drawScene);
+
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", size);
@@ -226,217 +368,382 @@ export function PenaltyDuel({ duel: incoming, playerName }: { duel?: Duel | null
       canvas.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
-  }, [phase]);
+  }, [phase, levelIndex, left.id, right.id]);
 
-  // Resolve a shot animation → record + advance the right flow. animDoneRef makes this fire
-  // exactly once per shot even if a couple of frames render at t≥36 before setAnim(null) lands.
   useEffect(() => {
-    if (!anim || anim.t < 36 || animDoneRef.current) return;
+    if (!anim || anim.t < 35 || animDoneRef.current) return;
     animDoneRef.current = true;
     const finished = anim;
     setAnim(null);
-    if (finished.who === "me") {
-      const placement = finished.placement;
-      setShotDetails((d) => [...d, placement]);
-      if (solo) {
-        if (finished.goal) { myGoalsRef.current += 1; setMyGoals(myGoalsRef.current); }
-        myShotsRef.current = [...myShotsRef.current, placement.zone];
-        setShots(myShotsRef.current);
-        advanceSolo("afterMyShot");
-      } else {
-        const next = [...shotsRef.current, placement.zone];
-        setShots(next);
-        if (next.length >= PENS) setTimeout(() => setPhase("keep"), 250);
+    const nextShots = [...shotsRef.current, finished.placement.zone];
+    const nextDetails = [...shotDetailsRef.current, finished.placement];
+    const nextDives = [...keeperDivesRef.current, finished.dive];
+    setShots(nextShots);
+    setShotDetails(nextDetails);
+    setKeeperDives(nextDives);
+    const roundLimit = levelRef.current ? LADDER_SHOTS : PENS;
+    if (nextShots.length >= roundLimit) {
+      if (!duelMode) {
+        const level = levelRef.current;
+        const roundGoals = goalsForRound(nextDetails, nextDives, level);
+        const nextTotal = totalGoalsRef.current + roundGoals;
+        setTotalGoals(nextTotal);
+        if (!level) {
+          setTimeout(() => setPhase("result"), 420);
+          return;
+        }
+        const cleared = roundGoals >= level.required;
+        const completedLadder = cleared && levelIndexRef.current >= PENALTY_LADDER.length - 1;
+        if (cleared && !completedLadder) {
+          setTimeout(() => setPhase("level"), 420);
+          return;
+        }
+        const final = { score: nextTotal, cleared: cleared ? level.rank : level.rank - 1, complete: completedLadder };
+        setFinalRun(final);
+        if (reportedScoreRef.current !== nextTotal) {
+          reportedScoreRef.current = nextTotal;
+          onGameOver?.(nextTotal);
+        }
+        setTimeout(() => setPhase("result"), 420);
+        return;
       }
-    } else {
-      // AI shot resolved (solo keep phase)
-      if (finished.goal) { aiGoalsRef.current += 1; setAiGoals(aiGoalsRef.current); }
-      advanceSolo("afterAiShot");
+      setTimeout(() => setPhase("result"), 420);
     }
-  }, [anim]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [anim, duelMode, onGameOver]);
 
-  // ── Solo shootout flow control ──
-  function settleSolo(): boolean {
-    const me = myGoalsRef.current, ai = aiGoalsRef.current;
-    const shotsTaken = myShotsRef.current.length, divesTaken = myDivesRef.current.length;
-    // After equal completed rounds, a lead decides it (regulation 5 or sudden death).
-    if (shotsTaken === divesTaken && shotsTaken >= PENS && me !== ai) {
-      setOver({ won: me > ai });
-      setTimeout(() => setPhase("result"), 600);
-      return true;
-    }
-    return false;
-  }
-  function advanceSolo(when: "afterMyShot" | "afterAiShot") {
-    if (when === "afterMyShot") {
-      // hand over to keep for the matching AI penalty
-      setTimeout(() => { if (!settleSolo()) startKeep(); }, 360);
-    } else {
-      setTimeout(() => { if (!settleSolo()) backToShoot(); }, 360);
-    }
-  }
-  function startKeep() {
-    setPhase("keep");
-    const strike = aiStrike(myDivesRef.current);
-    aiStrikeRef.current = strike;
-    setTell(strike.tell);
-  }
-  function backToShoot() { setPhase("shoot"); setTell(null); }
-
-  // ── Shooting (human) ──
-  function shootPlacement(input: ShotPlacement) {
-    if (anim || phase !== "shoot" || over) return;
+  function shootPlacement(placement: ShotPlacement) {
+    const limit = levelRef.current ? LADDER_SHOTS : PENS;
+    if (anim || phase !== "shoot" || shotsRef.current.length >= limit) return;
     hapticTap();
-    const placement = normaliseShotPlacement(input, input.zone, shotsRef.current.length);
-    let dive: Zone;
-    if (solo) dive = readShooter(myShotsRef.current).dive;
-    else dive = oppDives ? oppDives[shotsRef.current.length] ?? 0 : 0;
-    const goal = !penaltyShotSaved(placement, dive);
-    if (goal) celebrate(); else confirmBuzz();
+    promptDismissedRef.current = true;
+    const idx = shotsRef.current.length;
+    const level = levelRef.current;
+    const dive = opponentDives
+      ? opponentDives[idx] ?? 0
+      : level
+        ? ladderKeeperDive(placement, shotsRef.current, level)
+        : readShooter(shotsRef.current).dive;
+    const goal = !shotSaved(placement, dive, level);
     sfx.kick(placement.power);
     animDoneRef.current = false;
-    // Refresh keeper mind for the next round after this shot resolves.
-    keeperMindRef.current = freshKeeperMind();
-    setAnim({ placement, dive, t: 0, goal, who: "me" });
+    setAnim({ placement, dive, t: 0, goal });
   }
   shootRef.current = shootPlacement;
 
-  function shoot(z: Zone) {
-    const base = defaultShotPlacement(z, shotsRef.current.length);
-    shootPlacement({ ...base, power: 0.62 + Math.random() * 0.2, y: Math.max(0.12, Math.min(0.88, base.y + (Math.random() - 0.5) * 0.18)), bend: (Math.random() - 0.5) * 0.22 });
+  function reset() {
+    setLevelIndex(0);
+    setTotalGoals(0);
+    setFinalRun(null);
+    setShots([]);
+    setShotDetails([]);
+    setKeeperDives([]);
+    setAnim(null);
+    reportedScoreRef.current = null;
+    setPhase("shoot");
   }
 
-  // ── Diving (human) ──
-  function pickDive(z: Zone) {
-    if (anim || over) return;
+  function nextCountry() {
+    setLevelIndex((i) => Math.min(PENALTY_LADDER.length - 1, i + 1));
+    setShots([]);
+    setShotDetails([]);
+    setKeeperDives([]);
+    setAnim(null);
+    setPhase("shoot");
     hapticTap();
-    if (solo) {
-      myDivesRef.current = [...myDivesRef.current, z];
-      setDives(myDivesRef.current);
-      const strike = aiStrikeRef.current ?? aiStrike(myDivesRef.current.slice(0, -1));
-      const placement = normaliseShotPlacement({ ...defaultShotPlacement(strike.zone, myDivesRef.current.length - 1), power: 0.66 + Math.random() * 0.22, bend: (Math.random() - 0.5) * 0.3 }, strike.zone, 0);
-      const goal = !penaltyShotSaved(placement, z);
-      if (goal) confirmBuzz(); else celebrate();
-      sfx.kick(placement.power);
-      setTell(null);
-      animDoneRef.current = false;
-      setAnim({ placement, dive: z, t: 0, goal, who: "ai" });
-    } else {
-      if (dives.length >= PENS) return;
-      setDives((d) => {
-        const next = [...d, z];
-        if (next.length >= PENS) setTimeout(() => setPhase("result"), 200);
-        return next;
-      });
-    }
   }
 
-  function toggleMute() { const next = !muted; sfx.setMuted(next); setMutedState(next); hapticTap(); }
+  function toggleMute() {
+    const next = !muted;
+    sfx.setMuted(next);
+    setMutedState(next);
+    hapticTap();
+  }
 
-  const shotMade = (z: Zone, dive: Zone, i: number) => (shotDetails[i] ? !penaltyShotSaved(shotDetails[i], dive) : z !== dive);
-  const me: DuelSide = { name: playerName, shots, dives, shotDetails };
-  const inSuddenDeath = myShotsRef.current.length >= PENS && myDivesRef.current.length >= PENS;
+  const me: DuelSide = { name: playerName, shots, dives: challengeDives, shotDetails };
 
   async function send(d: Duel, scoredLine: string) {
     hapticTap();
     const url = duelUrl(d);
-    const text = `🥅 ${scoredLine} — Penalty Duel on Golazo. Your turn → ${url}`;
-    try { if (navigator.share) { await navigator.share({ title: "Penalty Duel", text, url }); return; } } catch { /* */ }
-    try { await navigator.clipboard?.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* */ }
+    const text = `Penalty Duel on Golazo: ${scoredLine}. Your turn: ${url}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Penalty Duel", text, url });
+        return;
+      }
+    } catch {
+      /* fall through */
+    }
+    try {
+      await navigator.clipboard?.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* ignore */
+    }
   }
 
-  // ── Result ──
-  if (phase === "result") {
-    if (solo) {
-      const won = over?.won;
-      return (
-        <div className="game-stage pen-result">
-          <DuelResult cap={won === null ? "Level!" : won ? "You win 🏆" : "Keeper wins"} mine={myGoals} theirs={aiGoals} opp="the keeper" />
-          <button className="cta wide" onClick={resetSolo}>Again</button>
-        </div>
-      );
-    }
-    if (viewingResult) {
-      const r = resolveDuel(incoming!.a, incoming!.b!);
-      const youAreA = incoming!.a.name === playerName;
-      const mine = youAreA ? r.aGoals : r.bGoals, theirs = youAreA ? r.bGoals : r.aGoals;
-      const won = mine > theirs;
-      return <DuelResult cap={won ? "You win 🏆" : mine === theirs ? "Level!" : `${(youAreA ? incoming!.b! : incoming!.a).name} wins`} mine={mine} theirs={theirs} opp={(youAreA ? incoming!.b! : incoming!.a).name} />;
-    }
-    const duel: Duel = { a: incoming!.a, b: me };
-    const r = resolveDuel(duel.a, duel.b!);
-    const won = r.bGoals > r.aGoals;
+  if (phase === "level" && ladderLevel && nextLevel) {
     return (
-      <div className="game-stage pen-result">
-        <DuelResult cap={won ? "You win 🏆" : r.aGoals === r.bGoals ? "Level!" : `${incoming!.a.name} wins`} mine={r.bGoals} theirs={r.aGoals} opp={incoming!.a.name} />
-        <button className="cta wide" onClick={() => send(duel, `I ${won ? "beat" : "played"} you ${r.bGoals}-${r.aGoals}`)}>
-          {copied ? "Copied ✓" : "Send result to " + incoming!.a.name}
-        </button>
-      </div>
+      <PenaltyResult
+        cap={`${ladderLevel.team.flag} ${ladderLevel.team.name} beaten`}
+        mine={goals}
+        theirs={LADDER_SHOTS}
+        opp={ladderLevel.team.name}
+        scoreLine={`${goals}/${LADDER_SHOTS}`}
+        sub={`Run ${totalGoals} goals · Next: ${nextLevel.team.flag} ${nextLevel.team.name}`}
+        onAgain={nextCountry}
+        againLabel={`Face ${nextLevel.team.short}`}
+      />
     );
   }
 
-  function resetSolo() {
-    myGoalsRef.current = 0; aiGoalsRef.current = 0; myShotsRef.current = []; myDivesRef.current = [];
-    aiStrikeRef.current = null;
-    setMyGoals(0); setAiGoals(0); setShots([]); setShotDetails([]); setDives([]); setTell(null); setOver(null);
-    setPhase("shoot");
-  }
+  if (phase === "result") {
+    if (viewingResult) {
+      const r = resolveDuel(incoming!.a, incoming!.b!);
+      const youAreA = incoming!.a.name === playerName;
+      const mine = youAreA ? r.aGoals : r.bGoals;
+      const theirs = youAreA ? r.bGoals : r.aGoals;
+      const opp = youAreA ? incoming!.b!.name : incoming!.a.name;
+      return (
+        <PenaltyResult
+          cap={mine > theirs ? "You win" : mine === theirs ? "Level" : `${opp} wins`}
+          mine={mine}
+          theirs={theirs}
+          opp={opp}
+          onAgain={undefined}
+        />
+      );
+    }
 
-  const takingDives = phase === "keep";
-  const hudCount = solo
-    ? `${myGoals}–${aiGoals}`
-    : `${takingDives ? dives.length : shots.length} / ${PENS} ${takingDives ? "dives" : "pens"}`;
+    if (responding) {
+      const duel: Duel = { a: incoming!.a, b: me };
+      const r = resolveDuel(duel.a, duel.b!);
+      const won = r.bGoals > r.aGoals;
+      return (
+        <PenaltyResult
+          cap={won ? "You win" : r.aGoals === r.bGoals ? "Level" : `${incoming!.a.name} wins`}
+          mine={r.bGoals}
+          theirs={r.aGoals}
+          opp={incoming!.a.name}
+          onAgain={() => send(duel, `${r.bGoals}-${r.aGoals}`)}
+          againLabel={copied ? "Copied" : `Send result to ${incoming!.a.name}`}
+        />
+      );
+    }
+
+    if (!duelMode) {
+      const final = finalRun ?? { score: totalGoals, cleared: 0, complete: false };
+      return (
+        <PenaltyResult
+          cap={final.complete ? "World class" : "Run over"}
+          mine={final.score}
+          theirs={LADDER_SHOTS * PENALTY_LADDER.length}
+          opp="the top ten"
+          scoreLine={`${final.score} goals`}
+          sub={`${final.cleared}/${PENALTY_LADDER.length} countries cleared`}
+          onAgain={reset}
+          againLabel="Run it back"
+        />
+      );
+    }
+
+    return (
+      <PenaltyResult
+        cap={goals >= 4 ? "Ice cold" : goals >= 3 ? "You win" : "Keeper wins"}
+        mine={goals}
+        theirs={saves}
+        opp="the keeper"
+        onAgain={reset}
+        againLabel="Again"
+      />
+    );
+  }
 
   return (
     <div className="game-stage penalty-stage">
-      <div className="game-hud">
-        {solo
-          ? <><span className="game-score">{hudCount}</span><span className="game-unit">{inSuddenDeath ? "sudden death" : "you v keeper"}</span></>
-          : <><span className="game-score">{takingDives ? dives.length : shots.length}</span><span className="game-unit">/ {PENS} {takingDives ? "dives" : "pens"}</span></>}
-        {oppDives && phase === "shoot" && <span className="game-shots">{shots.map((s, i) => {
-          const made = shotMade(s, oppDives[i] ?? 0, i);
-          return <span key={i} className={`pen-dot ${made ? "g" : "s"}`}>{made ? "●" : "○"}</span>;
-        })}</span>}
-        <button className="game-mute" aria-label={muted ? "Unmute" : "Mute"} onClick={toggleMute}>{muted ? "🔇" : "🔊"}</button>
+      <div className="pen-match-hud">
+        <div className="pen-compact-row">
+          <span>{ladderLevel ? `L${ladderLevel.rank}/${PENALTY_LADDER.length}` : left.flag}</span>
+          <span>{right.flag} {right.short}</span>
+          <strong>{goals}<i>-</i>{saves}</strong>
+          <span>{ladderLevel ? `Need ${ladderLevel.required}` : right.flag}</span>
+          <button className="pen-icon-btn" aria-label={muted ? "Unmute" : "Mute"} onClick={toggleMute}>{muted ? "🔇" : "🔊"}</button>
+        </div>
+        <div className="pen-dot-row" aria-label={`${goals} goals, ${saves} saves`}>
+          {dots.map((dot, i) => <span key={i} className={`pen-round-dot is-${dot}`} />)}
+        </div>
       </div>
-      <canvas ref={canvasRef} className="game-canvas" />
 
-      {phase === "intro" && (
-        <div className="game-overlay">
-          <span className="game-emoji">🥅</span>
-          <h3>Penalty Duel</h3>
-          {responding
-            ? <p><strong>{incoming!.a.name}</strong> challenged you. Beat their keeper, then set yours.</p>
-            : <p>Full shootout: take your five, then keep against a striker who shows a <strong>tell</strong> — read it, or get done by a feint. Level after five? <strong>Sudden death.</strong></p>}
-          <button className="cta wide" onClick={() => { hapticTap(); setPhase("shoot"); }}>{responding ? "Take your 5" : "Start shootout"}</button>
-        </div>
-      )}
+      <canvas ref={canvasRef} className="game-canvas penalty-canvas" aria-label="Swipe from the ball to take a penalty" />
 
-      {phase === "keep" && solo && tell !== null && !anim && (
-        <div className="pen-tell">Keeper's read: striker is eyeing <strong>{tell === -1 ? "their left" : tell === 1 ? "their right" : "the middle"}</strong>…</div>
-      )}
-
-      {(phase === "shoot" || phase === "keep") && (
-        <div className="zone-bar">
-          <span className="zone-cap">{phase === "shoot" ? "Swipe to place, or tap…" : "Dive…"}</span>
-          {ZONES.map(({ z, label }) => (
-            <button key={z} className="zone-btn" disabled={Boolean(anim) || over !== null || (phase === "keep" && solo && tell === null)} onClick={() => (phase === "shoot" ? shoot(z) : pickDive(z))}>
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
 
-function DuelResult({ cap, mine, theirs, opp }: { cap: string; mine: number; theirs: number; opp: string }) {
+function PenaltyResult({
+  cap,
+  mine,
+  theirs,
+  opp,
+  scoreLine,
+  sub,
+  onAgain,
+  againLabel,
+}: {
+  cap: string;
+  mine: number;
+  theirs: number;
+  opp: string;
+  scoreLine?: string;
+  sub?: string;
+  onAgain?: () => void;
+  againLabel?: string;
+}) {
   return (
-    <div className="pen-final" onAnimationStart={() => celebrate()}>
-      <span className="pen-final-cap">{cap}</span>
-      <span className="pen-final-score">{mine} – {theirs}</span>
-      <span className="pen-final-sub">You vs {opp}</span>
+    <div className="game-stage pen-result">
+      <div className="pen-final" onAnimationStart={() => celebrate()}>
+        <span className="pen-final-cap">{cap}</span>
+        <span className="pen-final-score">{scoreLine ?? `${mine} - ${theirs}`}</span>
+        <span className="pen-final-sub">{sub ?? `You vs ${opp}`}</span>
+      </div>
+      {onAgain && <button className="cta wide" onClick={onAgain}>{againLabel ?? "Again"}</button>}
     </div>
   );
+}
+
+function drawArcadeBackdrop(
+  ctx: CanvasRenderingContext2D,
+  W: number,
+  H: number,
+  left: Team,
+  right: Team,
+): void {
+  const pitchTop = H * 0.38;
+  const sky = ctx.createLinearGradient(0, 0, 0, pitchTop);
+  sky.addColorStop(0, "#071323");
+  sky.addColorStop(1, "#163852");
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, pitchTop);
+
+  ctx.fillStyle = "#142135";
+  ctx.fillRect(0, H * 0.05, W, H * 0.2);
+  const cols = ["#f4f6ff", left.colors[0], right.colors[0], "#25384d", right.colors[1]];
+  const step = Math.max(5, W / 120);
+  for (let y = H * 0.06; y < H * 0.24; y += step) {
+    for (let x = 0; x < W; x += step) {
+      const n = Math.sin(x * 13.4 + y * 7.7) * 10000;
+      if (n - Math.floor(n) > 0.43) {
+        ctx.globalAlpha = 0.35;
+        ctx.fillStyle = cols[Math.abs(Math.floor(n)) % cols.length] ?? "#fff";
+        ctx.fillRect(x, y, step * 0.72, step * 0.72);
+      }
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  const adsY = H * 0.31;
+  const ads = ["#b8fff6", right.colors[0], right.colors[1], "#ffd21a"];
+  for (let i = 0; i < ads.length; i++) {
+    ctx.fillStyle = ads[i] ?? "#fff";
+    ctx.fillRect((W / ads.length) * i, adsY, W / ads.length, H * 0.08);
+  }
+  const grass = ctx.createLinearGradient(0, pitchTop, 0, H);
+  grass.addColorStop(0, "#34a43a");
+  grass.addColorStop(0.55, "#1f812a");
+  grass.addColorStop(1, "#0e4d1c");
+  ctx.fillStyle = grass;
+  ctx.fillRect(0, pitchTop, W, H - pitchTop);
+  for (let i = 0; i < 15; i++) {
+    ctx.fillStyle = i % 2 ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.025)";
+    const y = pitchTop + ((H - pitchTop) * i) / 15;
+    ctx.fillRect(0, y, W, (H - pitchTop) / 15);
+  }
+  ctx.strokeStyle = "rgba(255,255,255,0.45)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(0, H * 0.5);
+  ctx.lineTo(W, H * 0.48);
+  ctx.stroke();
+  const vignette = ctx.createRadialGradient(W / 2, H * 0.48, W * 0.2, W / 2, H * 0.48, W * 0.78);
+  vignette.addColorStop(0, "rgba(0,0,0,0)");
+  vignette.addColorStop(1, "rgba(0,0,0,0.24)");
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawGoal(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, colors: [string, string]): void {
+  ctx.save();
+  ctx.fillStyle = "rgba(255,255,255,0.06)";
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = "rgba(255,255,255,0.4)";
+  ctx.lineWidth = 1.2;
+  for (let gx = x; gx <= x + w; gx += w / 12) {
+    ctx.beginPath();
+    ctx.moveTo(gx, y);
+    ctx.lineTo(gx + (gx - (x + w / 2)) * 0.05, y + h);
+    ctx.stroke();
+  }
+  for (let gy = y; gy <= y + h; gy += h / 5) {
+    ctx.beginPath();
+    ctx.moveTo(x, gy);
+    ctx.lineTo(x + w, gy);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = "#f7fbff";
+  ctx.lineWidth = 6;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(x, y + h);
+  ctx.lineTo(x, y);
+  ctx.lineTo(x + w, y);
+  ctx.lineTo(x + w, y + h);
+  ctx.stroke();
+  ctx.strokeStyle = colors[1];
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = 0.75;
+  ctx.beginPath();
+  ctx.moveTo(x + 4, y + 4);
+  ctx.lineTo(x + w - 4, y + 4);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawAimArc(
+  ctx: CanvasRenderingContext2D,
+  sx: number,
+  sy: number,
+  tx: number,
+  ty: number,
+  bend: number,
+  W: number,
+  H: number,
+): void {
+  ctx.save();
+  for (let i = 1; i <= 18; i++) {
+    const raw = i / 18;
+    const k = 1 - Math.pow(1 - raw, 3);
+    const x = sx + (tx - sx) * k + Math.sin(raw * Math.PI) * bend * W * 0.14;
+    const y = sy + (ty - sy) * k - Math.sin(raw * Math.PI) * H * 0.08;
+    ctx.fillStyle = `rgba(255,255,255,${0.5 - i * 0.018})`;
+    ctx.beginPath();
+    ctx.arc(x, y, 4 - i * 0.08, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawSwipePrompt(ctx: CanvasRenderingContext2D, W: number, H: number, y: number): void {
+  ctx.save();
+  ctx.font = `900 ${Math.max(22, Math.min(40, W * 0.067))}px system-ui, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = "rgba(0,38,80,0.7)";
+  ctx.fillStyle = "rgba(245,250,255,0.95)";
+  ctx.shadowColor = "rgba(0,0,0,0.45)";
+  ctx.shadowBlur = 12;
+  const text = "SWIPE TO KICK THE BALL";
+  ctx.strokeText(text, W / 2, Math.max(H * 0.58, y));
+  ctx.fillText(text, W / 2, Math.max(H * 0.58, y));
+  ctx.restore();
 }

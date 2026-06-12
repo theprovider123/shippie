@@ -28,7 +28,9 @@
  *   not in any allow-list
  * - denies arbitrary inline scripts and `eval` — gameplay code must be
  *   bundled
- * - denies frames + objects + base — no smuggling extra hosts in
+ * - allows same-origin frames so the first-party Arcade hub can embed
+ *   baked Shippie game runtimes
+ * - denies objects + base — no smuggling extra hosts in
  *
  * Style allows `'unsafe-inline'` because the showcase apps' bundlers
  * commonly inject style tags. Reassess after Phase 1 if any game
@@ -48,7 +50,7 @@ const DIRECTIVES: ReadonlyArray<readonly [string, string]> = [
   ['media-src', "'self' data: blob:"],
   ['font-src', "'self' data:"],
   ['style-src', "'self' 'unsafe-inline'"],
-  ['frame-src', "'none'"],
+  ['frame-src', "'self'"],
   ['object-src', "'none'"],
   ['base-uri', "'none'"],
   ['form-action', "'self'"],

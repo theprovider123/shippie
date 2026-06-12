@@ -7,31 +7,23 @@
  * while the maker types the same value back.
  */
 import { json } from '@sveltejs/kit';
-import { eq, and, ne } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
-import { getDrizzleClient, schema } from '$server/db/client';
-
-const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+import { getDrizzleClient } from '$server/db/client';
+import { checkAppSlugAvailability } from '$server/apps/slug-availability';
 
 export const GET: RequestHandler = async (event) => {
   const env = event.platform?.env;
-  if (!env?.DB) return json({ available: false });
+  if (!env?.DB) return json({ available: false, reason: 'unavailable' });
 
   const slug = event.url.searchParams.get('slug') ?? '';
   const exclude = event.url.searchParams.get('exclude') ?? '';
 
-  if (!SLUG_RE.test(slug)) return json({ available: false });
-
   const db = getDrizzleClient(env.DB);
-  const conditions = exclude
-    ? and(eq(schema.apps.slug, slug), ne(schema.apps.slug, exclude))
-    : eq(schema.apps.slug, slug);
+  const availability = await checkAppSlugAvailability(db, slug, { excludeSlug: exclude });
 
-  const [existing] = await db
-    .select({ slug: schema.apps.slug })
-    .from(schema.apps)
-    .where(conditions)
-    .limit(1);
-
-  return json({ available: !existing });
+  return json({
+    available: availability.available,
+    reason: availability.reason,
+    targetSlug: availability.targetSlug ?? null,
+  });
 };

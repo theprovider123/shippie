@@ -98,7 +98,7 @@
     </a>
     <a href="#for-builders" class="nav-card">
       <p class="card-eyebrow">For builders</p>
-      <p class="card-blurb">Quickstart, SDK, wrapper, spaces, local runtime, GitHub deploys.</p>
+      <p class="card-blurb">Quickstart, conversion path, SDK, spaces, local runtime, deploys.</p>
     </a>
     <a href="#remix" class="nav-card">
       <p class="card-eyebrow">Remix</p>
@@ -138,7 +138,7 @@
     <dl class="paths">
       <div>
         <dt>Drop a zip</dt>
-        <dd><a href="/new">/new</a> — drag in a built bundle (<code>dist</code>, <code>build</code>, <code>out</code>, or one HTML file). We scan, wrap, and ship it live.</dd>
+        <dd><a href="/new">/new</a> — drag in a built bundle (<code>dist</code>, <code>build</code>, <code>out</code>, or one HTML file). We scan, wrap, and ship it unlisted by default.</dd>
       </div>
       <div>
         <dt>CLI / MCP</dt>
@@ -146,7 +146,7 @@
       </div>
       <div>
         <dt>Convert a hosted app</dt>
-        <dd>Move user-data paths to <code>shippie.local.db</code> / <code>.files</code>, then upload the bundle.</dd>
+        <dd>Run the classifier and localize plan, move user-data paths to <code>shippie.local.db</code> / <code>.files</code>, then upload the bundle. <a href="/docs/convert-to-shippie">Conversion guide</a>.</dd>
       </div>
       <div>
         <dt>GitHub repo</dt>
@@ -154,7 +154,23 @@
       </div>
     </dl>
     <pre class="code">shippie deploy ./dist
-# → live at https://your-app.shippie.app/</pre>
+# → live at https://shippie.app/your-app</pre>
+
+    <h3 id="what-to-build">What works well</h3>
+    <p>
+      Shippie is best for personal utilities, event and group apps, creative tools, lightweight
+      games, offline-first workflows, and prototypes where users should test the real thing before
+      a backend or app-store pipeline exists. The full idea map lives at
+      <a href="/docs/what-to-build">What to build on Shippie</a>.
+    </p>
+
+    <h3 id="share-links">Share links</h3>
+    <p>
+      The human URL is <code>shippie.app/your-slug</code>. It should carry the app's own name,
+      description, and result-specific copy where the app provides it. <code>/run/your-slug</code>,
+      <code>/dock?app=your-slug</code>, and subdomains are runtime compatibility paths, not the
+      URL makers should put in copy, QR codes, or cards.
+    </p>
 
     <h3 id="sdk">SDK</h3>
     <p>

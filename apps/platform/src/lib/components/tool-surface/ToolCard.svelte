@@ -39,7 +39,7 @@
     app.display?.blurb ?? normaliseBlurb(app.blurb ?? `${safeName} on Shippie`),
   );
   const connectionBadges = $derived(app.display?.connectionBadges ?? connectionBadgesFromKind(app.kind));
-  const launchHref = $derived(href ?? `/run/${encodeURIComponent(app.slug)}`);
+  const launchHref = $derived(href ?? `/${encodeURIComponent(app.slug)}`);
 
   const saveLabel = $derived(saveActionLabel(state.offlineState));
   const isRepair = $derived(state.offlineState === 'needs-refresh' || state.offlineState === 'failed');

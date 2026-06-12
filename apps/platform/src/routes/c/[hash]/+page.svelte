@@ -36,18 +36,18 @@
 
   const targetApp = $derived(
     blob.type === 'recipe'
-      ? { slug: 'palate', name: 'Palate', subdomain: 'palate.shippie.app' }
+      ? { slug: 'palate', name: 'Palate' }
       : blob.type === 'journal-entry'
-        ? { slug: 'journal', name: 'Journal', subdomain: 'journal.shippie.app' }
+        ? { slug: 'journal', name: 'Journal' }
         : blob.type === 'restaurant-visit'
-          ? { slug: 'restaurant-memory', name: 'Restaurant Memory', subdomain: 'restaurant-memory.shippie.app' }
+          ? { slug: 'restaurant-memory', name: 'Restaurant Memory' }
           : blob.type === 'mevrouw-memory'
-            ? { slug: 'mevrouw', name: 'Mevrouw', subdomain: 'mevrouw.shippie.app' }
+            ? { slug: 'mevrouw', name: 'Mevrouw' }
             : null,
   );
   const railActions = $derived(
     targetApp
-      ? [{ href: `/run/${targetApp.slug}`, label: 'Open tool' }]
+      ? [{ href: `/${targetApp.slug}`, label: 'Open tool' }]
       : [{ href: '/tools', label: 'Browse tools' }],
   );
 
@@ -56,7 +56,7 @@
     void (async () => {
       if (!targetApp) return;
       const fragment = await encodeBlobToFragment(blob);
-      openUrl = `https://${targetApp.subdomain}/#shippie-import=${fragment}`;
+      openUrl = `https://shippie.app/${targetApp.slug}#shippie-import=${fragment}`;
     })();
   });
 

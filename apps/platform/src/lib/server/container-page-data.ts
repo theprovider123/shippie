@@ -23,6 +23,8 @@ export type ContainerPackageSummary = {
   data?: AppDataPassportRecord;
   packageUrl: string;
   standaloneUrl: string;
+  iconUrl?: string | null;
+  themeColor?: string | null;
   permissions: AppPermissions;
   trust: Pick<TrustReport, 'containerEligibility' | 'privacy' | 'security'>;
   visibility: 'public' | 'unlisted' | 'private' | 'team';
@@ -96,6 +98,12 @@ export async function loadContainerPageData({
     : [];
   const visibilityFilters = [
     eq(schema.apps.visibilityScope, 'public'),
+    requestedAppSlug
+      ? and(
+          eq(schema.apps.visibilityScope, 'unlisted'),
+          eq(schema.apps.slug, requestedAppSlug),
+        )
+      : null,
     userId ? eq(schema.apps.makerId, userId) : null,
     orgIds.length > 0
       ? and(
@@ -117,6 +125,8 @@ export async function loadContainerPageData({
     createdAt: string;
     visibilityScope: string;
     makerId: string;
+    iconUrl: string | null;
+    themeColor: string | null;
   }>;
   try {
     rows = await db
@@ -130,6 +140,8 @@ export async function loadContainerPageData({
         createdAt: schema.appPackages.createdAt,
         visibilityScope: schema.apps.visibilityScope,
         makerId: schema.apps.makerId,
+        iconUrl: schema.apps.iconUrl,
+        themeColor: schema.apps.themeColor,
       })
       .from(schema.appPackages)
       .innerJoin(schema.apps, eq(schema.apps.id, schema.appPackages.appId))
@@ -178,6 +190,8 @@ export async function loadContainerPageData({
         data: version?.data,
         packageUrl: packageDownloadUrl(manifest.slug, manifest.packageHash),
         standaloneUrl: manifest.domains.canonical,
+        iconUrl: row.iconUrl,
+        themeColor: row.themeColor,
         permissions,
         trust: {
           containerEligibility: trust.containerEligibility,

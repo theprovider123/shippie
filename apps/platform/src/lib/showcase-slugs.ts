@@ -15,7 +15,47 @@ export interface CanonicalShowcaseTarget {
   searchParams?: Record<string, string>;
 }
 
+export const ARCADE_GAME_SLUGS = [
+  'block-drop',
+  'bricks',
+  'bulwark',
+  'chess',
+  'crossing',
+  'daily-puzzle',
+  'drawing-telephone',
+  'drift',
+  'five-letter',
+  'invaders',
+  'lustre',
+  'maze',
+  'memory-grid',
+  'quartet',
+  'reaction',
+  'snake',
+  'stack',
+  'sudoku',
+  'world-cup-fantasy',
+  'would-you-rather',
+] as const;
+
+const ARCADE_GAME_ALIASES = ARCADE_GAME_SLUGS.reduce(
+  (aliases, slug) => {
+    aliases[slug] = 'arcade';
+    return aliases;
+  },
+  {} as Record<(typeof ARCADE_GAME_SLUGS)[number], string>,
+);
+
+const ARCADE_GAME_SEARCH_PARAMS = ARCADE_GAME_SLUGS.reduce(
+  (params, slug) => {
+    params[slug] = { game: slug, from: slug };
+    return params;
+  },
+  {} as Record<(typeof ARCADE_GAME_SLUGS)[number], Record<string, string>>,
+);
+
 const SLUG_ALIASES: Record<string, string> = {
+  ...ARCADE_GAME_ALIASES,
   recipe: 'palate',
   'recipe-saver': 'palate',
   // Phase 2 cleanup — Chiwit and Quiet absorb the loose daily wellness
@@ -64,6 +104,7 @@ const SLUG_ALIASES: Record<string, string> = {
 };
 
 const SLUG_ALIAS_SEARCH_PARAMS: Record<string, Record<string, string>> = {
+  ...ARCADE_GAME_SEARCH_PARAMS,
   'live-room': { from: 'live-room' },
   'show-and-tell': { mode: 'show-and-tell', from: 'show-and-tell' },
   'shopping-list': { tab: 'shop', from: 'shopping-list' },

@@ -52,7 +52,7 @@
   const blurb = $derived(app ? app.tagline ?? app.description ?? `${app.name} on Shippie` : '');
   const typeLabel = $derived(app ? (app.type.toLowerCase() === 'app' ? 'tool' : app.type) : '');
   const proofBadges = $derived((app?.badges ?? []).filter((badge) => badge.proven));
-  const launchHref = $derived(app ? `/run/${encodeURIComponent(app.slug)}` : '/apps');
+  const launchHref = $derived(app ? `/${encodeURIComponent(app.slug)}` : '/apps');
   const offlineStatus = $derived(app ? $offlineStatuses[app.slug] : undefined);
   const isOffline = $derived(Boolean(app && ($cachedSlugs.has(app.slug) || offlineStatus?.state === 'saved')));
   const offlineHealth = $derived(app ? describeOfflineHealth(offlineStatus, { cached: $cachedSlugs.has(app.slug), online: typeof navigator === 'undefined' ? true : navigator.onLine }) : null);
@@ -77,7 +77,7 @@
   async function copyAppLink() {
     if (!app) return;
     const origin = typeof window === 'undefined' ? 'https://shippie.app' : window.location.origin;
-    const url = `${origin}/apps/${encodeURIComponent(app.slug)}`;
+    const url = `${origin}/${encodeURIComponent(app.slug)}`;
     const copied = await copyText(url);
     copyState = copied ? 'copied' : 'error';
     if (copyTimer) clearTimeout(copyTimer);

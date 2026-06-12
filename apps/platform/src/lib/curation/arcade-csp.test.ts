@@ -29,8 +29,8 @@ describe('buildArcadeCsp', () => {
     expect(csp).toMatch(/wss:\/\/\*\.shippie\.app/);
   });
 
-  test('denies frames + objects + base (no smuggling)', () => {
-    expect(csp).toMatch(/frame-src 'none'/);
+  test('allows same-origin frames but denies objects + base (no smuggling)', () => {
+    expect(csp).toMatch(/frame-src 'self'/);
     expect(csp).toMatch(/object-src 'none'/);
     expect(csp).toMatch(/base-uri 'none'/);
   });

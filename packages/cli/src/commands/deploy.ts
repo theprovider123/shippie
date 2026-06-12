@@ -68,6 +68,9 @@ export async function deployCommand(
 
   console.log('Uploading...');
   console.log('Policy: local tools only — no external login, cloud user-data storage, ads, trackers, or silent user-data egress.');
+  if (!opts.trial && !visibility) {
+    console.log('Visibility: new apps default to unlisted; existing apps keep their current setting. Pass --public when the app is launch-ready.');
+  }
 
   try {
     const slug = opts.slug ?? slugFromPath(target, isFile);

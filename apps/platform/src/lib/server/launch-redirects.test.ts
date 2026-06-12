@@ -55,6 +55,7 @@ describe('launch retired-route redirects', () => {
     const launchOwnedPublicRoutes = new Set([
       '/',
       '/apps/[slug]',
+      '/[slug]',
       '/[atname]',
       '/c/[hash]',
       '/docs',
@@ -71,6 +72,7 @@ describe('launch retired-route redirects', () => {
       '/dock',
       '/tools',
       '/you/access',
+      '/arcade',
       '/glance',
       '/labs',
       '/workspace',

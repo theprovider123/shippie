@@ -19,7 +19,9 @@ npx @shippie/cli init
 npx @shippie/cli deploy ./dist
 ```
 
-`shippie init` scaffolds a phone-first local notes tool using `shippie.local.db.save()` / `shippie.local.db.list()`, with a `data_passport`, safe-area CSS, and 16px inputs. Your app goes live at `https://your-app.shippie.app`.
+`shippie init` scaffolds a phone-first local notes tool using `shippie.local.db.save()` / `shippie.local.db.list()`, with a `data_passport`, safe-area CSS, and 16px inputs. Your app goes live at `https://shippie.app/your-app`.
+
+New apps default to **unlisted** unless you pass `--public`. Share the short URL with testers, gather feedback, then promote when the app is ready for discovery.
 
 For a no-build zip fixture, use `templates/local-notes/` or `templates/shippie-starter/` — single-file versions of the same pattern for browser upload and smoke tests.
 
@@ -28,7 +30,7 @@ For a no-build zip fixture, use `templates/local-notes/` or `templates/shippie-s
 1. Go to [shippie.app/new](https://shippie.app/new)
 2. Drag your `dist/`, `build/`, or `out/` folder as a zip (or zip `templates/local-notes/` for the no-build starter)
 3. Pick a name, slug, and type
-4. Click "Ship it"
+4. Keep visibility on Unlisted for first testers, then click "Ship it"
 
 ## Option 3: From Claude Code or Cursor (MCP)
 
@@ -55,6 +57,20 @@ deploy directory=/absolute/path/to/dist slug=recipe-saver-remix remix_from=recip
 1. Install the Shippie GitHub App on your repo
 2. Push to `main`
 3. Shippie auto-builds and deploys
+
+## Convert an existing app
+
+For a Supabase, Vercel/Next, iOS, Android, or AI-built prototype, start with the fit check:
+
+```bash
+npx @shippie/cli classify .
+npx @shippie/cli localize-plan .
+npx @shippie/cli data doctor .
+```
+
+Move core user data to `shippie.local.db`, attachments to `shippie.local.files`, and account-dependent flows to local identity, invites, or private spaces. Server routes, Supabase RPC/realtime/edge functions, native-only APIs, and secret-backed integrations need a deliberate redesign before deploy.
+
+See `docs/makers/convert-to-shippie.md` for the full conversion guide and `docs/makers/what-to-build.md` for app shapes that fit Shippie well.
 
 ## Store data locally
 
@@ -117,7 +133,7 @@ const installed = matchesStandalone()  // true inside an installed PWA
 
 ## What Shippie provides
 
-- Static hosting on `{slug}.shippie.app`
+- Static hosting with a short public URL: `https://shippie.app/{slug}`
 - PWA generation (manifest, service worker, icons)
 - Marketplace listing with search and discovery
 - Feedback system (comments, bugs, ratings)

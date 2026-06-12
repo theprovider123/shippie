@@ -1,6 +1,8 @@
+import { GROUP_FIXTURES } from "./tournament";
+
 // The 16 host venues of the 2026 World Cup, with city + a short broadcaster-region hint.
-// A fixture is pinned to a venue deterministically (stable hash of its id) so the same match
-// always shows the same ground — a little real-world texture without a backend or live feed.
+// Group-stage fixtures now carry their official FIFA venue. This list remains as a
+// fallback for future/friendly fixture ids and knockout flavour.
 
 export type Host = "USA" | "CAN" | "MEX";
 
@@ -42,6 +44,10 @@ function hashIndex(id: string, mod: number): number {
 }
 
 export function venueFor(fixtureId: string): Venue {
+  const official = GROUP_FIXTURES.find(
+    (fixture) => fixture.id === fixtureId || fixture.fifaId === fixtureId,
+  )?.venue;
+  if (official) return official;
   return VENUES[hashIndex(fixtureId, VENUES.length)];
 }
 

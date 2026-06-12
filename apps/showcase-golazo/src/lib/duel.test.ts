@@ -7,6 +7,7 @@ import {
   duelUrl,
   readDuelFromHash,
   penaltyShotSaved,
+  penaltyShotSavedWithReach,
   readShooter,
   aiStrike,
   type Zone,
@@ -33,6 +34,18 @@ describe("goalsAgainst", () => {
   it("still saves tame rich shots in the keeper envelope", () => {
     expect(penaltyShotSaved({ zone: -1, x: 0.25, y: 0.44, power: 0.45, bend: 0 }, -1)).toBe(true);
     expect(goalsAgainst(Z("L"), Z("L"), [{ zone: -1, x: 0.25, y: 0.44, power: 0.45, bend: 0 }])).toBe(0);
+  });
+  it("blocks weak central shots even when the keeper has started to move", () => {
+    expect(penaltyShotSaved({ zone: 0, x: 0.53, y: 0.3, power: 0.56, bend: 0 }, 1)).toBe(true);
+  });
+  it("lets harder keepers reach medium side shots without making perfect corners free", () => {
+    expect(penaltyShotSavedWithReach({ zone: 1, x: 0.82, y: 0.58, power: 0.76, bend: 0.05 }, 1, 1.2)).toBe(true);
+    expect(penaltyShotSavedWithReach({ zone: 1, x: 0.96, y: 0.94, power: 1, bend: -0.45 }, 1, 1.2)).toBe(false);
+  });
+  it("counts the keeper's whole body, not just an abstract glove bubble", () => {
+    expect(penaltyShotSavedWithReach({ zone: 1, x: 0.73, y: 0.28, power: 0.98, bend: 0 }, 1, 1)).toBe(true);
+    expect(penaltyShotSavedWithReach({ zone: -1, x: 0.27, y: 0.5, power: 0.95, bend: 0 }, -1, 1)).toBe(true);
+    expect(penaltyShotSavedWithReach({ zone: 1, x: 0.82, y: 0.58, power: 0.9, bend: 0 }, -1, 1)).toBe(false);
   });
 });
 

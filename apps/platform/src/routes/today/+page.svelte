@@ -56,7 +56,7 @@
 
   function appHref(appId: string): string | null {
     const slug = appId.replace(/^app_/, '').replace(/_/g, '-');
-    return knownSlugs.has(slug) ? `/dock?app=${encodeURIComponent(slug)}` : null;
+    return knownSlugs.has(slug) ? `/${encodeURIComponent(slug)}` : null;
   }
 
   function fmtRelative(ts: number): string {

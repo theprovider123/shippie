@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Shippie Arcade">
+  <rect width="512" height="512" rx="92" fill="#111318"/>
+  <path d="M132 388V168c0-28 22-50 50-50h148c28 0 50 22 50 50v220H132Z" fill="#1E232B"/>
+  <path d="M164 178c0-14 11-25 25-25h134c14 0 25 11 25 25v100c0 14-11 25-25 25H189c-14 0-25-11-25-25V178Z" fill="#CBE9D4"/>
+  <path d="M197 333h54v24h-54v-24Zm79 12a19 19 0 1 1 38 0 19 19 0 0 1-38 0Zm47-23a13 13 0 1 1 26 0 13 13 0 0 1-26 0Z" fill="#F2B94B"/>
+  <path d="M206 260h100l-19-54h-62l-19 54Zm28-34h44l8 22h-60l8-22Z" fill="#111318"/>
+  <path d="M164 178c0-14 11-25 25-25h134c14 0 25 11 25 25v12H164v-12Z" fill="#EC5A3D"/>
+</svg>

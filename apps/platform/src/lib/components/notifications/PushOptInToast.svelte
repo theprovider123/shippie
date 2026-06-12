@@ -56,7 +56,13 @@
       });
       const timeout = window.setTimeout(() => observer.disconnect(), 12_000);
 
-      observer.observe(document.body, {
+      const observerTarget = document.body ?? document.documentElement;
+      if (!observerTarget) {
+        run();
+        return;
+      }
+
+      observer.observe(observerTarget, {
         attributes: true,
         childList: true,
         subtree: true,

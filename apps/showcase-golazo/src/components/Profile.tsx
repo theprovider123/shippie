@@ -255,7 +255,7 @@ function NationCard({ teamId, zone }: { teamId: string; zone?: string }) {
       {fx && !c.done && k && (
         <div className="yn-next">
           <span className="yn-next-label">
-            Next{oppId ? ` v ${team(oppId).short}` : ""} · {k.day} {k.time}
+            Next{oppId ? ` v ${team(oppId).short}` : ""} · {k.day} {k.time} {k.zoneName}
           </span>
           <span className="yn-next-clock">{c.days}d {pad2(c.hours)}h {pad2(c.mins)}m</span>
         </div>

@@ -13,6 +13,29 @@
   "allowed_connect_domains": [
     "shippie.app"
   ],
+  "data": {
+    "mode": "local-only",
+    "localStorage": {
+      "keys": [
+        "golazo:profile",
+        "golazo:prediction",
+        "golazo:pools",
+        "golazo:results",
+        "golazo:sweeps",
+        "golazo:scores",
+        "golazo:reactions",
+        "golazo:streak",
+        "golazo:trivia:recent",
+        "golazo:lastman",
+        "golazo:muted",
+        "golazo:notify",
+        "golazo:feed"
+      ],
+      "prefixes": [
+        "golazo:"
+      ]
+    }
+  },
   "intents": {
     "provides": [
       "world-cup-bracket",

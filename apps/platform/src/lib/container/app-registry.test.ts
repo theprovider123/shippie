@@ -19,6 +19,12 @@ describe('findRequestedApp', () => {
     expect(findRequestedApp(curatedApps, 'habit-tracker')?.slug).toBe('chiwit');
     expect(findRequestedApp(curatedApps, 'body-metrics')?.slug).toBe('lift');
   });
+
+  test('resolves standalone mini-game requests into Arcade', () => {
+    const app = findRequestedApp(curatedApps, 'snake');
+    expect(app?.slug).toBe('arcade');
+    expect(app?.standaloneUrl).toBe('/run/arcade');
+  });
 });
 
 describe('visibleContainerApps', () => {
@@ -31,8 +37,9 @@ describe('visibleContainerApps', () => {
     expect(allSlugs.has('live-room')).toBe(true);
     expect(visibleSlugs.has('habit-tracker')).toBe(false);
     expect(visibleSlugs.has('live-room')).toBe(false);
-    expect(visibleSlugs.has('sudoku')).toBe(true);
-    expect(visibleSlugs.has('daily-puzzle')).toBe(true);
+    expect(allSlugs.has('sudoku')).toBe(false);
+    expect(allSlugs.has('daily-puzzle')).toBe(false);
+    expect(visibleSlugs.has('arcade')).toBe(true);
     expect(visibleSlugs.has('match-room')).toBe(true);
     expect(visibleSlugs.has('mevrouw')).toBe(false);
   });

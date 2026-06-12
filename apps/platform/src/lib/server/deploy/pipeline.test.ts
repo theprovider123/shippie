@@ -7,6 +7,9 @@ import {
   packageDomainsFromVerifiedRows,
   preflightWithConnectionGuardBlocks,
   preflightWithSecurityBlocks,
+  resolveDeployVisibilityScope,
+  resolveLiveUrl,
+  resolveRuntimeSubdomainUrl,
 } from './pipeline';
 import type { ShippieJsonLite } from './manifest';
 import type { DeployReport } from './deploy-report';
@@ -207,6 +210,43 @@ describe('isSelfRemixLineage', () => {
     expect(isSelfRemixLineage('app_1', 'app_1')).toBe(true);
     expect(isSelfRemixLineage('app_2', 'app_1')).toBe(false);
     expect(isSelfRemixLineage(null, 'app_1')).toBe(false);
+  });
+});
+
+describe('resolveDeployVisibilityScope', () => {
+  test('new apps default to unlisted when no caller or manifest chooses visibility', () => {
+    expect(resolveDeployVisibilityScope({})).toBe('unlisted');
+  });
+
+  test('explicit deploy visibility wins over manifest and existing row', () => {
+    expect(
+      resolveDeployVisibilityScope({
+        inputVisibility: 'private',
+        manifestVisibility: 'public',
+        existingVisibility: 'unlisted',
+      }),
+    ).toBe('private');
+  });
+
+  test('redeploys preserve existing visibility when the caller is silent', () => {
+    expect(resolveDeployVisibilityScope({ existingVisibility: 'public' })).toBe('public');
+  });
+
+  test('legacy manifest local visibility normalizes to private', () => {
+    expect(resolveDeployVisibilityScope({ manifestVisibility: 'local' })).toBe('private');
+  });
+});
+
+describe('deploy URL helpers', () => {
+  test('resolveLiveUrl returns the short human/share URL', () => {
+    expect(resolveLiveUrl('https://shippie.app', 'my-tool')).toBe('https://shippie.app/my-tool');
+    expect(resolveLiveUrl('http://localhost:5173', 'my-tool')).toBe('http://localhost:5173/my-tool');
+  });
+
+  test('resolveRuntimeSubdomainUrl preserves the technical app origin when needed', () => {
+    expect(resolveRuntimeSubdomainUrl('https://shippie.app', 'my-tool')).toBe(
+      'https://my-tool.shippie.app/',
+    );
   });
 });
 

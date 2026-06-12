@@ -9,7 +9,7 @@ import {
   CONTAINER_LOCAL_DB_BRIDGE_SCRIPT,
   CONTAINER_LOCAL_DB_BRIDGE_SCRIPT_HASH,
 } from '$lib/curation/arcade-csp';
-import { FIRST_PARTY_SHOWCASE_SLUGS } from '$lib/showcase-slugs';
+import { ARCADE_GAME_SLUGS, FIRST_PARTY_SHOWCASE_SLUGS } from '$lib/showcase-slugs';
 import { curatedApps } from '$lib/container/state';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
@@ -36,7 +36,12 @@ describe('showcase catalog drift check', () => {
 
   test('container curated apps match hosted showcase slugs', () => {
     if (!existsSync(STATIC_RUNTIME_DIR)) return;
-    expect(curatedApps.map((app) => app.slug).sort()).toEqual(staticRuntimeSlugs());
+    const arcadeGameSlugs = new Set<string>(ARCADE_GAME_SLUGS);
+    const standaloneSlugs = staticRuntimeSlugs().filter((slug) => !arcadeGameSlugs.has(slug));
+    expect(curatedApps.map((app) => app.slug).sort()).toEqual(standaloneSlugs);
+    for (const slug of ARCADE_GAME_SLUGS) {
+      expect(curatedApps.some((app) => app.slug === slug), `${slug} should be an Arcade engine, not a standalone app`).toBe(false);
+    }
   });
 
   test('container dev URLs match each showcase Vite port', () => {

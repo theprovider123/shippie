@@ -8,6 +8,7 @@
   import ReportSheet from '$lib/components/reports/ReportSheet.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import { summarizeChecks } from '$lib/reports/checked-summary';
+  import { appShareImageUrl } from '$lib/showcase-slugs';
   import { toast } from '$lib/stores/toast';
 
   let { data, form }: PageProps = $props();
@@ -15,15 +16,8 @@
   let feedbackOpen = $state(false);
   let reportOpen = $state(false);
 
-  // App-specific share/OG: a shared link shows THIS tool's name, pitch, and icon
-  // — not the generic Shippie card. (Icon → absolute URL for crawlers.)
-  const ogImage = $derived(
-    data.app.iconUrl
-      ? data.app.iconUrl.startsWith('http')
-        ? data.app.iconUrl
-        : `https://shippie.app${data.app.iconUrl}`
-      : null,
-  );
+  // App-specific share/OG: a shared link shows THIS tool, not the generic Shippie card.
+  const ogImage = $derived(appShareImageUrl(data.app.slug));
   // "What it does" body only when the description adds something beyond the tagline.
   const showDescription = $derived(
     Boolean(data.app.description) && data.app.description !== data.app.tagline,
@@ -65,9 +59,9 @@
       };
     }
     return {
-      title: `${data.app.name} on Shippie`,
+      title: data.app.name,
       text: data.app.tagline ?? `${data.app.name} on Shippie`,
-      url: `${origin}/apps/${encodeURIComponent(data.app.slug)}`,
+      url: `${origin}/${encodeURIComponent(data.app.slug)}`,
     };
   }
 
@@ -123,8 +117,11 @@
   <meta property="og:site_name" content="Shippie" />
   <meta property="og:description" content={data.app.tagline ?? data.app.description ?? `${data.app.name} on Shippie`} />
   <meta property="og:type" content="website" />
+  <meta property="og:url" content={`https://shippie.app/${encodeURIComponent(data.app.slug)}`} />
   {#if ogImage}<meta property="og:image" content={ogImage} />{/if}
-  <meta name="twitter:card" content={ogImage ? 'summary_large_image' : 'summary'} />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content={data.app.name} />
   <meta name="twitter:description" content={data.app.tagline ?? `${data.app.name} on Shippie`} />
   {#if ogImage}<meta name="twitter:image" content={ogImage} />{/if}
@@ -154,7 +151,7 @@
           {/if}
         </div>
         <div class="cta-row">
-          <a class="open-btn" href={`/dock?app=${encodeURIComponent(data.app.slug)}`}>
+          <a class="open-btn" href={`/${encodeURIComponent(data.app.slug)}`}>
             Open
           </a>
           <LocalAppActions

@@ -65,7 +65,8 @@
     normaliseBlurb(app.tagline ?? app.description ?? `${safeName} on Shippie`),
   );
   const categoryLabel = $derived(displayCategory(app.category));
-  const launchHref = $derived(`/run/${encodeURIComponent(app.slug)}`);
+  const launchHref = $derived(`/${encodeURIComponent(app.slug)}`);
+  const runtimeHref = $derived(`/run/${encodeURIComponent(app.slug)}`);
   const offlineStatus = $derived($offlineStatuses[app.slug]);
   const isOffline = $derived($cachedSlugs.has(app.slug) || offlineStatus?.state === 'saved');
   const isSaving = $derived(
@@ -149,6 +150,7 @@
     prewarmed = true;
     void preloadData(launchHref).catch(() => {});
     addPrefetchLink(launchHref);
+    addPrefetchLink(runtimeHref);
     addPrefetchLink(`/__shippie-run/${encodeURIComponent(app.slug)}/?shippie_embed=1`);
   }
 

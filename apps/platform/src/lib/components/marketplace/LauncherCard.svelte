@@ -59,7 +59,8 @@
 
   const blurb = $derived(app.tagline ?? app.description ?? `${app.name} on Shippie`);
   const typeLabel = $derived(app.type.toLowerCase() === 'app' ? 'tool' : app.type);
-  const launchHref = $derived(`/run/${encodeURIComponent(app.slug)}`);
+  const launchHref = $derived(`/${encodeURIComponent(app.slug)}`);
+  const runtimeHref = $derived(`/run/${encodeURIComponent(app.slug)}`);
   const proofCount = $derived((app.badges ?? []).filter((badge) => badge.proven).length);
   const offlineStatus = $derived($offlineStatuses[app.slug]);
   const isOffline = $derived($cachedSlugs.has(app.slug) || offlineStatus?.state === 'saved');
@@ -101,7 +102,7 @@
     event.preventDefault();
     event.stopPropagation();
     const origin = typeof window === 'undefined' ? 'https://shippie.app' : window.location.origin;
-    const url = `${origin}/apps/${encodeURIComponent(app.slug)}`;
+    const url = `${origin}/${encodeURIComponent(app.slug)}`;
     const copied = await copyText(url);
     copyState = copied ? 'copied' : 'error';
     if (copyTimer) clearTimeout(copyTimer);
@@ -170,6 +171,7 @@
     prewarmed = true;
     void preloadData(launchHref).catch(() => {});
     addPrefetchLink(launchHref);
+    addPrefetchLink(runtimeHref);
     addPrefetchLink(`/__shippie-run/${encodeURIComponent(app.slug)}/?shippie_embed=1`);
   }
 

@@ -31,7 +31,15 @@ export interface SweepOpts {
   stake?: number;
   currency?: string;
 }
-import { emptyFeed, fetchFeed, feedHasResults, type Feed } from "./lib/feed";
+import {
+  cacheFeed,
+  emptyFeed,
+  fetchFeed,
+  feedHasResults,
+  mergeResults,
+  resultCount,
+  type Feed,
+} from "./lib/feed";
 
 interface Store {
   profile: Profile | null;
@@ -43,11 +51,19 @@ interface Store {
   feed: Feed;
   /** Whether the last feed fetch reached the network. */
   online: boolean;
+  /** Lightweight score-feed status for launch/hourly/manual updates. */
+  feedSync: {
+    refreshing: boolean;
+    lastCheckedAt?: number;
+    resultCount: number;
+    message: string;
+  };
 
   setProfile: (name: string, favTeam?: string) => void;
   setWatchZone: (zone: string | undefined) => void;
   setGlobalLeaderboardOptIn: (enabled: boolean) => void;
   importFeed: (feed: Feed) => void;
+  refreshFeed: () => Promise<void>;
   setGroupOrder: (letter: GroupLetter, ids: string[]) => void;
   pickWinner: (slotId: string, teamId: string) => void;
   setTopScorer: (teamId: string | undefined) => void;
@@ -104,7 +120,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [streak, setStreak] = useState<number>(() => store.loadStreak()?.days ?? 0);
   const [feed, setFeed] = useState<Feed>(() => emptyFeed());
   const [online, setOnline] = useState(false);
+  const [feedSync, setFeedSync] = useState<Store["feedSync"]>(() => ({
+    refreshing: false,
+    resultCount: resultCount(store.loadResults()),
+    message: "Scores cached",
+  }));
   const lastManSyncKey = useRef("");
+
+  function applyFeedSnapshot(f: Feed, on: boolean): void {
+    setFeed(f);
+    setOnline(on);
+    setFeedSync((s) => ({
+      ...s,
+      refreshing: false,
+      lastCheckedAt: Date.now(),
+      message: on ? "Scores checked" : "Offline cache",
+      resultCount: Math.max(s.resultCount, resultCount(f.results)),
+    }));
+    if (feedHasResults(f)) {
+      setResults((current) => mergeResults(current, f.results));
+    }
+    if (f.live.length > 0) void syncLastManFromLiveScores(f.live);
+  }
 
   // Bump the tip streak once per launch (consecutive-day aware).
   useEffect(() => {
@@ -119,20 +156,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => store.saveSweeps(sweeps), [sweeps]);
   useEffect(() => store.saveScores(scores), [scores]);
   useEffect(() => store.saveReactions(reactions), [reactions]);
+  useEffect(() => {
+    setFeedSync((s) => ({ ...s, resultCount: resultCount(results) }));
+  }, [results]);
 
-  // Pull the tournament feed once on launch. Official results (when present)
-  // flow into `results`, lighting up live scoring + pool leaderboards.
+  // Pull the tournament feed on launch, then gently once an hour while open.
+  // Official result patches merge into `results`, keeping offline state stable.
   useEffect(() => {
     let cancelled = false;
-    void fetchFeed().then(({ feed: f, online: on }) => {
-      if (cancelled) return;
-      setFeed(f);
-      setOnline(on);
-      if (feedHasResults(f)) setResults(f.results);
-      if (f.live.length > 0) void syncLastManFromLiveScores(f.live);
-    });
+    const refresh = () => {
+      setFeedSync((s) => ({ ...s, refreshing: true, message: "Checking scores" }));
+      void fetchFeed().then(({ feed: f, online: on }) => {
+        if (cancelled) return;
+        applyFeedSnapshot(f, on);
+      });
+    };
+    refresh();
+    const hourly = window.setInterval(refresh, 60 * 60 * 1000);
     return () => {
       cancelled = true;
+      window.clearInterval(hourly);
     };
   }, []);
 
@@ -200,12 +243,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       sweeps,
       feed,
       online,
+      feedSync,
 
       setProfile(name, favTeam) {
+        const cleanName = name.trim().slice(0, 24) || profile?.name || "Player";
         const next: Profile =
           profile != null
-            ? { ...profile, name: name.trim(), favTeam }
-            : { name: name.trim(), favTeam, uid: uid(), globalLeaderboardOptIn: false };
+            ? { ...profile, name: cleanName, favTeam }
+            : { name: cleanName, favTeam, uid: uid(), globalLeaderboardOptIn: false };
         setProfileState(next);
         store.saveProfile(next);
       },
@@ -225,10 +270,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
 
       importFeed(nextFeed) {
-        setFeed(nextFeed);
-        setOnline(true);
-        if (feedHasResults(nextFeed)) setResults(nextFeed.results);
-        if (nextFeed.live.length > 0) void syncLastManFromLiveScores(nextFeed.live);
+        cacheFeed(nextFeed);
+        applyFeedSnapshot(nextFeed, true);
+      },
+
+      async refreshFeed() {
+        setFeedSync((s) => ({ ...s, refreshing: true, message: "Checking scores" }));
+        const { feed: nextFeed, online: on } = await fetchFeed();
+        applyFeedSnapshot(nextFeed, on);
       },
 
       setGroupOrder(letter, ids) {
@@ -420,7 +469,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       streak,
     };
-  }, [profile, prediction, pools, results, sweeps, scores, reactions, streak, feed, online]);
+  }, [profile, prediction, pools, results, sweeps, scores, reactions, streak, feed, online, feedSync]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

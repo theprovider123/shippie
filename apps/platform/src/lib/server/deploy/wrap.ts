@@ -9,8 +9,9 @@ import { eq } from 'drizzle-orm';
 import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
 import { getDrizzleClient, schema } from '../db/client';
 import { writeWrapMeta, writeAppMeta } from './kv-write';
-import { resolveLiveUrl, type DeployLineageOverride } from './pipeline';
+import { resolveLiveUrl, resolveRuntimeSubdomainUrl, type DeployLineageOverride } from './pipeline';
 import { probeWrappedUrlPwaReadiness } from './pwa-readiness';
+import { checkAppSlugAvailability } from '$server/apps/slug-availability';
 
 export interface CreateWrappedAppInput {
   slug: string;
@@ -56,6 +57,16 @@ export async function createWrappedApp(input: CreateWrappedAppInput): Promise<Cr
     .from(schema.apps)
     .where(eq(schema.apps.slug, input.slug))
     .limit(1);
+  const availability = await checkAppSlugAvailability(db, input.slug, {
+    excludeAppId: existing[0]?.makerId === input.makerId ? existing[0].id : null,
+    reservedSlugs: input.reservedSlugs,
+  });
+  if (!availability.available) {
+    if (availability.reason === 'reserved' || availability.reason === 'first_party') {
+      return { success: false, reason: 'slug_reserved' };
+    }
+    return { success: false, reason: 'slug_taken' };
+  }
   if (existing[0] && existing[0].makerId !== input.makerId) {
     return { success: false, reason: 'slug_taken' };
   }
@@ -194,7 +205,7 @@ export async function createWrappedApp(input: CreateWrappedAppInput): Promise<Cr
   const liveUrl = resolveLiveUrl(input.publicOrigin, input.slug);
   // requiredRedirectUris is informational — surfaces in the SuccessCard
   // so makers know which redirect to add to Supabase/Auth0/Clerk.
-  const runtimeOrigin = liveUrl.replace(/\/$/, '');
+  const runtimeOrigin = resolveRuntimeSubdomainUrl(input.publicOrigin, input.slug).replace(/\/$/, '');
 
   return {
     success: true,

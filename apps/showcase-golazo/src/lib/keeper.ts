@@ -141,5 +141,8 @@ export class Keeper {
     this.diving = false;
     this.lean = 0;
     this.dive = 0;
+    this.preDriftDir = 0;
+    this.preDriftFake = false;
+    this.wait = 0;
   }
 }

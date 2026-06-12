@@ -51,7 +51,7 @@ function frame(inner: string): string {
     <text x="64" y="96" ${FONT} font-size="44" font-weight="800" fill="#fff" letter-spacing="2">GOLAZO</text>
     <text x="300" y="96" ${FONT} font-size="24" font-weight="700" fill="${GREEN}" letter-spacing="3">· 2026 WORLD CUP</text>
     ${inner}
-    <text x="64" y="${H - 48}" ${FONT} font-size="28" font-weight="800" fill="${GREEN}" letter-spacing="1">shippie.app/run/golazo</text>
+    <text x="64" y="${H - 48}" ${FONT} font-size="28" font-weight="800" fill="${GREEN}" letter-spacing="1">shippie.app/golazo</text>
   </svg>`;
 }
 

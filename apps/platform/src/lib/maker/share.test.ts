@@ -12,14 +12,14 @@ describe('shareStateFor — visibility/status matrix', () => {
   test('public + live → copy/QR the public URL', () => {
     expect(shareStateFor({ ...base })).toEqual({
       kind: 'public',
-      url: 'https://my-app.shippie.app/',
+      url: 'https://shippie.app/my-app',
     });
   });
 
   test('unlisted + live → public URL', () => {
     expect(shareStateFor({ ...base, visibilityScope: 'unlisted' })).toEqual({
       kind: 'public',
-      url: 'https://my-app.shippie.app/',
+      url: 'https://shippie.app/my-app',
     });
   });
 

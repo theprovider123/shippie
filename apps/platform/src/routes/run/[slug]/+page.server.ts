@@ -1,6 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import {
+  canonicalRunPath,
   canonicalShowcaseTarget,
   containerSlugForRequest,
   isFirstPartyShowcase,
@@ -19,13 +20,7 @@ export const load: PageServerLoad = async ({ platform, params, url, setHeaders, 
   // dishonest URL state and a confusing share story.
   const canonical = canonicalShowcaseTarget(params.slug);
   if (canonical.slug !== params.slug) {
-    const search = new URLSearchParams(url.search);
-    for (const [key, value] of Object.entries(canonical.searchParams ?? {})) {
-      search.set(key, value);
-    }
-    const query = search.toString();
-    const target = `/run/${encodeURIComponent(canonical.slug)}${query ? `?${query}` : ''}`;
-    throw redirect(302, target);
+    throw redirect(302, canonicalRunPath(params.slug, url.search));
   }
 
   // Third-party rename fallback. First-party aliases are handled above by

@@ -286,7 +286,7 @@ describe('serveFromR2 — wasm headers + SPA fallback', () => {
     expect(res.headers.get('cache-control')).toContain('max-age=300');
   });
 
-  test('auto-bridge: KV active null + ASSETS hit + root path → /run/<slug>', async () => {
+  test('auto-bridge: KV active null + ASSETS hit + root path → /<slug>', async () => {
     const env = envWith(
       fakeKv({}),
       fakeR2({}),
@@ -301,7 +301,7 @@ describe('serveFromR2 — wasm headers + SPA fallback', () => {
       traceId: 't'
     });
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe('https://shippie.app/run/mevrouw');
+    expect(res.headers.get('location')).toBe('https://shippie.app/mevrouw');
   });
 
   test('auto-bridge: KV active null + ASSETS miss → unpublished page', async () => {

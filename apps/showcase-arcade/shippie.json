@@ -1,0 +1,56 @@
+{
+  "$schema": "https://shippie.app/schemas/app.json",
+  "name": "Arcade",
+  "slug": "arcade",
+  "description": "One Shippie cabinet for the small games: daily puzzles, reflex runs, room games, and strategy.",
+  "icon": "/icon.svg",
+  "theme_color": "#111318",
+  "background_color": "#111318",
+  "visibility": "public",
+  "display": "standalone",
+  "orientation": "portrait",
+  "intents": {
+    "provides": [
+      "game.completed",
+      "puzzle.cleared",
+      "wave.cleared",
+      "preference.choice",
+      "fantasy-team.saved"
+    ],
+    "consumes": [
+      "matchday-prediction-stats"
+    ]
+  },
+  "data": {
+    "mode": "shippie-documents",
+    "documents": [
+      "arcade-session"
+    ],
+    "attachments": false,
+    "recovery": "inherited",
+    "migrations": "snapshot-v0",
+    "snapshots": "inherited",
+    "media": "none",
+    "realtime": "inherited",
+    "localStorage": {
+      "keys": [
+        "shippie:arcade:v1"
+      ],
+      "prefixes": [
+        "shippie:arcade:"
+      ]
+    }
+  },
+  "curation": {
+    "surface": "arcade",
+    "category": "games",
+    "tier": "public-flagship"
+  },
+  "source_repo": "https://github.com/theprovider123/shippie/tree/main/apps/showcase-arcade",
+  "license": "AGPL-3.0-or-later",
+  "remix_allowed": true,
+  "data_passport": {
+    "family": "arcade",
+    "schema": "arcade.v1"
+  }
+}

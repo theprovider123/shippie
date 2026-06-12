@@ -30,7 +30,7 @@
   }
   function appHref(appId: string): string | null {
     const s = appSlug(appId);
-    return knownSlugs.has(s) ? `/dock?app=${encodeURIComponent(s)}` : null;
+    return knownSlugs.has(s) ? `/${encodeURIComponent(s)}` : null;
   }
 
   async function refresh() {

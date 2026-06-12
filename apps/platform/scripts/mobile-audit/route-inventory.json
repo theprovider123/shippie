@@ -88,6 +88,12 @@
       "pageFile": "apps/platform/src/routes/[atname=atname]/+page.svelte"
     },
     {
+      "urlPath": "/[slug]",
+      "shell": "showcase-wrapper",
+      "priority": "P1",
+      "pageFile": "apps/platform/src/routes/[slug=appslug]/+page.svelte"
+    },
+    {
       "urlPath": "/arcade",
       "shell": "public",
       "priority": "P2",

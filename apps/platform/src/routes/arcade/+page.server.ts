@@ -1,31 +1,21 @@
 import type { PageServerLoad } from './$types';
-import { redirectRetiredRoute } from '$lib/server/launch-redirects';
+import { loadContainerPageData } from '$server/container-page-data';
 
-export const load: PageServerLoad = ({ url }) => {
-  redirectRetiredRoute(url, '/arcade');
+export const load: PageServerLoad = async ({ platform, url, setHeaders, depends, request }) => {
+  setHeaders({
+    'cache-control': 'no-store',
+  });
+  depends('app:apps');
+  const containerData = await loadContainerPageData({
+    platform,
+    url,
+    request,
+    requestedAppSlug: 'arcade',
+    focused: true,
+  });
   return {
-    featured: [] as Array<{
-      slug: string;
-      name: string;
-      shortName?: string;
-      description: string | null;
-      icon?: string;
-      accent?: string;
-      standaloneUrl?: string;
-    }>,
-    shelves: [] as Array<{
-      key: string;
-      title: string;
-      subtitle: string;
-      games: Array<{
-        slug: string;
-        name: string;
-        shortName?: string;
-        description: string | null;
-        icon?: string;
-        accent?: string;
-        standaloneUrl?: string;
-      }>;
-    }>,
+    ...containerData,
+    requestedAppSlug: 'arcade',
+    origin: url.origin,
   };
 };

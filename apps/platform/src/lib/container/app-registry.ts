@@ -28,6 +28,8 @@ interface PackageSummary {
   packageHash: string;
   data?: AppDataPassportRecord;
   standaloneUrl: string;
+  iconUrl?: string | null;
+  themeColor?: string | null;
   visibility?: ContainerApp['visibility'];
   owned?: boolean;
   permissions: ContainerApp['permissions'];
@@ -51,7 +53,9 @@ export function packageToContainerApp(pkg: PackageSummary): ContainerApp {
     entry: pkg.entry,
     labelKind: labelForKind(pkg.appKind),
     icon: initials(pkg.name),
-    accent: accentForKind(pkg.appKind),
+    accent: pkg.themeColor ?? accentForKind(pkg.appKind),
+    iconUrl: pkg.iconUrl ?? null,
+    themeColor: pkg.themeColor ?? accentForKind(pkg.appKind),
     version: pkg.version,
     packageHash: pkg.packageHash,
     data: pkg.data,
@@ -85,6 +89,8 @@ export function manifestToContainerApp(
     labelKind: labelForKind(manifest.kind),
     icon: initials(manifest.name),
     accent: accentForKind(manifest.kind),
+    iconUrl: null,
+    themeColor: accentForKind(manifest.kind),
     version: 'imported',
     packageHash: manifest.packageHash,
     data,

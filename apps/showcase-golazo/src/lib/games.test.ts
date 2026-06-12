@@ -13,16 +13,16 @@ import {
 } from "./games";
 import { profileLeaderboardKey } from "./leaderboard";
 
-const s = (game: "keepy" | "topbins" | "lastman", name: string, score: number, at = 0): ScoreEntry => ({ game, name, score, at });
+const s = (game: "penalty" | "keepy" | "lastman", name: string, score: number, at = 0): ScoreEntry => ({ game, name, score, at });
 
 describe("local board", () => {
   it("ranks highest-first and tracks bests per game", () => {
     let board: ScoreEntry[] = [];
     board = addLocalScore(board, s("keepy", "Sam", 12));
     board = addLocalScore(board, s("keepy", "Sam", 30, 1));
-    board = addLocalScore(board, s("topbins", "Sam", 5, 2));
+    board = addLocalScore(board, s("penalty", "Sam", 5, 2));
     expect(bestScore(board, "keepy")).toBe(30);
-    expect(bestScore(board, "topbins")).toBe(5);
+    expect(bestScore(board, "penalty")).toBe(5);
     expect(bestScore(addLocalScore(board, s("lastman", "Sam", 1, 3)), "lastman")).toBe(1);
     expect(topScores(board, "keepy")[0].score).toBe(30);
     expect(topScores(board, "keepy").every((e) => e.game === "keepy")).toBe(true);
@@ -75,9 +75,9 @@ describe("challenge links", () => {
     expect(decodeChallenge(encodeChallenge(c))).toEqual(c);
   });
   it("reads a challenge out of a hash and ignores others", () => {
-    const url = challengeUrl({ game: "topbins", name: "Mo", score: 7 }, "https://x/");
+    const url = challengeUrl({ game: "penalty", name: "Mo", score: 7 }, "https://x/");
     const hash = url.slice(url.indexOf("#"));
-    expect(readChallengeFromHash(hash)).toMatchObject({ game: "topbins", score: 7, name: "Mo" });
+    expect(readChallengeFromHash(hash)).toMatchObject({ game: "penalty", score: 7, name: "Mo" });
     expect(readChallengeFromHash("#sweep=abc")).toBeNull();
     expect(decodeChallenge("garbage")).toBeNull();
   });
@@ -85,8 +85,8 @@ describe("challenge links", () => {
 
 describe("metadata", () => {
   it("resolves each game", () => {
+    expect(gameMeta("penalty").name).toBe("Penalty Kick");
     expect(gameMeta("keepy").unit).toBe("kick-ups");
-    expect(gameMeta("topbins").name).toBe("Top Bins");
     expect(gameMeta("lastman").name).toBe("Last Man Standing");
   });
 });

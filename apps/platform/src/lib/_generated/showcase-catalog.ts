@@ -3,6 +3,7 @@
 // to refresh from the showcase set under apps/showcase-*.
 
 export const SHOWCASE_SLUGS = [
+  "arcade",
   "atlas",
   "block-drop",
   "body-metrics",

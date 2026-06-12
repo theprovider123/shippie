@@ -40,7 +40,7 @@
   let slug = $state(startingSlug);
   let file = $state<File | null>(null);
   let result = $state<Result>({ kind: 'idle' });
-  let visibility = $state<'public' | 'unlisted' | 'private'>('public');
+  let visibility = $state<'public' | 'unlisted' | 'private'>('unlisted');
   // Surface picker. **Default is "auto"** — never "featured" — so a
   // redeploy that doesn't touch surface preserves an existing arcade
   // app's row instead of silently demoting it. The submit handler
@@ -175,7 +175,7 @@
       <span class="label">Slug</span>
       <div class="slug-row">
         <input id="ship-slug" name="slug" bind:value={slug} pattern="[a-z0-9][a-z0-9\-]*" required class="slug-input" />
-        <span class="suffix">.shippie.app</span>
+        <span class="suffix">/ on shippie.app</span>
       </div>
     </label>
   {:else}
@@ -209,17 +209,17 @@
     <fieldset class="choice-set">
       <legend class="label">Visibility</legend>
       <label>
-        <input type="radio" name="visibility_choice" value="public" bind:group={visibility} />
-        <span>
-          <strong>Public</strong>
-          <small>Listed in Shippie surfaces after policy checks pass.</small>
-        </span>
-      </label>
-      <label>
         <input type="radio" name="visibility_choice" value="unlisted" bind:group={visibility} />
         <span>
           <strong>Unlisted</strong>
-          <small>Share by link, without appearing in public browse.</small>
+          <small>Live at shippie.app/{slug}; share by link while testing.</small>
+        </span>
+      </label>
+      <label>
+        <input type="radio" name="visibility_choice" value="public" bind:group={visibility} />
+        <span>
+          <strong>Public</strong>
+          <small>Listed in Shippie surfaces after policy checks and a maker review pass.</small>
         </span>
       </label>
       <label>

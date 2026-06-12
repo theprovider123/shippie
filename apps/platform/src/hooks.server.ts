@@ -73,7 +73,8 @@ export const handle: Handle = async ({ event, resolve }) => {
     // ASSETS.fetch from the subdomain context, but the binding refuses
     // cross-host fetches and synthesises a 522. A 302 keeps URLs
     // working — the address bar just changes from <slug>.shippie.app
-    // to shippie.app/run/<slug>/. Subdomain hygiene is acceptable;
+    // to shippie.app/<slug> for roots (or /run/<slug>/<path> for legacy nested paths).
+    // Subdomain hygiene is acceptable;
     // 522s aren't.
     const subdomain = hostname.slice(0, -'.shippie.app'.length);
     if (isFirstPartyShowcase(subdomain)) {
@@ -106,13 +107,16 @@ export const handle: Handle = async ({ event, resolve }) => {
           ctx,
         );
       }
-      const targetPath = event.url.pathname === '/' ? '/' : event.url.pathname;
+      const targetPath = event.url.pathname === '/' ? '' : event.url.pathname;
       const search = new URLSearchParams(event.url.search);
       for (const [key, value] of Object.entries(showcaseTarget.searchParams ?? {})) {
         search.set(key, value);
       }
       const query = search.toString();
-      const target = `https://shippie.app/run/${showcaseSlug}${targetPath}${query ? `?${query}` : ''}`;
+      const target =
+        event.url.pathname === '/'
+          ? `https://shippie.app/${showcaseSlug}${query ? `?${query}` : ''}`
+          : `https://shippie.app/run/${showcaseSlug}${targetPath}${query ? `?${query}` : ''}`;
       return new Response(null, {
         status: 302,
         headers: { location: target, 'cache-control': 'public, max-age=60' },

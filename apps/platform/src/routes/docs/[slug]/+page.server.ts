@@ -14,7 +14,7 @@ type DocsPage = {
   links?: Array<{ href: string; label: string }>;
 };
 
-const updated = 'May 30, 2026';
+const updated = 'June 11, 2026';
 
 const pages: Record<string, DocsPage> = {
   privacy: {
@@ -281,20 +281,142 @@ const pages: Record<string, DocsPage> = {
       {
         title: 'Fast path',
         body: [
-          'Start at Ship. Upload a built local tool, deploy with CLI, or use MCP from your editor. Hosted URL wraps are retired for marketplace publishing.',
+          'Start at Ship. Upload a built local tool, deploy with CLI, or use MCP from your editor. New apps start unlisted by default so you can test with real users before asking for public discovery.',
         ],
       },
       {
         title: 'What Shippie adds',
         body: [
-          'Shippie turns a web app into a listed, phone-ready, Dock-ready tool with package metadata, app detail pages, local-data surfaces, and launch telemetry.',
+          'Shippie turns a web app into a phone-ready, Dock-ready local tool with package metadata, short share URLs, app detail pages, local-data surfaces, feedback, deploy history, and launch telemetry.',
+          'The link you share is short: shippie.app/your-slug. The internal runtime may still use /run/your-slug or a technical subdomain, but those are plumbing, not maker copy.',
         ],
       },
     ],
     links: [
       { href: '/new', label: 'Ship an app' },
+      { href: '/docs/convert-to-shippie', label: 'Convert an existing app' },
+      { href: '/docs/what-to-build', label: 'What to build' },
       { href: '/docs/cli', label: 'CLI and MCP' },
       { href: '/docs', label: 'Docs home' },
+    ],
+  },
+  'convert-to-shippie': {
+    title: 'Convert an existing app to Shippie',
+    eyebrow: 'For builders',
+    description: 'A practical route from Supabase, Vercel, iOS, Android, or AI-built prototypes to a testable Shippie app.',
+    updated,
+    sections: [
+      {
+        title: 'The promise',
+        body: [
+          'If your app already runs in a browser, Shippie should be a fast conversion path: classify it, replace hosted user-data paths with local primitives, build a static bundle, deploy unlisted, then gather feedback from real users immediately.',
+          'If your app is native-only, do not upload an IPA or APK. Extract the product loop into a mobile web/PWA shell first, then use Shippie for the testable web app. Native store packaging can come later.',
+        ],
+      },
+      {
+        title: 'Fit check',
+        body: [
+          'Run the classifier before rewriting. It tells you whether the project is a Local Tool candidate, a connected tool that needs disclosures, or a cloud app that should stay on Supabase/Vercel until its data model changes.',
+        ],
+        bullets: [
+          'npx @shippie/cli classify .',
+          'npx @shippie/cli localize-plan .',
+          'npx @shippie/cli data doctor .',
+        ],
+      },
+      {
+        title: 'Supabase apps',
+        body: [
+          'Keep Supabase only for reference data or explicit connected features. For core user content, move tables to shippie.local.db, storage uploads to shippie.local.files, and auth-dependent owner rows to local identity or private-space membership.',
+          'The localize plan can suggest patches for basic Supabase queries, storage calls, and common auth patterns. RPC, realtime, edge functions, admin clients, RLS-heavy workflows, and server-only secrets need a manual redesign before deploy.',
+        ],
+      },
+      {
+        title: 'Vercel and Next apps',
+        body: [
+          'Export the interactive app as static web output where possible. Client-side React, Svelte, Vue, Astro, and plain HTML bundles are natural fits. Server actions, API routes, middleware, cron jobs, and secret-backed integrations must become local SDK calls, disclosed reference-data calls, or separate services outside the Shippie Local Tool promise.',
+          'Typical command path: build or export to dist, build, or out; zip that folder; deploy unlisted; then review the App Flight Recorder before sharing widely.',
+        ],
+      },
+      {
+        title: 'iOS and Android apps',
+        body: [
+          'For a native app, identify the smallest loop users can test in a browser: onboarding, creation, saving, sharing, feedback, or a single game/workflow. Build that loop as a PWA-style web app and deploy it to Shippie first.',
+          'Use browser equivalents for camera, files, haptics, clipboard, share, local storage, offline cache, and install. Be honest about platform gaps such as iOS background work, Web Bluetooth, and long-running offline AI.',
+        ],
+      },
+      {
+        title: 'AI-assisted conversion loop',
+        body: [
+          'Ask your coding agent to run the classifier, produce the localize plan, apply only safe patches, and leave hard cloud features as explicit decisions. Then build, deploy unlisted, open the short URL on a phone, and collect feedback from the first testers.',
+        ],
+        bullets: [
+          'npx @shippie/cli deploy ./dist --slug your-app --unlisted --watch',
+          'npx @shippie/cli logs your-app',
+          'Share https://shippie.app/your-app with testers, not the runtime or maker dashboard URL.',
+        ],
+      },
+      {
+        title: 'Ready for public',
+        body: [
+          'Promote only after the app works on a real phone, has useful app-specific share metadata, has no hidden data exits, and has at least one round of tester feedback. Public is a launch decision, not the default deployment state.',
+        ],
+      },
+    ],
+    links: [
+      { href: '/new', label: 'Ship unlisted' },
+      { href: '/docs/what-to-build', label: 'What works well' },
+      { href: '/docs/cli', label: 'CLI and MCP' },
+    ],
+  },
+  'what-to-build': {
+    title: 'What to build on Shippie',
+    eyebrow: 'For makers',
+    description: 'App ideas and product shapes that fit Shippie before launch.',
+    updated,
+    sections: [
+      {
+        title: 'Best fit',
+        body: [
+          'Shippie is strongest for tools that are personal, situational, shareable, and useful before they have a backend team. Think local-first apps people can open instantly, keep on their phone, and trust with small but meaningful data.',
+        ],
+        bullets: [
+          'Personal utilities: trackers, planners, calculators, journals, checklists, workouts, recipes, budgets, decision tools.',
+          'Event and group apps: sweepstakes, match-day games, classroom tools, wedding/weekend planners, venue tools, private-room utilities.',
+          'Creative and AI tools: image sorting, writing helpers, local transcription, moodboards, prompt toys, lightweight editors.',
+          'Games: daily puzzles, party games, async challenges, local scoreboards, offline-first game loops with optional sync.',
+        ],
+      },
+      {
+        title: 'Use the Shippie advantage',
+        body: [
+          'Build things that get better because they are local, private, fast to share, and easy to remix. A good Shippie app should have a clear first action in ten seconds and a reason to send a link to one specific person.',
+        ],
+        bullets: [
+          'Offline mode for the core loop.',
+          'A share card or invite link that carries the app result, not generic Shippie copy.',
+          'A local database or files model the user can inspect/export.',
+          'Feedback built into the first tester loop.',
+        ],
+      },
+      {
+        title: 'Usually not a fit',
+        body: [
+          'Do not force every app into Shippie. If the product is mostly server-side collaboration, payments, account-based SaaS, enterprise admin, or a social network whose value is the central database, it may need a cloud platform first.',
+          'You can still use Shippie for a companion, prototype, offline mode, or feedback build of that product.',
+        ],
+      },
+      {
+        title: 'Launch process',
+        body: [
+          'The default maker process is: classify, localize, build, deploy unlisted, test on phone, gather feedback, fix, then promote. The short URL is the user path; Maker and Flight Recorder are the builder path.',
+        ],
+      },
+    ],
+    links: [
+      { href: '/docs/convert-to-shippie', label: 'Convert an existing app' },
+      { href: '/docs/build', label: 'Build guide' },
+      { href: '/new', label: 'Ship an app' },
     ],
   },
   cli: {

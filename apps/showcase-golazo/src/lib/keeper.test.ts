@@ -61,4 +61,17 @@ describe("Keeper", () => {
     expect(k.x).not.toBe(start);
     expect(k.diving).toBe(false);
   });
+  it("fully clears a committed dive on reset", () => {
+    const k = new Keeper(0, 100, keeperConfig(0.7));
+    k.prepareRound(() => 0.9);
+    k.commit(95, () => 0.5);
+    k.update();
+    k.reset();
+    const x = k.x;
+    k.update(0);
+    expect(k.diving).toBe(false);
+    expect(k.preDriftDir).toBe(0);
+    expect(k.preDriftFake).toBe(false);
+    expect(k.x).toBe(x);
+  });
 });

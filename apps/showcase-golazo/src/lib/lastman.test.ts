@@ -3,10 +3,17 @@ import type { Fixture } from "../data/tournament";
 import type { LiveScore } from "./feed";
 import { evaluateLastMan, upsertLastManPick } from "./lastman";
 
+const venue: Fixture["venue"] = {
+  stadium: "Test Stadium",
+  city: "Test City",
+  country: "USA",
+  tz: "America/New_York",
+};
+
 const fixtures: Fixture[] = [
-  { id: "d1-a-b", group: "A", round: 1, home: "MEX", away: "CRO", kickoff: "2026-06-11T16:00:00.000Z" },
-  { id: "d1-c-d", group: "A", round: 1, home: "ECU", away: "GHA", kickoff: "2026-06-11T19:00:00.000Z" },
-  { id: "d2-a-c", group: "A", round: 2, home: "MEX", away: "ECU", kickoff: "2026-06-16T16:00:00.000Z" },
+  { id: "d1-a-b", fifaId: "test-1", matchNumber: 1, group: "A", round: 1, home: "MEX", away: "CRO", kickoff: "2026-06-11T16:00:00.000Z", venue },
+  { id: "d1-c-d", fifaId: "test-2", matchNumber: 2, group: "A", round: 1, home: "ECU", away: "GHA", kickoff: "2026-06-11T19:00:00.000Z", venue },
+  { id: "d2-a-c", fifaId: "test-3", matchNumber: 3, group: "A", round: 2, home: "MEX", away: "ECU", kickoff: "2026-06-16T16:00:00.000Z", venue },
 ];
 
 const ft = (matchId: string, homeGoals: number, awayGoals: number): LiveScore => ({

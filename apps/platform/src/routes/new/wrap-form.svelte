@@ -6,7 +6,7 @@
     another hosted backend, convert that user data path to Shippie local primitives first.
   </p>
   <pre><code>shippie deploy ./dist</code></pre>
-  <a href="/docs#local-runtime">Read the local tool guide</a>
+  <a href="/docs/convert-to-shippie">Read the conversion guide</a>
 </div>
 
 <style>
