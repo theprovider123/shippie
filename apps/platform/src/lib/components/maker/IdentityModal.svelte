@@ -8,6 +8,8 @@
     themeColor: string;
     iconEmoji?: string | null;
     iconUrl?: string | null;
+    /** Remixes keep the identity they were forked with — name/slug/icon lock, colour stays editable. */
+    isRemix?: boolean;
     onClose: () => void;
     onSaved: (newSlug: string, newName: string) => void;
   }
@@ -18,6 +20,7 @@
     themeColor,
     iconEmoji = null,
     iconUrl = null,
+    isRemix = false,
     onClose,
     onSaved,
   }: Props = $props();
@@ -122,9 +125,11 @@
     if (!slugValid) return;
     if (slugChanged && slugAvailable !== true) return;
     saving = true;
-    const body: Record<string, unknown> = { name: editName, slug: editSlug, themeColor: editThemeColor };
-    if (iconTab === 'emoji' && editIconEmoji) body.iconEmoji = editIconEmoji;
-    if (iconTab === 'upload' && newIconUrl) body.iconUrl = newIconUrl;
+    const body: Record<string, unknown> = isRemix
+      ? { themeColor: editThemeColor }
+      : { name: editName, slug: editSlug, themeColor: editThemeColor };
+    if (!isRemix && iconTab === 'emoji' && editIconEmoji) body.iconEmoji = editIconEmoji;
+    if (!isRemix && iconTab === 'upload' && newIconUrl) body.iconUrl = newIconUrl;
     const res = await fetch(`/api/apps/${encodeURIComponent(slug)}/identity`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
@@ -133,7 +138,13 @@
     saving = false;
     if (!res.ok) {
       const j = (await res.json().catch(() => ({}))) as { error?: string };
-      toast.push({ kind: 'error', message: j.error === 'slug_taken' ? 'That slug is already taken.' : 'Save failed.' });
+      const message =
+        j.error === 'slug_taken'
+          ? 'That slug is already taken.'
+          : j.error === 'remix_identity_locked'
+            ? 'Remixes keep their original name and icon.'
+            : 'Save failed.';
+      toast.push({ kind: 'error', message });
       return;
     }
     const j = (await res.json()) as { slug: string; name: string };
@@ -148,9 +159,13 @@
     <h2>App identity</h2>
   </header>
 
+  {#if isRemix}
+    <p class="remix-note">This app is a remix — its name, link and icon stay with the original so credit holds up. The colour is yours.</p>
+  {/if}
+
   <label class="field">
     <span>Name</span>
-    <input type="text" value={editName} oninput={onNameInput} maxlength="64" placeholder="App name" />
+    <input type="text" value={editName} oninput={onNameInput} maxlength="64" placeholder="App name" disabled={isRemix} />
   </label>
 
   <label class="field">
@@ -161,6 +176,7 @@
         value={editSlug}
         oninput={onSlugInput}
         placeholder="my-app"
+        disabled={isRemix}
         class:invalid={editSlug && !slugValid}
         class:taken={slugChanged && slugAvailable === false}
       />
@@ -182,8 +198,8 @@
     <legend class="tab-legend">Icon</legend>
     <div class="tab-row">
       <button type="button" class:active={iconTab === 'colour'} onclick={() => iconTab = 'colour'}>Colour</button>
-      <button type="button" class:active={iconTab === 'emoji'} onclick={() => iconTab = 'emoji'}>Emoji</button>
-      <button type="button" class:active={iconTab === 'upload'} onclick={() => iconTab = 'upload'}>Upload</button>
+      <button type="button" class:active={iconTab === 'emoji'} onclick={() => iconTab = 'emoji'} disabled={isRemix}>Emoji</button>
+      <button type="button" class:active={iconTab === 'upload'} onclick={() => iconTab = 'upload'} disabled={isRemix}>Upload</button>
     </div>
 
     {#if iconTab === 'colour'}
@@ -304,6 +320,18 @@
     font-family: var(--font-mono);
     font-size: var(--text-caption);
     color: var(--marigold, #e8c547);
+  }
+  .remix-note {
+    margin: 0;
+    padding: 0.6rem 0.75rem;
+    border: 1px dashed var(--border-light);
+    color: var(--text-secondary);
+    font-size: var(--text-small);
+  }
+  .field input:disabled,
+  .tab-row button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
   .slug-preview {
     margin: 0.15rem 0 0;

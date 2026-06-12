@@ -32,6 +32,16 @@ export const POST: RequestHandler = async (event) => {
   if (!app) return json({ error: 'not_found' }, { status: 404 });
   if (app.makerId !== who.userId) return json({ error: 'forbidden' }, { status: 403 });
 
+  // Remixes keep their forked icon — same lock as PATCH /identity.
+  const [lineage] = await db
+    .select({ parentAppId: schema.appLineage.parentAppId })
+    .from(schema.appLineage)
+    .where(eq(schema.appLineage.appId, app.id))
+    .limit(1);
+  if (lineage?.parentAppId) {
+    return json({ error: 'remix_identity_locked' }, { status: 403 });
+  }
+
   const form = await event.request.formData().catch(() => null);
   const file = form?.get('file');
   if (!(file instanceof File)) return json({ error: 'no_file' }, { status: 400 });

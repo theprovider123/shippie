@@ -68,6 +68,12 @@
 <svelte:head><title>Home · {data.app.name}</title></svelte:head>
 
 <section class="health-home" aria-label={`${data.app.name} health`}>
+  <nav class="quick-actions" aria-label="App actions">
+    <a class="qa qa-primary" href={`/new?slug=${encodeURIComponent(data.app.slug)}`}>Upload new version</a>
+    <a class="qa" href={publicUrl} target="_blank" rel="noopener">Open</a>
+    <a class="qa" href={`/maker/apps/${data.app.slug}/access`}>Share &amp; access</a>
+  </nav>
+
   <section class="metric-strip" aria-label="Health metrics">
     <div class="metric-grid">
       <article>
@@ -196,6 +202,27 @@
     display: grid;
     gap: 1.25rem;
     max-width: 1040px;
+  }
+  .quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .qa {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-min, 44px);
+    padding: 0 1rem;
+    border: 1px solid var(--border-paper-mid);
+    color: inherit;
+    text-decoration: none;
+    font-size: var(--text-small);
+    font-weight: 700;
+  }
+  .qa-primary {
+    border-color: var(--sunset);
+    background: var(--sunset);
+    color: #fff;
   }
   .metric-strip {
     display: grid;

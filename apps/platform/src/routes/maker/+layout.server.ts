@@ -50,8 +50,12 @@ export const load: LayoutServerLoad = async ({ locals, platform, url }) => {
       latestDeployStatus: schema.apps.latestDeployStatus,
       visibilityScope: schema.apps.visibilityScope,
       lastDeployedAt: schema.apps.lastDeployedAt,
+      // Remixes keep their forked identity — the identity modal locks
+      // name/slug/icon when this is set.
+      parentAppId: schema.appLineage.parentAppId,
     })
     .from(schema.apps)
+    .leftJoin(schema.appLineage, eq(schema.appLineage.appId, schema.apps.id))
     .where(owned)
     .orderBy(desc(schema.apps.updatedAt))
     .limit(8);
@@ -88,6 +92,7 @@ export type MyAppRow = {
   latestDeployStatus: string | null;
   visibilityScope: string;
   lastDeployedAt: string | null;
+  parentAppId: string | null;
 };
 
 export type MakerCounts = {

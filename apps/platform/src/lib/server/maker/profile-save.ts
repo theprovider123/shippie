@@ -33,6 +33,24 @@ export async function saveMakerAppProfile({ request, locals, platform, params, u
   if (!name || !category) return fail(400, { error: 'Name and category are required.' });
 
   const rawIcon = clean(form.get('iconUrl'), 500);
+
+  // Remixes keep the name/icon they were forked with — same lock as
+  // PATCH /identity. Everything else in the listing stays editable.
+  const lineageDb = getDrizzleClient(platform.env.DB);
+  const [existingLineage] = await lineageDb
+    .select({ parentAppId: schema.appLineage.parentAppId })
+    .from(schema.appLineage)
+    .where(eq(schema.appLineage.appId, app.id))
+    .limit(1);
+  if (existingLineage?.parentAppId) {
+    if (name !== app.name) {
+      return fail(403, { error: 'Remixes keep their original name.' });
+    }
+    if ((rawIcon ?? null) !== (app.iconUrl ?? null)) {
+      return fail(403, { error: 'Remixes keep their original icon.' });
+    }
+  }
+
   let iconUrl: string | null = null;
   if (rawIcon) {
     if (rawIcon.startsWith('/__shippie/app-icons/')) {

@@ -64,13 +64,34 @@
 
 <script lang="ts">
   import { page as pageStore } from '$app/stores';
-  import { goto } from '$app/navigation';
+  import { goto, invalidateAll } from '$app/navigation';
+  import { toast } from '$lib/stores/toast';
   import MakerShareSheet from '$components/maker/MakerShareSheet.svelte';
   import { shareStateFor } from '$lib/maker/share';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
   const demo = $derived(data.demoDiagnostics);
+
+  async function changeVisibility(slug: string, next: string) {
+    const res = await fetch(`/api/apps/${encodeURIComponent(slug)}/visibility`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ visibility_scope: next }),
+    });
+    if (!res.ok) {
+      toast.push({ kind: 'error', message: 'Visibility change failed.' });
+      await invalidateAll();
+      return;
+    }
+    const j = (await res.json()) as { metadata_synced?: boolean };
+    if (j.metadata_synced === false) {
+      toast.push({ kind: 'warning', message: `Set to ${next}. May take 30 s to propagate.` });
+    } else {
+      toast.push({ kind: 'success', message: `Set to ${next}.` });
+    }
+    await invalidateAll();
+  }
 
   let shareSheet = $state<{ open: boolean; url: string; title: string }>({
     open: false,
@@ -245,7 +266,21 @@
           </a>
           <span class="pills">
             <span class="status status-{pill.cls}">{pill.label}</span>
-            <span class="vis">{VIS_LABELS[app.visibilityScope] ?? app.visibilityScope}</span>
+            {#if app.visibilityScope === 'team' || app.visibilityScope === 'local'}
+              <span class="vis">{VIS_LABELS[app.visibilityScope] ?? app.visibilityScope}</span>
+            {:else}
+              <select
+                class="vis-select"
+                value={app.visibilityScope}
+                onchange={(e) => changeVisibility(app.slug, (e.target as HTMLSelectElement).value)}
+                onclick={(e) => e.stopPropagation()}
+                aria-label={`Visibility for ${app.name}`}
+              >
+                <option value="public">Public</option>
+                <option value="unlisted">Unlisted</option>
+                <option value="private">Private</option>
+              </select>
+            {/if}
           </span>
           <span class="time">{formatRelative(app.lastDeployedAt)}</span>
           <span class="actions">
@@ -257,6 +292,7 @@
             {:else if share.kind === 'invite'}
               <a class="action" href={share.href}>Share</a>
             {/if}
+            <a class="action" href={`/new?slug=${encodeURIComponent(app.slug)}`}>Update</a>
             <a class="action manage" href={`/maker/apps/${app.slug}`}>Manage</a>
           </span>
         </article>
@@ -530,6 +566,15 @@
     display: inline-flex;
     gap: 0.4rem;
     align-items: center;
+  }
+  .vis-select {
+    padding: 0.25rem 0.5rem;
+    background: var(--surface, #1a1814);
+    border: 1px solid var(--border-light);
+    color: var(--text-secondary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: var(--text-caption);
+    cursor: pointer;
   }
   .status,
   .vis,

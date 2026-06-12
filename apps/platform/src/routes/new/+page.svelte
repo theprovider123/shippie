@@ -3,7 +3,8 @@
   import type { PageData } from './$types';
   let { data }: { data: PageData } = $props();
   const remixApp = $derived(data.remix?.ok ? data.remix.remix : null);
-  const remixSlug = $derived(remixApp?.targetSlug ?? 'recipes');
+  const updateApp = $derived(data.update ?? null);
+  const remixSlug = $derived(remixApp?.targetSlug ?? updateApp?.slug ?? 'recipes');
   const forkUrl = $derived(remixApp?.forkUrl ?? null);
 
   const checks = [
@@ -27,11 +28,14 @@
           class="header-mark"
           aria-hidden="true"
         />
-        <p class="eyebrow">Ship</p>
-        <h1>{remixApp ? `Remix ${remixApp.name}` : 'Ship app'}</h1>
+        <p class="eyebrow">{updateApp ? 'Update' : 'Ship'}</p>
+        <h1>{remixApp ? `Remix ${remixApp.name}` : updateApp ? `Update ${updateApp.name}` : 'Ship app'}</h1>
         <p class="lede">
           {#if remixApp}
             Upload your build or fork the source. Shippie keeps attribution and remix terms attached.
+          {:else if updateApp}
+            Drop the new build for <code>{updateApp.slug}.shippie.app</code>. It re-runs the same
+            checks and goes live as the next version; your listing and settings stay put.
           {:else}
             Drop a built local tool zip. Shippie scans it, publishes it, and records the deploy.
           {/if}

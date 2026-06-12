@@ -143,6 +143,7 @@
               {#if kebabOpen === app.slug}
                 <div class="kebab-menu" role="menu">
                   <a href={`/${app.slug}`} target="_blank" rel="noopener" role="menuitem">Open</a>
+                  <a href={`/new?slug=${encodeURIComponent(app.slug)}`} role="menuitem">Update</a>
                   <button type="button" onclick={() => shareApp(app.slug)} role="menuitem">Share</button>
                   <button type="button" onclick={() => openIdentity(app)} role="menuitem">Edit identity</button>
                   <a href={`/maker/apps/${app.slug}`} role="menuitem">Manage</a>
@@ -204,6 +205,7 @@
     slug={identityTarget.slug}
     name={identityTarget.name}
     themeColor={identityTarget.themeColor}
+    isRemix={Boolean(identityTarget.parentAppId)}
     onClose={() => identityTarget = null}
     onSaved={async (newSlug, newName) => {
       identityTarget = null;

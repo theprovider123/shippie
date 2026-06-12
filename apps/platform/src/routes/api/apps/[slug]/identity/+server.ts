@@ -58,6 +58,26 @@ export const PATCH: RequestHandler = async (event) => {
   if (!newName) return json({ error: 'name_required' }, { status: 400 });
   if (!APP_SLUG_RE.test(newSlug)) return json({ error: 'invalid_slug' }, { status: 400 });
 
+  // Remixes keep the identity they were forked with. Name/slug/icon stay
+  // locked to preserve lineage attribution (and block look-alike apps);
+  // theme colour remains the remixer's to change. UI disables these
+  // fields too — this is the enforcement layer.
+  const wantsIdentityChange =
+    newName !== app.name ||
+    newSlug !== currentSlug ||
+    typeof body.iconEmoji === 'string' ||
+    typeof body.iconUrl === 'string';
+  if (wantsIdentityChange) {
+    const [lineage] = await db
+      .select({ parentAppId: schema.appLineage.parentAppId })
+      .from(schema.appLineage)
+      .where(eq(schema.appLineage.appId, app.id))
+      .limit(1);
+    if (lineage?.parentAppId) {
+      return json({ error: 'remix_identity_locked' }, { status: 403 });
+    }
+  }
+
   if (newSlug !== currentSlug) {
     const availability = await checkAppSlugAvailability(db, newSlug, {
       excludeAppId: app.id,
@@ -120,7 +140,9 @@ export const PATCH: RequestHandler = async (event) => {
   }
 
   if (env.CACHE) {
-    const kvPatch: Record<string, unknown> = { slug: newSlug };
+    // Include name — the wrapper's manifest synth reads meta.name, and
+    // without this a rename only reached subdomains on the next deploy.
+    const kvPatch: Record<string, unknown> = { slug: newSlug, name: newName };
     if (typeof body.themeColor === 'string') kvPatch.theme_color = body.themeColor;
     await patchAppMeta(env.CACHE, newSlug, kvPatch).catch(() => {});
   }

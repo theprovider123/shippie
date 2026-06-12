@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { enhance } from '$app/forms';
   import { qrSvg } from '@shippie/qr';
   import VisibilityPicker from '$components/dashboard/VisibilityPicker.svelte';
   import CreateInviteForm from '$components/dashboard/CreateInviteForm.svelte';
@@ -39,6 +40,29 @@
     await navigator.clipboard.writeText(publicUrl);
     copied = true;
     window.setTimeout(() => (copied = false), 1400);
+  }
+
+  // Listing auto-save: debounced requestSubmit through use:enhance, so
+  // edits persist without a save button. checkValidity() keeps half-typed
+  // required fields from firing a doomed submit.
+  let listingForm: HTMLFormElement | null = null;
+  let listingSave = $state<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  let listingDebounce: ReturnType<typeof setTimeout> | null = null;
+
+  function scheduleListingSave() {
+    if (listingDebounce) clearTimeout(listingDebounce);
+    listingDebounce = setTimeout(() => {
+      if (!listingForm || !listingForm.checkValidity()) return;
+      listingForm.requestSubmit();
+    }, 900);
+  }
+
+  function enhanceListing() {
+    listingSave = 'saving';
+    return async ({ update, result }: { update: (opts?: { reset?: boolean }) => Promise<void>; result: { type: string } }) => {
+      await update({ reset: false });
+      listingSave = result.type === 'success' ? 'saved' : 'error';
+    };
   }
 </script>
 
@@ -221,9 +245,15 @@
       <p class="eyebrow">Public listing</p>
       <h2>Profile, source, license, remix</h2>
     </div>
-    {#if form?.ok}<p class="ok">Profile saved.</p>{/if}
     {#if form?.error}<p class="err">{form.error}</p>{/if}
-    <form method="POST" action="?/save">
+    <form
+      method="POST"
+      action="?/save"
+      bind:this={listingForm}
+      use:enhance={enhanceListing}
+      oninput={scheduleListingSave}
+      onchange={scheduleListingSave}
+    >
       <label>
         Name
         <input name="name" value={data.app.name} maxlength="80" required />
@@ -272,7 +302,10 @@
         <input name="remixAllowed" type="checkbox" checked={data.lineage?.remixAllowed ?? false} />
         Allow remixing when source and license are present
       </label>
-      <button type="submit">Save listing</button>
+      <p class="autosave" aria-live="polite">
+        {#if listingSave === 'saving'}Saving…{:else if listingSave === 'saved'}Saved{:else if listingSave === 'error'}Couldn't save — check the fields above{:else}Changes save automatically{/if}
+      </p>
+      <noscript><button type="submit">Save listing</button></noscript>
     </form>
   </section>
 </section>
@@ -468,6 +501,13 @@
   }
   .ok { color: var(--success); }
   .err { color: var(--danger); }
+  .autosave {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: var(--text-muted-warm);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: var(--text-caption);
+  }
   @media (prefers-color-scheme: dark) {
     .block,
     .space-row,
