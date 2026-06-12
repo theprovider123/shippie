@@ -10,7 +10,7 @@
   "display": "standalone",
   "orientation": "portrait",
   "intents": {
-    "provides": [],
+    "provides": ["game.completed"],
     "consumes": []
   },
   "curation": {
