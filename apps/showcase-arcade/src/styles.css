@@ -1,8 +1,22 @@
+/* ─────────────────────────────────────────────────────────────
+   SHIPPIE ARCADE — a dark room full of glowing cabinets.
+   Pixel marquee (Press Start 2P) + terminal mono (JetBrains Mono).
+   Per-game accent is the cabinet's neon. No Inter. No dashboards.
+   ───────────────────────────────────────────────────────────── */
+
 :root {
   color-scheme: dark;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #111318;
-  color: #f5f2ea;
+  --font-pixel: 'Press Start 2P', 'JetBrains Mono', monospace;
+  --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  --room: #0a0813;
+  --room-2: #120e1f;
+  --panel: #16112a;
+  --ink: #f2ecdf;
+  --ink-dim: rgba(242, 236, 223, 0.6);
+  --ink-faint: rgba(242, 236, 223, 0.38);
+  font-family: var(--font-mono);
+  background: var(--room);
+  color: var(--ink);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
@@ -20,47 +34,90 @@ body,
 
 body {
   overflow-x: hidden;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0) 28rem),
-    #111318;
+  background: var(--room);
 }
 
 button {
   font: inherit;
 }
 
+/* ── The room ──────────────────────────────────────────────── */
+
 .arcade-shell {
   --accent: #4fa487;
+  --glow: color-mix(in srgb, var(--accent) 55%, transparent);
+  position: relative;
   height: 100svh;
   min-height: 560px;
   padding: max(14px, env(safe-area-inset-top)) clamp(14px, 2.2vw, 28px) max(14px, env(safe-area-inset-bottom));
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  gap: 12px;
-  background:
-    radial-gradient(circle at 16% 0%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 25rem),
-    linear-gradient(120deg, rgba(255, 255, 255, 0.03), transparent 34rem);
+  gap: 14px;
   overflow: hidden;
+  background:
+    /* accent light pooling from the live cabinet */
+    radial-gradient(ellipse 60% 42% at 50% 36%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 70%),
+    /* violet ceiling wash + warm floor */
+    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(124, 77, 255, 0.10), transparent 60%),
+    radial-gradient(ellipse 110% 50% at 50% 110%, rgba(255, 94, 58, 0.06), transparent 62%),
+    var(--room);
+  transition: background 600ms ease;
 }
 
+/* arcade-carpet confetti, barely there */
+.arcade-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.5;
+  background-image:
+    radial-gradient(circle 1.5px at 22px 18px, rgba(124, 77, 255, 0.30) 99%, transparent),
+    radial-gradient(circle 1.5px at 64px 52px, rgba(47, 230, 166, 0.22) 99%, transparent),
+    radial-gradient(circle 1px at 96px 14px, rgba(255, 214, 107, 0.26) 99%, transparent),
+    radial-gradient(circle 1.5px at 44px 86px, rgba(255, 94, 122, 0.20) 99%, transparent),
+    radial-gradient(circle 1px at 10px 60px, rgba(102, 184, 255, 0.24) 99%, transparent);
+  background-size: 112px 104px;
+}
+
+/* fine grain so nothing reads flat */
+.arcade-shell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.05;
+  background-image: repeating-conic-gradient(rgba(255, 255, 255, 0.6) 0% 0.0001%, transparent 0.0002% 0.0004%);
+  background-size: 7px 7px;
+  mix-blend-mode: overlay;
+}
+
+.arcade-shell > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Marquee: the neon sign ────────────────────────────────── */
+
 .marquee {
-  min-height: 58px;
+  min-height: 62px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  border-bottom: 1px solid rgba(245, 242, 234, 0.12);
-  padding-bottom: 10px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid color-mix(in srgb, var(--accent) 30%, rgba(242, 236, 223, 0.08));
 }
 
-.eyebrow,
-.panel-label {
-  margin: 0 0 2px;
-  color: color-mix(in srgb, var(--accent) 76%, #f5f2ea);
-  font-size: 0.72rem;
-  font-weight: 800;
+.eyebrow {
+  margin: 0 0 7px;
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  letter-spacing: 0.34em;
   text-transform: uppercase;
-  letter-spacing: 0;
+  color: var(--ink-faint);
 }
 
 h1,
@@ -70,9 +127,26 @@ p {
 }
 
 h1 {
-  font-size: clamp(2.25rem, 4.3vw, 4.15rem);
-  line-height: 0.95;
-  letter-spacing: 0;
+  font-family: var(--font-pixel);
+  font-size: clamp(1.15rem, 2.6vw, 2rem);
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-shadow:
+    0 0 6px var(--glow),
+    0 0 22px var(--glow),
+    0 0 54px color-mix(in srgb, var(--accent) 30%, transparent);
+  animation: neon-wake 1100ms steps(8, end) both;
+}
+
+@keyframes neon-wake {
+  0% { opacity: 0; text-shadow: none; }
+  34% { opacity: 1; }
+  41% { opacity: 0.35; text-shadow: none; }
+  52% { opacity: 1; }
+  63% { opacity: 0.6; }
+  100% { opacity: 1; }
 }
 
 .marquee-meter {
@@ -80,22 +154,40 @@ h1 {
   gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
-  color: rgba(245, 242, 234, 0.72);
-  font-size: 0.82rem;
+  align-items: center;
+  font-family: var(--font-pixel);
+  font-size: 0.46rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .marquee-meter span {
-  border: 1px solid rgba(245, 242, 234, 0.14);
-  border-radius: 999px;
-  padding: 7px 10px;
-  background: rgba(255, 255, 255, 0.04);
+  padding: 8px 10px 7px;
+  color: var(--ink-dim);
+  border: 1px solid rgba(242, 236, 223, 0.16);
+  background: rgba(10, 8, 19, 0.6);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.5);
 }
+
+.marquee-meter .free-play {
+  color: #ffd66b;
+  border-color: color-mix(in srgb, #ffd66b 45%, transparent);
+  text-shadow: 0 0 8px rgba(255, 214, 107, 0.55);
+  animation: coin-blink 2.4s steps(2, jump-none) infinite;
+}
+
+@keyframes coin-blink {
+  0%, 64% { opacity: 1; }
+  65%, 100% { opacity: 0.45; }
+}
+
+/* ── Floor plan ────────────────────────────────────────────── */
 
 .machine {
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(220px, 0.78fr) minmax(360px, 1.7fr) minmax(230px, 0.74fr);
-  gap: 16px;
+  gap: 18px;
   align-items: stretch;
   overflow: hidden;
 }
@@ -106,25 +198,31 @@ h1 {
   min-width: 0;
 }
 
+/* ── Game rail: the row of cabinets ────────────────────────── */
+
 .game-rail {
   overflow: auto;
-  padding-right: 4px;
+  padding-right: 6px;
   scrollbar-width: thin;
 }
 
 .lane + .lane {
-  margin-top: 20px;
+  margin-top: 22px;
 }
 
 .lane-head {
   display: grid;
-  gap: 2px;
-  margin-bottom: 8px;
+  gap: 5px;
+  margin-bottom: 10px;
   padding-left: 2px;
 }
 
 .lane-head strong {
-  font-size: 0.83rem;
+  font-family: var(--font-pixel);
+  font-size: 0.52rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
 }
 
 .lane-head span,
@@ -132,14 +230,14 @@ h1 {
 .cabinet-controls,
 .pick-copy small,
 .quick-list small {
-  color: rgba(245, 242, 234, 0.62);
-  font-size: 0.76rem;
-  line-height: 1.35;
+  color: var(--ink-faint);
+  font-size: 0.74rem;
+  line-height: 1.45;
 }
 
 .lane-list {
   display: grid;
-  gap: 6px;
+  gap: 7px;
 }
 
 .game-pick,
@@ -155,19 +253,46 @@ h1 {
 
 .game-pick {
   display: grid;
-  grid-template-columns: 38px 1fr;
+  grid-template-columns: 40px 1fr;
   align-items: center;
-  gap: 10px;
-  border-left: 3px solid transparent;
-  padding: 8px 10px 8px 8px;
-  transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
+  gap: 11px;
+  padding: 8px 10px;
+  border: 1px solid rgba(242, 236, 223, 0.07);
+  background: rgba(18, 14, 31, 0.55);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease, background 140ms ease;
+  animation: tile-in 400ms ease backwards;
+}
+
+.lane-list .game-pick:nth-child(1) { animation-delay: 40ms; }
+.lane-list .game-pick:nth-child(2) { animation-delay: 80ms; }
+.lane-list .game-pick:nth-child(3) { animation-delay: 120ms; }
+.lane-list .game-pick:nth-child(4) { animation-delay: 160ms; }
+.lane-list .game-pick:nth-child(5) { animation-delay: 200ms; }
+.lane-list .game-pick:nth-child(6) { animation-delay: 240ms; }
+
+@keyframes tile-in {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .game-pick:hover,
-.game-pick:focus-visible,
+.game-pick:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, rgba(18, 14, 31, 0.7));
+  transform: translateY(-1px);
+  box-shadow:
+    0 4px 0 rgba(0, 0, 0, 0.45),
+    0 0 18px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
 .game-pick[data-active="true"] {
-  background: rgba(255, 255, 255, 0.06);
-  border-left-color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 80%, transparent);
+  background: color-mix(in srgb, var(--accent) 13%, rgba(18, 14, 31, 0.8));
+  box-shadow:
+    0 3px 0 rgba(0, 0, 0, 0.45),
+    0 0 24px color-mix(in srgb, var(--accent) 30%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .game-pick:focus-visible,
@@ -177,26 +302,38 @@ h1 {
   outline-offset: 2px;
 }
 
-.game-pick[data-active="true"] {
-  transform: translateX(2px);
-}
-
+/* the cartridge chip */
 .pick-mark {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--accent) 22%, #171b21);
-  color: color-mix(in srgb, var(--accent) 86%, #ffffff);
-  font-weight: 900;
-  font-size: 0.75rem;
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  color: #0a0813;
+  background: var(--accent);
+  box-shadow:
+    inset -3px -3px 0 rgba(0, 0, 0, 0.3),
+    inset 2px 2px 0 rgba(255, 255, 255, 0.35);
+}
+
+.game-pick[data-active="true"] .pick-mark {
+  box-shadow:
+    inset -3px -3px 0 rgba(0, 0, 0, 0.3),
+    inset 2px 2px 0 rgba(255, 255, 255, 0.35),
+    0 0 14px var(--glow);
 }
 
 .pick-copy {
   min-width: 0;
   display: grid;
-  gap: 2px;
+  gap: 3px;
+}
+
+.pick-copy strong {
+  font-size: 0.86rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
 .pick-copy strong,
@@ -206,17 +343,23 @@ h1 {
   white-space: nowrap;
 }
 
+/* ── The cabinet ───────────────────────────────────────────── */
+
 .cabinet {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   min-height: 0;
-  border-radius: 8px;
+  border-radius: 10px 10px 6px 6px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.025)),
-    #1b2028;
-  border: 1px solid rgba(245, 242, 234, 0.12);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.035);
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 9%, var(--panel)), var(--room-2) 30%),
+    var(--room-2);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, rgba(242, 236, 223, 0.1));
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 18px 50px rgba(0, 0, 0, 0.55),
+    0 0 60px color-mix(in srgb, var(--accent) 13%, transparent);
   overflow: hidden;
+  transition: border-color 600ms ease, box-shadow 600ms ease;
 }
 
 .cabinet-top {
@@ -225,7 +368,8 @@ h1 {
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(245, 242, 234, 0.1);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 22%, rgba(242, 236, 223, 0.08));
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.25), transparent);
 }
 
 .selected-title {
@@ -234,19 +378,23 @@ h1 {
 }
 
 .selected-title p {
-  color: var(--accent);
-  font-size: 0.72rem;
-  font-weight: 900;
+  font-family: var(--font-pixel);
+  font-size: 0.44rem;
+  letter-spacing: 0.26em;
   text-transform: uppercase;
-  letter-spacing: 0;
+  color: color-mix(in srgb, var(--accent) 85%, #ffffff);
+  text-shadow: 0 0 8px var(--glow);
 }
 
 .selected-title h2 {
-  margin-top: 2px;
-  font-size: clamp(1.45rem, 3vw, 2.6rem);
-  line-height: 1;
-  letter-spacing: 0;
+  margin-top: 6px;
+  font-family: var(--font-pixel);
+  font-size: clamp(0.85rem, 1.7vw, 1.35rem);
+  line-height: 1.25;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   overflow-wrap: anywhere;
+  text-shadow: 0 0 14px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .icon-button {
@@ -254,21 +402,38 @@ h1 {
   aspect-ratio: 1;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(245, 242, 234, 0.14);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.055);
-  color: #f5f2ea;
+  border: 1px solid rgba(242, 236, 223, 0.18);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.18), transparent 55%),
+    color-mix(in srgb, var(--accent) 14%, #1a1430);
+  color: var(--ink);
   cursor: pointer;
-  transition: transform 150ms ease, background 150ms ease;
+  box-shadow:
+    0 3px 0 rgba(0, 0, 0, 0.55),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.4);
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
 }
 
 .icon-button:hover {
-  background: color-mix(in srgb, var(--accent) 24%, rgba(255, 255, 255, 0.06));
-  transform: translateY(-1px);
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.22), transparent 55%),
+    color-mix(in srgb, var(--accent) 30%, #1a1430);
+  box-shadow:
+    0 3px 0 rgba(0, 0, 0, 0.55),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.4),
+    0 0 16px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.icon-button:active {
+  transform: translateY(2px);
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.55),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .icon-button span:not(.fullscreen-mark) {
-  font-size: 1.75rem;
+  font-size: 1.6rem;
   line-height: 1;
   transform: translateY(-1px);
 }
@@ -297,29 +462,45 @@ h1 {
   clip-path: polygon(0 56%, 16% 56%, 16% 84%, 44% 84%, 44% 100%, 0 100%, 0 56%, 56% 84%, 84% 84%, 84% 56%, 100% 56%, 100% 100%, 56% 100%);
 }
 
+/* ── The screen: CRT glass ─────────────────────────────────── */
+
 .screen-bezel {
   position: relative;
   min-height: 0;
   height: 100%;
-  margin: 0 12px;
-  border-radius: 8px;
-  padding: clamp(7px, 1.2vw, 12px);
+  margin: 0 14px;
+  border-radius: 10px;
+  padding: clamp(8px, 1.3vw, 13px);
   background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(255, 255, 255, 0.025)),
-    #090b0f;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+    linear-gradient(180deg, rgba(0, 0, 0, 0.5), rgba(255, 255, 255, 0.02)),
+    #050308;
+  border: 1px solid rgba(0, 0, 0, 0.8);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent),
+    inset 0 0 34px rgba(0, 0, 0, 0.85);
   overflow: hidden;
 }
 
+/* scanlines */
 .screen-bezel::before {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(rgba(255, 255, 255, 0.045) 50%, rgba(0, 0, 0, 0.05) 50%);
+  background: linear-gradient(rgba(255, 255, 255, 0.05) 50%, rgba(0, 0, 0, 0.06) 50%);
   background-size: 100% 4px;
-  opacity: 0.18;
+  opacity: 0.2;
   z-index: 2;
+}
+
+/* curved-glass highlight */
+.screen-bezel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  background: radial-gradient(ellipse 130% 90% at 50% -28%, rgba(255, 255, 255, 0.085), transparent 48%);
 }
 
 .screen-bezel iframe {
@@ -330,51 +511,90 @@ h1 {
   min-height: 0;
   display: block;
   border: 0;
-  border-radius: 4px;
+  border-radius: 5px;
   background: #f8f1e0;
+  animation: crt-on 460ms cubic-bezier(0.23, 1, 0.32, 1) backwards;
+}
+
+@keyframes crt-on {
+  0% { opacity: 0; transform: scaleY(0.004) scaleX(0.7); filter: brightness(6); }
+  55% { opacity: 1; transform: scaleY(1.015) scaleX(1); filter: brightness(1.6); }
+  100% { opacity: 1; transform: scaleY(1) scaleX(1); filter: brightness(1); }
 }
 
 .screen-status {
   position: absolute;
   top: 22px;
   right: 22px;
-  z-index: 3;
-  border-radius: 999px;
-  padding: 6px 9px;
-  background: rgba(9, 11, 15, 0.72);
-  color: rgba(245, 242, 234, 0.78);
-  font-size: 0.68rem;
-  font-weight: 800;
+  z-index: 4;
+  padding: 7px 9px 6px;
+  font-family: var(--font-pixel);
+  font-size: 0.42rem;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  letter-spacing: 0;
+  background: rgba(5, 3, 8, 0.8);
+  border: 1px solid rgba(242, 236, 223, 0.14);
+  color: #ffd66b;
   pointer-events: none;
+  animation: coin-blink 1s steps(2, jump-none) infinite;
 }
 
 .screen-status[data-loaded="true"] {
-  color: color-mix(in srgb, var(--accent) 82%, #ffffff);
+  color: color-mix(in srgb, var(--accent) 88%, #ffffff);
+  text-shadow: 0 0 8px var(--glow);
+  animation: none;
 }
+
+/* ── Control deck ──────────────────────────────────────────── */
 
 .cabinet-controls {
-  min-height: 50px;
+  min-height: 54px;
   display: grid;
-  grid-template-columns: minmax(100px, 0.3fr) 1fr;
-  gap: 12px;
+  grid-template-columns: auto minmax(100px, 0.32fr) 1fr;
+  gap: 14px;
   align-items: center;
-  padding: 10px 16px 12px;
+  padding: 10px 16px 13px;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.3));
 }
 
-.cabinet-controls span:first-child {
-  color: #f5f2ea;
-  font-weight: 800;
+/* decorative joystick + buttons */
+.cabinet-controls::before {
+  content: "";
+  width: 64px;
+  height: 22px;
+  background:
+    radial-gradient(circle 8px at 11px 11px, color-mix(in srgb, var(--accent) 80%, #fff) 7px, transparent 8px),
+    radial-gradient(circle 7px at 40px 11px, #ff5e7a 6px, transparent 7px),
+    radial-gradient(circle 7px at 58px 11px, #ffd66b 6px, transparent 7px);
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.6));
 }
+
+.cabinet-controls span:first-of-type {
+  color: var(--ink);
+  font-weight: 500;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+
+/* ── Score panel: the VFD board ────────────────────────────── */
 
 .session-panel {
   display: grid;
   align-content: start;
-  gap: 12px;
-  border-left: 1px solid rgba(245, 242, 234, 0.1);
-  padding-left: 16px;
+  gap: 14px;
+  border-left: 1px solid rgba(242, 236, 223, 0.1);
+  padding-left: 18px;
   overflow: auto;
+}
+
+.panel-label {
+  margin: 0 0 4px;
+  font-family: var(--font-pixel);
+  font-size: 0.46rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent) 80%, #ffffff);
+  text-shadow: 0 0 8px var(--glow);
 }
 
 .session-block {
@@ -383,40 +603,51 @@ h1 {
 }
 
 .session-block strong {
-  font-size: clamp(1.5rem, 3vw, 2.2rem);
-  line-height: 0.95;
+  font-family: var(--font-pixel);
+  font-size: clamp(0.8rem, 1.6vw, 1.05rem);
+  line-height: 1.35;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
   overflow-wrap: anywhere;
 }
 
 .session-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-top: 1px solid rgba(245, 242, 234, 0.12);
-  border-bottom: 1px solid rgba(245, 242, 234, 0.12);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, rgba(242, 236, 223, 0.1));
+  background: rgba(5, 3, 8, 0.7);
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.7);
 }
 
 .session-grid div {
   min-width: 0;
-  padding: 12px 8px;
+  padding: 12px 8px 10px;
   display: grid;
-  gap: 4px;
+  gap: 6px;
+  justify-items: center;
+  text-align: center;
 }
 
 .session-grid div + div {
-  border-left: 1px solid rgba(245, 242, 234, 0.1);
+  border-left: 1px solid rgba(242, 236, 223, 0.1);
 }
 
 .session-grid span {
-  color: rgba(245, 242, 234, 0.58);
-  font-size: 0.68rem;
+  font-family: var(--font-pixel);
+  font-size: 0.4rem;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  font-weight: 800;
+  color: var(--ink-faint);
 }
 
 .session-grid strong {
-  font-size: 1.35rem;
+  font-family: var(--font-pixel);
+  font-size: 0.92rem;
+  color: color-mix(in srgb, var(--accent) 85%, #ffffff);
+  text-shadow: 0 0 10px var(--glow);
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .quick-list {
@@ -425,6 +656,7 @@ h1 {
   padding: 0;
   display: grid;
   gap: 2px;
+  counter-reset: slot;
 }
 
 .quick-list button {
@@ -433,14 +665,42 @@ h1 {
   gap: 10px;
   align-items: center;
   min-height: 38px;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(245, 242, 234, 0.08);
-  color: rgba(245, 242, 234, 0.78);
+  padding: 8px 2px;
+  border-bottom: 1px dashed rgba(242, 236, 223, 0.12);
+  color: var(--ink-dim);
+  transition: color 120ms ease, padding-left 120ms ease;
+}
+
+.quick-list button::before {
+  counter-increment: slot;
+  content: counter(slot, decimal-leading-zero);
+  font-family: var(--font-pixel);
+  font-size: 0.42rem;
+  color: var(--ink-faint);
+  margin-right: 8px;
+}
+
+.quick-list button span {
+  flex: 1;
+  font-size: 0.84rem;
+}
+
+.quick-list button:hover {
+  color: var(--ink);
+  padding-left: 6px;
 }
 
 .quick-list button[data-active="true"] {
+  color: color-mix(in srgb, var(--accent) 88%, #ffffff);
+  text-shadow: 0 0 8px var(--glow);
+}
+
+.quick-list button[data-active="true"]::before {
+  content: "▸";
   color: var(--accent);
 }
+
+/* ── Focus mode (fullscreen play) ──────────────────────────── */
 
 .arcade-shell[data-focus-mode="true"] {
   height: 100svh;
@@ -448,7 +708,12 @@ h1 {
   grid-template-rows: minmax(0, 1fr);
   gap: 0;
   padding: 0;
-  background: #05070a;
+  background: #05030a;
+}
+
+.arcade-shell[data-focus-mode="true"]::before,
+.arcade-shell[data-focus-mode="true"]::after {
+  display: none;
 }
 
 .arcade-shell[data-focus-mode="true"] .marquee,
@@ -471,7 +736,7 @@ h1 {
   height: 100%;
   border: 0;
   border-radius: 0;
-  background: #05070a;
+  background: #05030a;
   box-shadow: none;
 }
 
@@ -484,9 +749,9 @@ h1 {
   grid-template-columns: 38px minmax(0, 1fr) 38px 38px;
   gap: 5px;
   padding: 4px;
-  border: 1px solid rgba(245, 242, 234, 0.13);
+  border: 1px solid rgba(242, 236, 223, 0.14);
   border-radius: 999px;
-  background: rgba(13, 16, 21, 0.78);
+  background: rgba(10, 8, 19, 0.82);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
@@ -497,11 +762,13 @@ h1 {
 
 .arcade-shell[data-focus-mode="true"] .selected-title h2 {
   margin: 0;
-  font-size: 0.96rem;
+  font-size: 0.62rem;
+  text-shadow: none;
 }
 
 .arcade-shell[data-focus-mode="true"] .icon-button {
   width: 34px;
+  box-shadow: none;
 }
 
 .arcade-shell[data-focus-mode="true"] .screen-bezel {
@@ -512,15 +779,19 @@ h1 {
   padding: 0;
   border: 0;
   border-radius: 0;
+  box-shadow: none;
 }
 
-.arcade-shell[data-focus-mode="true"] .screen-bezel::before {
+.arcade-shell[data-focus-mode="true"] .screen-bezel::before,
+.arcade-shell[data-focus-mode="true"] .screen-bezel::after {
   opacity: 0;
 }
 
 .arcade-shell[data-focus-mode="true"] .screen-bezel iframe {
   border-radius: 0;
 }
+
+/* ── Tablet ────────────────────────────────────────────────── */
 
 @media (max-width: 980px) {
   .arcade-shell {
@@ -573,23 +844,14 @@ h1 {
   }
 
   .game-pick {
-    width: 76px;
-    min-height: 78px;
+    width: 80px;
+    min-height: 82px;
     grid-template-columns: 1fr;
     justify-items: center;
     align-content: center;
     gap: 7px;
-    border-left: 0;
-    border-bottom: 3px solid transparent;
-    padding: 8px 6px 7px;
+    padding: 9px 6px 8px;
     text-align: center;
-  }
-
-  .game-pick:hover,
-  .game-pick:focus-visible,
-  .game-pick[data-active="true"] {
-    border-left-color: transparent;
-    border-bottom-color: var(--accent);
   }
 
   .game-pick[data-active="true"] {
@@ -605,8 +867,8 @@ h1 {
     white-space: normal;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
-    line-height: 1.12;
-    font-size: 0.72rem;
+    line-height: 1.15;
+    font-size: 0.68rem;
   }
 
   .pick-copy small {
@@ -621,10 +883,12 @@ h1 {
   .session-panel {
     order: 3;
     border-left: 0;
-    border-top: 1px solid rgba(245, 242, 234, 0.1);
+    border-top: 1px solid rgba(242, 236, 223, 0.1);
     padding: 14px 0 0;
   }
 }
+
+/* ── Phone ─────────────────────────────────────────────────── */
 
 @media (max-width: 620px) {
   .arcade-shell {
@@ -642,13 +906,13 @@ h1 {
 
   .machine {
     height: 100%;
-    grid-template-rows: 44px minmax(0, 1fr);
+    grid-template-rows: 46px minmax(0, 1fr);
     gap: 6px;
     overflow: hidden;
   }
 
   .game-rail {
-    height: 44px;
+    height: 46px;
     gap: 8px;
     align-items: center;
     padding: 0;
@@ -664,10 +928,10 @@ h1 {
 
   .game-pick {
     width: 44px;
-    min-height: 42px;
+    min-height: 44px;
     gap: 0;
     padding: 4px;
-    border-bottom-width: 2px;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
   }
 
   .game-pick[data-active="true"] {
@@ -677,7 +941,7 @@ h1 {
   .pick-mark {
     width: 32px;
     height: 32px;
-    font-size: 0.68rem;
+    font-size: 0.44rem;
   }
 
   .pick-copy {
@@ -694,7 +958,7 @@ h1 {
   .cabinet-top {
     grid-template-columns: 36px 1fr 36px 36px;
     gap: 5px;
-    min-height: 42px;
+    min-height: 44px;
     padding: 4px 6px;
   }
 
@@ -707,7 +971,8 @@ h1 {
 
   .selected-title h2 {
     margin: 0;
-    font-size: 1.04rem;
+    font-size: 0.66rem;
+    line-height: 1.3;
   }
 
   .icon-button {

@@ -258,7 +258,8 @@ export function App() {
           <h1>Arcade</h1>
         </div>
         <div className="marquee-meter" aria-label="Arcade session summary">
-          <span>{playedCount}/{ARCADE_GAMES.length} tried</span>
+          <span className="free-play">Free play</span>
+          <span>{playedCount}/{ARCADE_GAMES.length} cabinets lit</span>
           <span>{totalCompletions} clears</span>
         </div>
       </header>
@@ -333,7 +334,7 @@ export function App() {
 
           <div className="screen-bezel" ref={screenRef}>
             <div className="screen-status" data-loaded={loadedId === selected.id ? 'true' : 'false'}>
-              <span>{loadedId === selected.id ? 'Live' : 'Loading'}</span>
+              <span>{loadedId === selected.id ? 'Ready' : 'Booting'}</span>
             </div>
             <iframe
               key={selected.id}
@@ -362,7 +363,7 @@ export function App() {
           </div>
           <div className="session-grid">
             <div>
-              <span>Opens</span>
+              <span>Plays</span>
               <strong>{selectedStats.opens}</strong>
             </div>
             <div>
@@ -371,9 +372,10 @@ export function App() {
             </div>
             <div>
               <span>Last</span>
-              <strong>{selectedStats.lastResult ?? '-'}</strong>
+              <strong>{selectedStats.lastResult ?? '—'}</strong>
             </div>
           </div>
+          <p className="panel-label">Quick slots</p>
           <ol className="quick-list" aria-label="Quick switch">
             {ARCADE_GAMES.slice(0, 8).map((game) => (
               <li key={game.id}>
