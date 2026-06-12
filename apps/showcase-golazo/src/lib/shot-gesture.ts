@@ -30,8 +30,13 @@ function endpoints(points: SwipePoint[]): [SwipePoint, SwipePoint] {
   return [start, end];
 }
 
-/** Signed curve of the gesture path: positive bends right, negative bends left. */
-export function curlFromSwipePath(points: SwipePoint[], width: number, sensitivity = 0.12): number {
+/**
+ * Signed curve of the gesture path: positive bends right, negative bends left.
+ * Sensitivity is tuned so a moderately curved thumb swipe (≈10px of arc over a
+ * half-screen flick) produces clearly visible bend (~0.3); the ±1 clamp keeps
+ * extreme scribbles from breaking placement.
+ */
+export function curlFromSwipePath(points: SwipePoint[], width: number, sensitivity = 0.085): number {
   if (points.length < 3 || width <= 0) return 0;
   const [a, b] = endpoints(points);
   const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;

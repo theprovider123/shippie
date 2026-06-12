@@ -115,6 +115,15 @@ export function save(): void {
   tone(c, "square", 180, 120, 0.08, 0.08);
 }
 
+/** Ball clipping the woodwork — a bright metallic ping with a short ring. */
+export function post(): void {
+  const c = audio();
+  if (!c) return;
+  tone(c, "triangle", 1320, 1180, 0.3, 0.12);
+  tone(c, "sine", 2640, 2400, 0.16, 0.05, 0.005);
+  noise(c, 0.03, 0.1, 2600, 9000);
+}
+
 /** Crowd swell — filtered-noise roar that rises with intensity (0..1). */
 export function crowd(intensity = 0.7): void {
   const c = audio();

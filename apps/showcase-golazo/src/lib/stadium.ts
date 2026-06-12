@@ -239,11 +239,34 @@ function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
   ctx.fill();
 }
 
+/** Pre-shot theater + reactions for the keeper. All optional — omit for the old static pose. */
+export interface KeeperPose {
+  /** Millisecond clock (e.g. rAF timestamp) driving idle sway/bounce/breathing. */
+  t?: number;
+  /** -1..1: where the head + eyes look across the goal (the ball or the aim point). */
+  headTrack?: number;
+  /** Pre-shot mind-game gesture. */
+  gesture?: "none" | "starfish" | "point" | "clap";
+  /** Side a "point" gesture calls (-1 left, 1 right). */
+  pointDir?: -1 | 1;
+  /** Post-shot reaction: arms-up celebration on a save, slump on a goal conceded. */
+  react?: "save" | "concede" | null;
+  /** 0..1 progress of the reaction. */
+  reactT?: number;
+}
+
+function clamp01(n: number): number {
+  return n < 0 ? 0 : n > 1 ? 1 : n;
+}
+
 /**
- * Detailed goalkeeper: cap, eyes, jersey number "1", wristband gloves with finger lines,
- * shin pads and boots. First-person penalty view — keeper appears small relative to the
- * full-width goal. `reachPx` is save half-width; `scale` ≈ 44% of goal height.
- * Amber kit by default so the keeper reads as the opponent.
+ * Human goalkeeper: knees-bent ready stance with idle weight-shift sway and a
+ * subtle bounce on the line, articulated shoulder→elbow→glove arms, a head that
+ * tracks the ball/aim point, full-stretch dives with a leading arm + trailing
+ * leg, and pre-shot theater (starfish wobble, pointing, glove claps) plus
+ * save celebrations / concede slumps via `pose`. First-person penalty view —
+ * `reachPx` is save half-width; `scale` ≈ half of goal height. Amber kit by
+ * default so the keeper reads as the opponent. Pure Canvas2D, no assets.
  */
 export function drawKeeper(
   ctx: CanvasRenderingContext2D,
@@ -254,6 +277,7 @@ export function drawKeeper(
   scale: number,
   dive = 0,
   kit = "#f5a623",
+  pose?: KeeperPose,
 ): void {
   const dark = "#1a1208";
   const gloveCol = "#fff7e6";
@@ -261,6 +285,14 @@ export function drawKeeper(
   const shirtNum = "#1a1208";
   const bootCol = "#111";
   const shinCol = "#ddd";
+
+  const t = pose?.t ?? 0;
+  const headTrack = Math.max(-1, Math.min(1, pose?.headTrack ?? 0));
+  const gesture = pose?.gesture ?? "none";
+  const pointDir = pose?.pointDir ?? 1;
+  const react = pose?.react ?? null;
+  const reactT = clamp01(pose?.reactT ?? 0);
+  const idle = dive < 0.04 && !react;
 
   // unit = consistent sizing denominator
   const u = scale * 0.18;
@@ -271,90 +303,169 @@ export function drawKeeper(
   const hipY = bodyH * 0.24;
   const dir = lean === 0 ? 0 : lean > 0 ? 1 : -1;
 
+  // Idle life: weight shift sway + a soft bounce off the toes.
+  const sway = idle ? Math.sin(t / 560) : 0;
+  const bounce = idle ? Math.abs(Math.sin(t / 300)) : 0;
+
   ctx.save();
-  // Dive: arc off the line toward dive direction
+  // Dive: arc off the line toward dive direction. Idle: sway + bounce.
+  // React: hop on a save, sink on a concede.
   ctx.translate(
-    cx + dir * dive * scale * 0.28,
-    cy - Math.sin(dive * Math.PI) * scale * 0.38,
+    cx + dir * dive * scale * 0.28 + sway * u * 0.4,
+    cy -
+      Math.sin(dive * Math.PI) * scale * 0.38 -
+      bounce * u * 0.16 +
+      (react === "concede" ? reactT * u * 0.55 : 0) -
+      (react === "save" ? Math.sin(reactT * Math.PI) * u * 0.9 : 0),
   );
-  ctx.rotate(lean * 0.22 + dir * dive * (Math.PI * 0.38));
+  ctx.rotate(lean * 0.22 + dir * dive * (Math.PI * 0.38) + sway * 0.05);
 
   // — LEGS + BOOTS —
-  ctx.fillStyle = dark;
-  rr(ctx, -bodyW * 0.42, hipY, bodyW * 0.33, u * 1.4, u * 0.18);
-  rr(ctx, bodyW * 0.09, hipY, bodyW * 0.33, u * 1.4, u * 0.18);
-  // Shin pads (white stripe on each leg)
-  ctx.fillStyle = shinCol;
-  ctx.fillRect(-bodyW * 0.36, hipY + u * 0.3, bodyW * 0.2, u * 0.55);
-  ctx.fillRect(bodyW * 0.16, hipY + u * 0.3, bodyW * 0.2, u * 0.55);
-  // Boots
-  ctx.fillStyle = bootCol;
-  ctx.beginPath(); ctx.ellipse(-bodyW * 0.26, hipY + u * 1.42, u * 0.38, u * 0.2, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(bodyW * 0.26, hipY + u * 1.42, u * 0.38, u * 0.2, 0, 0, Math.PI * 2); ctx.fill();
+  const legW = Math.max(5, u * 0.56);
+  const leg = (
+    hx: number, hy: number,
+    kx: number, ky: number,
+    fx: number, fy: number,
+  ): void => {
+    ctx.strokeStyle = dark;
+    ctx.lineWidth = legW;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(hx, hy);
+    ctx.quadraticCurveTo(kx, ky, fx, fy);
+    ctx.stroke();
+    // Shin pad: bright stripe down the shin (knee→foot)
+    ctx.strokeStyle = shinCol;
+    ctx.lineWidth = legW * 0.42;
+    ctx.beginPath();
+    ctx.moveTo(kx + (fx - kx) * 0.25, ky + (fy - ky) * 0.25);
+    ctx.lineTo(kx + (fx - kx) * 0.7, ky + (fy - ky) * 0.7);
+    ctx.stroke();
+    ctx.fillStyle = bootCol;
+    ctx.beginPath();
+    ctx.ellipse(fx, fy, u * 0.36, u * 0.19, 0, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  if (dive > 0.04) {
+    // Full extension: leading leg drives long, trailing leg tucks behind.
+    const d = dir || 1;
+    leg(d * bodyW * 0.18, hipY, d * bodyW * 0.45, hipY + u * 0.5, d * (bodyW * 0.3 + dive * u * 0.5), hipY + u * (1.3 - dive * 0.15));
+    leg(-d * bodyW * 0.18, hipY, -d * (bodyW * 0.3 + dive * u * 0.4), hipY + u * 0.75, -d * (bodyW * 0.34 + dive * u * 1.0), hipY + u * 1.45);
+  } else {
+    // Ready stance: knees bent out, feet planted under, weight shifting with sway.
+    const step = sway * u * 0.16;
+    leg(-bodyW * 0.22, hipY, -bodyW * 0.52, hipY + u * 0.6, -bodyW * 0.36 + step, hipY + u * 1.18 - Math.max(0, sway) * u * 0.08);
+    leg(bodyW * 0.22, hipY, bodyW * 0.52, hipY + u * 0.6, bodyW * 0.36 + step, hipY + u * 1.18 - Math.max(0, -sway) * u * 0.08);
+  }
 
-  // — TORSO (jersey) —
+  // — TORSO (jersey) — crouched a touch deeper when idle (ready stance)
+  const crouch = idle ? u * 0.12 : 0;
   ctx.fillStyle = kit;
-  rr(ctx, -bodyW / 2, shoulderY - u * 0.1, bodyW, bodyH * 0.56, u * 0.32);
+  rr(ctx, -bodyW / 2, shoulderY - u * 0.1 + crouch, bodyW, bodyH * 0.56, u * 0.32);
   // Jersey number "1"
   ctx.fillStyle = shirtNum;
   ctx.font = `bold ${u * 0.72}px system-ui, sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("1", 0, shoulderY + bodyH * 0.18);
+  ctx.fillText("1", 0, shoulderY + bodyH * 0.18 + crouch);
 
-  // — ARMS (quadratic curves for natural bend) —
-  const actualArmLen = Math.max(reachPx * 0.72, bodyW * 0.9);
+  // — ARMS (shoulder → elbow → glove, articulated per pose) —
+  const armLen = Math.max(reachPx * 0.72, bodyW * 0.9);
   const armRaiseY = shoulderY - u * 0.28;
+  const hands: { x: number; y: number }[] = [];
   ctx.strokeStyle = kit;
   ctx.lineWidth = Math.max(5, u * 0.62);
   ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(-bodyW * 0.42, shoulderY);
-  ctx.quadraticCurveTo(-actualArmLen * 0.55, armRaiseY - u * 0.2, -actualArmLen, armRaiseY);
-  ctx.moveTo(bodyW * 0.42, shoulderY);
-  ctx.quadraticCurveTo(actualArmLen * 0.55, armRaiseY - u * 0.2, actualArmLen, armRaiseY);
-  ctx.stroke();
-  // Gloves with wristband
+  for (const s of [-1, 1] as const) {
+    const sx = s * bodyW * 0.42;
+    const sy = shoulderY + crouch;
+    let ex: number, ey: number, hx: number, hy: number;
+    if (dive > 0.04) {
+      if (s === (dir || 1)) {
+        // Leading arm: full stretch toward the corner.
+        ex = s * armLen * 0.5; ey = armRaiseY - u * 0.55;
+        hx = s * armLen * 1.08; hy = armRaiseY - u * (0.3 + dive * 0.9);
+      } else {
+        // Trailing arm: across the body, lower.
+        ex = s * armLen * 0.3; ey = armRaiseY + u * 0.35;
+        hx = s * armLen * 0.45; hy = armRaiseY + u * 0.95;
+      }
+    } else if (react === "save") {
+      // Both fists pumped to the sky.
+      ex = s * armLen * 0.42; ey = shoulderY - u * 0.4;
+      hx = s * armLen * 0.55; hy = shoulderY - u * (1.1 + reactT * 0.6);
+    } else if (react === "concede") {
+      // Slump: arms hang dead at the sides.
+      ex = s * armLen * 0.38; ey = shoulderY + u * 0.7;
+      hx = s * armLen * 0.3; hy = hipY + u * (0.7 + reactT * 0.35);
+    } else if (gesture === "starfish") {
+      // Arms wide, wobbling — "look how big I am".
+      const wob = Math.sin(t / 110 + s) * u * 0.2;
+      ex = s * armLen * 0.5; ey = armRaiseY - u * 0.35;
+      hx = s * armLen * 1.05; hy = armRaiseY - u * 0.1 + wob;
+    } else if (gesture === "point" && s === pointDir) {
+      // Point/stare at one side of the goal.
+      ex = s * armLen * 0.55; ey = shoulderY - u * 0.35;
+      hx = s * armLen * 1.15; hy = shoulderY - u * 0.45;
+    } else if (gesture === "clap") {
+      // Two quick glove claps in front of the chest.
+      const open = (Math.sin(t / 120) + 1) / 2;
+      ex = s * armLen * 0.45; ey = shoulderY + u * 0.5;
+      hx = s * (u * 0.28 + open * u * 0.55); hy = shoulderY + u * 0.55;
+    } else {
+      // Ready stance: elbows out, gloves forward at waist height, breathing.
+      const breathe = Math.sin(t / 430 + s) * u * 0.07;
+      ex = s * armLen * 0.58; ey = shoulderY + u * 0.22 + crouch;
+      hx = s * armLen * 0.62; hy = shoulderY + u * 1.0 + breathe + crouch;
+    }
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.quadraticCurveTo(ex, ey, hx, hy);
+    ctx.stroke();
+    hands.push({ x: hx, y: hy });
+  }
+  // Gloves with wristband + finger lines
   const gloveR = Math.max(u * 0.44, scale * 0.072);
-  ctx.fillStyle = "#e8b84b"; // wristband
-  ctx.beginPath(); ctx.arc(-actualArmLen, armRaiseY, gloveR * 1.08, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(actualArmLen, armRaiseY, gloveR * 1.08, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = gloveCol;
-  ctx.beginPath(); ctx.arc(-actualArmLen, armRaiseY, gloveR, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(actualArmLen, armRaiseY, gloveR, 0, Math.PI * 2); ctx.fill();
-  // Glove fingers (3 lines)
-  ctx.strokeStyle = "rgba(0,0,0,0.25)";
-  ctx.lineWidth = Math.max(1, u * 0.1);
-  for (let i = -1; i <= 1; i++) {
-    const gx1 = -actualArmLen + i * gloveR * 0.38, gy1 = armRaiseY - gloveR * 0.5;
-    ctx.beginPath(); ctx.moveTo(gx1, gy1); ctx.lineTo(gx1, gy1 + gloveR * 0.8); ctx.stroke();
-    const gx2 = actualArmLen + i * gloveR * 0.38;
-    ctx.beginPath(); ctx.moveTo(gx2, gy1); ctx.lineTo(gx2, gy1 + gloveR * 0.8); ctx.stroke();
+  for (const h of hands) {
+    ctx.fillStyle = "#e8b84b"; // wristband
+    ctx.beginPath(); ctx.arc(h.x, h.y, gloveR * 1.08, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = gloveCol;
+    ctx.beginPath(); ctx.arc(h.x, h.y, gloveR, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.25)";
+    ctx.lineWidth = Math.max(1, u * 0.1);
+    for (let i = -1; i <= 1; i++) {
+      const gx = h.x + i * gloveR * 0.38, gy = h.y - gloveR * 0.5;
+      ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx, gy + gloveR * 0.8); ctx.stroke();
+    }
   }
 
-  // — HEAD —
+  // — HEAD — tracks the ball/aim point; drops on a concede
+  const headCX = headTrack * headR * 0.42 + (dive > 0.04 ? (dir || 1) * dive * headR * 0.3 : sway * headR * 0.12);
+  const headCY = shoulderY - headR * 0.8 + crouch + (react === "concede" ? reactT * headR * 0.5 : 0);
   ctx.fillStyle = skin;
   ctx.beginPath();
-  ctx.arc(0, shoulderY - headR * 0.8, headR, 0, Math.PI * 2);
+  ctx.arc(headCX, headCY, headR, 0, Math.PI * 2);
   ctx.fill();
   // Hair (dark cap on top half)
   ctx.fillStyle = dark;
   ctx.beginPath();
-  ctx.arc(0, shoulderY - headR * 0.8, headR, Math.PI, Math.PI * 2);
+  ctx.arc(headCX, headCY, headR, Math.PI, Math.PI * 2);
   ctx.fill();
-  // Cap peak
+  // Cap peak swings with the gaze
   ctx.fillStyle = "#c47a1a";
+  const peakDir = headTrack >= 0 ? 1 : -1;
   ctx.beginPath();
-  ctx.moveTo(-headR * 0.7, shoulderY - headR * 0.8);
-  ctx.lineTo(headR * 0.7, shoulderY - headR * 0.8);
-  ctx.lineTo(headR * 1.1, shoulderY - headR * 0.65);
-  ctx.lineTo(-headR * 0.7, shoulderY - headR * 0.65);
+  ctx.moveTo(headCX - peakDir * headR * 0.7, headCY);
+  ctx.lineTo(headCX + peakDir * headR * 0.7, headCY);
+  ctx.lineTo(headCX + peakDir * headR * 1.1, headCY + headR * 0.15);
+  ctx.lineTo(headCX - peakDir * headR * 0.7, headCY + headR * 0.15);
   ctx.closePath();
   ctx.fill();
-  // Eyes
+  // Eyes shift toward the tracked point
+  const eyeShift = headTrack * headR * 0.16;
   ctx.fillStyle = dark;
-  ctx.beginPath(); ctx.arc(-headR * 0.3, shoulderY - headR * 0.72, headR * 0.12, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(headR * 0.3, shoulderY - headR * 0.72, headR * 0.12, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(headCX - headR * 0.3 + eyeShift, headCY + headR * 0.08, headR * 0.12, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(headCX + headR * 0.3 + eyeShift, headCY + headR * 0.08, headR * 0.12, 0, Math.PI * 2); ctx.fill();
 
   ctx.restore();
 }

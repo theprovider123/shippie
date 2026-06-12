@@ -27,7 +27,11 @@ function clamp(n: number, lo: number, hi: number): number {
 export function keeperConfig(difficulty: number): KeeperConfig {
   const d = clamp(difficulty, 0, 1);
   return {
-    reach: 0.1 + d * 0.13, // 0.10 → 0.23 of the goal (corners always live)
+    // Goal mouths grew ~12% wider in the 2026 "bigger goal" pass; reach is a
+    // fraction of goal width, so these are scaled down to keep the keeper's
+    // absolute wingspan (and therefore the difficulty curve) the same — and
+    // the corners stay live scoring zones.
+    reach: 0.09 + d * 0.115, // 0.09 → 0.205 of the goal (corners always live)
     error: 0.6 - d * 0.36, // 0.60 → 0.24 of the goal (never psychic)
     speed: 0.12 + d * 0.1, // a touch slower than before
     reactionFrames: Math.round(13 - d * 7), // 13 → 6 frames of hesitation
