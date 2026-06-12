@@ -1158,9 +1158,12 @@ const curatedAppSpecs: CuratedAppSpec[] = [
     icon: 'DL',
     accent: '#7FD4D0',
     category: 'games',
-    visibility: 'private',
-    surface: 'archived',
-    tier: 'private-flagship',
+    // 2026-06-12 — promoted out of the private demo shelf: playable inside
+    // the Arcade cabinet AND standalone (deliberately NOT in ARCADE_GAME_SLUGS,
+    // so /run/docklands does not redirect into /arcade).
+    visibility: 'public',
+    surface: 'arcade',
+    tier: 'arcade',
     port: 5263,
     intents: { provides: ['game.completed', 'wave.cleared'] },
   },
