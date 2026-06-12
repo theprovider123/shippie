@@ -3,6 +3,11 @@
 
   let { data }: { data: PageData } = $props();
 
+  const ogTitle = $derived(data.maker.displayName ?? `@${data.maker.username}`);
+  const ogDescription = $derived(
+    data.maker.headline ?? data.maker.bio?.split('\n')[0] ?? 'Maker on Shippie'
+  );
+
   function kindLabel(kind: string | null): string {
     if (kind === 'local') return 'Local';
     if (kind === 'connected') return 'Connected';
@@ -17,6 +22,13 @@
     name="description"
     content={data.maker.headline ?? data.maker.bio ?? `Tools by @${data.maker.username} on Shippie`}
   />
+  <meta property="og:title" content={ogTitle} />
+  <meta property="og:description" content={ogDescription} />
+  <meta property="og:site_name" content="Shippie" />
+  <meta property="og:image" content="https://shippie.app/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary" />
 </svelte:head>
 
 <main class="profile">

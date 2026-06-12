@@ -101,7 +101,12 @@ class HTMLRewriterPolyfill {
           }
         };
 
-        const el = makeElementProxy({});
+        const prepended: string[] = [];
+        const el = makeElementProxy({
+          prepend(content) {
+            prepended.push(content);
+          }
+        });
         let endTagHandler: ((e: PolyfillEndTag) => void) | null = null;
         el.onEndTag = (fn: (e: PolyfillEndTag) => void) => {
           endTagHandler = fn;
@@ -109,11 +114,20 @@ class HTMLRewriterPolyfill {
         handler.element(el);
         if (endTagHandler) (endTagHandler as (e: PolyfillEndTag) => void)(endTag);
 
+        // Apply the end-tag insert first (later index), then the prepend
+        // (earlier index) so neither shifts the other's position.
         if (beforeEndTag.length > 0) {
           const insertPos = headCloseMatch.index;
           working =
             working.slice(0, insertPos) +
             beforeEndTag.join('') +
+            working.slice(insertPos);
+        }
+        if (prepended.length > 0) {
+          const insertPos = headOpenMatch.index + headOpenMatch[0].length;
+          working =
+            working.slice(0, insertPos) +
+            prepended.join('') +
             working.slice(insertPos);
         }
       } else if (selector === 'body') {

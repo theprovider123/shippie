@@ -347,6 +347,109 @@ describe('serveFromR2 — wasm headers + SPA fallback', () => {
     expect(res.headers.get('Refresh')).toBe('5');
   });
 
+  test('HTML documents get share/OG tags injected from KV meta', async () => {
+    const kvData: Record<string, string> = {
+      'apps:shareme:active': '3',
+      'apps:shareme:meta': JSON.stringify({
+        name: 'Share Me',
+        theme_color: '#1B6B5C',
+        routing: { mode: 'spa' }
+      })
+    };
+    const r2: Record<string, Stored> = {
+      'apps/shareme/v3/index.html': {
+        bytes: new TextEncoder().encode(
+          '<!doctype html><html><head><title>app</title></head><body>hi</body></html>'
+        ),
+        contentType: 'text/html'
+      }
+    };
+    const env = envWith(fakeKv(kvData), fakeR2(r2));
+
+    const res = await serveFromR2({
+      request: new Request('https://shareme.shippie.app/', {
+        headers: { host: 'shareme.shippie.app' }
+      }),
+      env,
+      slug: 'shareme',
+      traceId: 't'
+    });
+
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain('<meta property="og:title" content="Share Me"');
+    expect(html).toContain('<meta property="og:description" content="Share Me on Shippie"');
+    expect(html).toContain('<meta property="og:site_name" content="Shippie"');
+    expect(html).toContain('<meta property="og:url" content="https://shareme.shippie.app/"');
+    expect(html).toContain('/api/apps/shareme/og.png');
+    expect(html).toContain('<meta property="og:image:width" content="1200"');
+    expect(html).toContain('<meta name="twitter:card" content="summary_large_image"');
+    expect(html).toContain('<meta name="theme-color" content="#1B6B5C"');
+    // Injected tags must land inside <head>, before the app's own content.
+    expect(html.indexOf('og:title')).toBeLessThan(html.indexOf('<title>'));
+  });
+
+  test('share/OG injection is skipped when the app declares its own og:image', async () => {
+    const kvData: Record<string, string> = {
+      'apps:owntags:active': '1',
+      'apps:owntags:meta': JSON.stringify({ name: 'Own Tags', theme_color: '#123456' })
+    };
+    const r2: Record<string, Stored> = {
+      'apps/owntags/v1/index.html': {
+        bytes: new TextEncoder().encode(
+          '<!doctype html><html><head><meta property="og:image" content="https://example.com/card.png"><meta name="theme-color" content="#abcdef"></head><body>hi</body></html>'
+        ),
+        contentType: 'text/html'
+      }
+    };
+    const env = envWith(fakeKv(kvData), fakeR2(r2));
+
+    const res = await serveFromR2({
+      request: new Request('https://owntags.shippie.app/', {
+        headers: { host: 'owntags.shippie.app' }
+      }),
+      env,
+      slug: 'owntags',
+      traceId: 't'
+    });
+
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).not.toContain('og:title');
+    expect(html).not.toContain('data-shippie-share');
+    expect(html).toContain('https://example.com/card.png');
+    // The app's own theme-color survives untouched.
+    expect(html).toContain('#abcdef');
+    expect(html).not.toContain('#123456');
+  });
+
+  test('non-HTML assets are served byte-identical (no share tags)', async () => {
+    const source = 'console.log("untouched")';
+    const kvData: Record<string, string> = {
+      'apps:rawjs:active': '1',
+      'apps:rawjs:meta': JSON.stringify({ name: 'Raw JS', theme_color: '#1B6B5C' })
+    };
+    const r2: Record<string, Stored> = {
+      'apps/rawjs/v1/app.js': {
+        bytes: new TextEncoder().encode(source),
+        contentType: 'application/javascript'
+      }
+    };
+    const env = envWith(fakeKv(kvData), fakeR2(r2));
+
+    const res = await serveFromR2({
+      request: new Request('https://rawjs.shippie.app/app.js', {
+        headers: { host: 'rawjs.shippie.app' }
+      }),
+      env,
+      slug: 'rawjs',
+      traceId: 't'
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe(source);
+  });
+
   test('building flag → shipping… page with refresh', async () => {
     const kv = fakeKv({
       'apps:bld:building': JSON.stringify({

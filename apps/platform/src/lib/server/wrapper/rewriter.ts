@@ -51,6 +51,13 @@ interface HTMLRewriterInstance {
 export interface InjectOpts {
   slug: string;
   contentType?: string;
+  /**
+   * Extra markup (share/OG meta tags) prepended into <head>. Prepending —
+   * not appending — matters: crawlers honor the FIRST og:* tag they see,
+   * so injected tags win over any partial set the app shipped. Callers are
+   * responsible for the "only when the app lacks its own og:image" guard.
+   */
+  headPrepend?: string;
 }
 
 const MANIFEST_TAG =
@@ -120,6 +127,7 @@ export function injectPwaTags(
     .on('head', {
       element(el) {
         headSeen = true;
+        if (opts.headPrepend) el.prepend(opts.headPrepend, { html: true });
         el.onEndTag((endTag) => {
           if (!manifestSeen) endTag.before(MANIFEST_TAG, { html: true });
           if (!recoverySeen) endTag.before(RECOVERY_TAG, { html: true });
@@ -130,6 +138,7 @@ export function injectPwaTags(
     .on('body', {
       element(el) {
         if (headSeen) return;
+        if (opts.headPrepend) el.prepend(opts.headPrepend, { html: true });
         if (!manifestSeen) el.prepend(MANIFEST_TAG, { html: true });
         if (!recoverySeen) el.prepend(RECOVERY_TAG, { html: true });
         if (!sdkSeen) el.prepend(SDK_TAG, { html: true });

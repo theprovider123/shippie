@@ -9,8 +9,8 @@ describe('showcase slug URL helpers', () => {
   });
 
   test('share image URLs follow canonical app slugs', () => {
-    expect(appShareImagePath('golazo')).toBe('/api/apps/golazo/og.svg');
-    expect(appShareImagePath('recipe')).toBe('/api/apps/palate/og.svg');
-    expect(appShareImageUrl('golazo', 'https://shippie.app')).toBe('https://shippie.app/api/apps/golazo/og.svg');
+    expect(appShareImagePath('golazo')).toBe('/api/apps/golazo/og.png');
+    expect(appShareImagePath('recipe')).toBe('/api/apps/palate/og.png');
+    expect(appShareImageUrl('golazo', 'https://shippie.app')).toBe('https://shippie.app/api/apps/golazo/og.png');
   });
 });

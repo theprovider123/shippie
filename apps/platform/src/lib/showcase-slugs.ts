@@ -170,7 +170,8 @@ export function canonicalAppUrl(slug: string): string {
 }
 
 export function appShareImagePath(slug: string): string {
-  return `/api/apps/${encodeURIComponent(canonicalShowcaseSlug(slug))}/og.svg`;
+  // .png, not .svg — WhatsApp/iMessage unfurlers refuse SVG og:images.
+  return `/api/apps/${encodeURIComponent(canonicalShowcaseSlug(slug))}/og.png`;
 }
 
 export function appShareImageUrl(slug: string, origin = 'https://shippie.app'): string {

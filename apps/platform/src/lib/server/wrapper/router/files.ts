@@ -19,6 +19,8 @@ interface BuildingFlag {
 }
 
 interface RuntimeMeta {
+  name?: string;
+  theme_color?: string;
   routing?: {
     mode?: 'spa' | 'mpa';
   };
@@ -66,7 +68,8 @@ export async function serveFromR2(ctx: WrapperContext): Promise<Response> {
   let path = url.pathname;
   if (path === '/') path = '/index.html';
   if (!path.startsWith('/')) path = '/' + path;
-  const routeMode = await readRouteMode(ctx, slug);
+  const meta = await readRuntimeMeta(ctx, slug);
+  const routeMode = meta?.routing?.mode === 'mpa' ? 'mpa' : 'spa';
 
   const r2Key = `apps/${slug}/v${active}${path}`;
   let obj = await ctx.env.APPS.get(r2Key);
@@ -119,23 +122,91 @@ export async function serveFromR2(ctx: WrapperContext): Promise<Response> {
 
   if (isHtml) {
     const { injectPwaTags } = await import('../rewriter');
-    const stream = injectPwaTags(toStream(bytes), { contentType, slug });
+    const html = new TextDecoder().decode(bytes);
+    const headPrepend = buildShareHead({
+      slug,
+      meta,
+      html,
+      requestUrl: url,
+      platformOrigin: ctx.env.PUBLIC_ORIGIN
+    });
+    const stream = injectPwaTags(toStream(bytes), { contentType, slug, headPrepend });
     return new Response(stream, { status: 200, headers });
   }
 
   return new Response(body, { status: 200, headers });
 }
 
-async function readRouteMode(ctx: WrapperContext, slug: string): Promise<'spa' | 'mpa'> {
+async function readRuntimeMeta(ctx: WrapperContext, slug: string): Promise<RuntimeMeta | null> {
   const raw = await ctx.env.CACHE.get(`apps:${slug}:meta`);
-  if (!raw) return 'spa';
+  if (!raw) return null;
 
   try {
-    const meta = JSON.parse(raw) as RuntimeMeta;
-    return meta.routing?.mode === 'mpa' ? 'mpa' : 'spa';
+    return JSON.parse(raw) as RuntimeMeta;
   } catch {
-    return 'spa';
+    return null;
   }
+}
+
+function escapeAttr(value: string): string {
+  return value.replace(/[&<>"]/g, (char) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char] ?? char
+  ));
+}
+
+function ogTag(property: string, content: string): string {
+  return `<meta property="${property}" content="${escapeAttr(content)}" data-shippie-share="1">`;
+}
+
+function namedTag(name: string, content: string): string {
+  return `<meta name="${name}" content="${escapeAttr(content)}" data-shippie-share="1">`;
+}
+
+/**
+ * Share/OG meta tags prepended into <head> of wrapped-app HTML so subdomain
+ * links unfurl as the APP (name + PNG card) instead of nothing. Skipped
+ * entirely when the app already declares its own og:image — the substring
+ * check is deliberately cheap (we already hold the full document in memory).
+ * theme-color is injected separately (apps that didn't ship one are
+ * uninstallable-looking) from the deploy-time KV meta the route-mode read
+ * already loaded.
+ */
+function buildShareHead(opts: {
+  slug: string;
+  meta: RuntimeMeta | null;
+  html: string;
+  requestUrl: URL;
+  platformOrigin: string;
+}): string | undefined {
+  const tags: string[] = [];
+
+  if (!opts.html.includes('og:image')) {
+    const name = opts.meta?.name?.trim() || opts.slug;
+    let origin = 'https://shippie.app';
+    try {
+      origin = new URL(opts.platformOrigin).origin;
+    } catch {
+      // Keep the production default when PUBLIC_ORIGIN is malformed/unset.
+    }
+    const image = `${origin}/api/apps/${encodeURIComponent(opts.slug)}/og.png`;
+    tags.push(
+      ogTag('og:title', name),
+      ogTag('og:description', `${name} on Shippie`),
+      ogTag('og:site_name', 'Shippie'),
+      ogTag('og:url', `${opts.requestUrl.origin}/`),
+      ogTag('og:image', image),
+      ogTag('og:image:width', '1200'),
+      ogTag('og:image:height', '630'),
+      namedTag('twitter:card', 'summary_large_image')
+    );
+  }
+
+  const themeColor = opts.meta?.theme_color?.trim();
+  if (themeColor && !opts.html.includes('theme-color')) {
+    tags.push(namedTag('theme-color', themeColor));
+  }
+
+  return tags.length > 0 ? tags.join('') : undefined;
 }
 
 function directoryIndexFor(path: string): string | null {

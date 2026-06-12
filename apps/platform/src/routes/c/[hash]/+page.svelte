@@ -45,6 +45,18 @@
             ? { slug: 'mevrouw', name: 'Mevrouw' }
             : null,
   );
+  const shareTitle = $derived(
+    blob.type === 'recipe'
+      ? 'Recipe'
+      : blob.type === 'journal-entry'
+        ? 'Journal entry'
+        : blob.type === 'restaurant-visit'
+          ? 'Restaurant memory'
+          : 'A memory',
+  );
+  const ogDescription = $derived(
+    targetApp ? `Shared from ${targetApp.name} on Shippie` : 'A shared link from Shippie',
+  );
   const railActions = $derived(
     targetApp
       ? [{ href: `/${targetApp.slug}`, label: 'Open tool' }]
@@ -72,9 +84,16 @@
 </script>
 
 <svelte:head>
-  <title>{blob.type === 'recipe' ? 'Recipe' : blob.type === 'journal-entry' ? 'Journal entry' : blob.type === 'restaurant-visit' ? 'Restaurant memory' : 'A memory'} · Shippie</title>
+  <title>{shareTitle} · Shippie</title>
   <meta name="robots" content="noindex,nofollow" />
   <meta name="description" content="A pinned local-first share. Anonymous, signature-verified, expires after 90 days." />
+  <meta property="og:title" content={`${shareTitle} · Shippie`} />
+  <meta property="og:description" content={ogDescription} />
+  <meta property="og:site_name" content="Shippie" />
+  <meta property="og:image" content="https://shippie.app/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary" />
 </svelte:head>
 
 <main class="wrap">
