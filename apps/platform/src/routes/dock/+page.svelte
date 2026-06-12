@@ -44,6 +44,12 @@
     visibleContainerApps,
   } from '$lib/container/app-registry';
   import {
+    appToRailTool,
+    mergeRailCatalog,
+    resolveRunningApps,
+    runningSlugSet,
+  } from '$lib/container/running-tools';
+  import {
     buildLauncherVisibleSlugSet as drawerBuildLauncherVisibleSlugSet,
     filterCanonicalLauncherItems as drawerFilterCanonicalLauncherItems,
     launcherPhase as drawerLauncherPhase,
@@ -112,7 +118,6 @@
   import DashboardHome from '$lib/container/DashboardHome.svelte';
   import FeedbackSheet from '$lib/components/feedback/FeedbackSheet.svelte';
   import { buildRailGroups, type RailTool } from '$lib/container/rail-groups';
-  import { categoryColorFamily } from '$lib/container/category-color';
   import CanvasStrip from '$lib/container/CanvasStrip.svelte';
   import { selectCanvasStripItem, type CanvasStripItem } from '$lib/container/canvas-strip';
   import DockEmptyState from '$lib/container/DockEmptyState.svelte';
@@ -735,7 +740,10 @@
       section = 'home';
       prevImmersiveSlug = null;
     } else if (appParam) {
-      const app = launchVisibleAppBySlug.get(appParam);
+      // Resolve over the full app list (alias-normalised), matching the
+      // ?app= deep-link path in applyRouteState — a history entry can
+      // reference an app the launch slate no longer shows.
+      const app = findRequestedApp(apps, appParam);
       if (app && app.id !== activeAppId) {
         prevImmersiveSlug = appParam; // forward/restored — don't re-push
         openApp(app.id);
@@ -830,25 +838,45 @@
   // Dock rail (Phase 1). Open = running tools, Saved/Recent from
   // launcher-memory. openAppIds holds app *ids*; map to slugs for the
   // pure selector. cached-slugs is intentionally not a source.
-  const railCatalog: RailTool[] = $derived(
-    launchVisibleApps.map((a) => ({
-      slug: a.slug,
-      name: a.name,
-      icon: a.icon ?? a.shortName ?? a.name.slice(0, 2),
-      accent: a.themeColor ?? categoryColorFamily(a.category),
-      iconUrl: a.iconUrl ?? null,
-      themeColor: a.themeColor ?? categoryColorFamily(a.category),
-      category: a.category,
-    })),
-  );
-  const railOpenSlugs: string[] = $derived(
-    openAppIds
-      .map((id) => launchVisibleApps.find((a) => a.id === id)?.slug)
-      .filter((s): s is string => Boolean(s)),
-  );
+  const railCatalog: RailTool[] = $derived(launchVisibleApps.map(appToRailTool));
+  // Single source of truth for "running": resolve openAppIds against the
+  // FULL app lookup (curated + DB packages + imported) — never the
+  // curation-filtered launcher slate — so a genuinely-mounted app can't
+  // silently vanish from Running just because launch curation hides it.
+  // Ids that truly resolve to nothing are reported as unresolved and
+  // reconciled out of openAppIds below.
+  const runningResolution = $derived(resolveRunningApps(openAppIds, appById));
+  const runningApps = $derived(runningResolution.apps);
+  const runningAppBySlug = $derived(new Map(runningApps.map((app) => [app.slug, app])));
+  const runningTools: RailTool[] = $derived(runningApps.map(appToRailTool));
+  // Raw + canonical (SLUG_ALIASES) slugs for isRunning comparisons.
+  const runningSlugs = $derived(runningSlugSet(runningApps));
+  const railOpenSlugs: string[] = $derived(runningTools.map((tool) => tool.slug));
+  // Reconciliation: an open id that no longer resolves to any installed
+  // app (uninstalled/archived mid-session) is removed from openAppIds and
+  // its frame state disposed, instead of leaving a ghost iframe that no
+  // surface can show or close.
+  $effect(() => {
+    const unresolved = runningResolution.unresolvedIds;
+    if (unresolved.length === 0) return;
+    for (const appId of unresolved) {
+      clearBackgroundSuspendTimer(appId);
+      unsuspendApp(appId);
+      disposeApp(appId);
+    }
+    const drop = new Set(unresolved);
+    openAppIds = openAppIds.filter((appId) => !drop.has(appId));
+    if (activeAppId !== null && drop.has(activeAppId)) {
+      activeAppId = null;
+      section = 'home';
+    }
+  });
   const railGroups = $derived(
     buildRailGroups({
-      catalog: railCatalog,
+      // Running tools may be missing from the launch-visible catalog
+      // (curation/phase filtering, imported packages); merge them in so
+      // buildRailGroups can't drop a mounted app from the Open group.
+      catalog: mergeRailCatalog(railCatalog, runningTools),
       openSlugs: railOpenSlugs,
       saved: $launcherMemory.saved,
       recents: $launcherMemory.recents,
@@ -875,13 +903,21 @@
     };
   }
 
+  // Slug resolution for rail/switcher actions. Launch-visible first
+  // (canonical curated entries), then the running set — a mounted app
+  // that curation filtered out must still be openable/closable from the
+  // surfaces that show it as Running.
+  function railAppForSlug(slug: string): ContainerApp | undefined {
+    return launchVisibleAppBySlug.get(slug) ?? runningAppBySlug.get(slug);
+  }
+
   function openRailTool(slug: string) {
-    const app = launchVisibleAppBySlug.get(slug);
+    const app = railAppForSlug(slug);
     if (app) openApp(app.id);
   }
 
   function closeRailTool(slug: string) {
-    const app = launchVisibleAppBySlug.get(slug);
+    const app = railAppForSlug(slug);
     if (!app) return;
     const remaining = openAppIds.filter((id) => id !== app.id);
     if (remaining.length === openAppIds.length) return;
@@ -898,7 +934,7 @@
   function removeSavedTool(slug: string) {
     removeSavedApp(slug);
     forgetRecentApp(slug);
-    const app = launchVisibleAppBySlug.get(slug);
+    const app = railAppForSlug(slug);
     toast.push({ kind: 'info', message: `${app?.name ?? 'Tool'} removed from Dock.` });
   }
 
@@ -1005,7 +1041,7 @@
   function stateForFocusedTool(tool: RailTool, sectionId: ToolSwitcherSectionId) {
     return toolState({
       slug: tool.slug,
-      isRunning: railOpenSlugs.includes(tool.slug),
+      isRunning: runningSlugs.has(tool.slug),
       savedSlugs: drawerSavedSet,
       recentSlugs: sectionId === 'recent' ? new Set([tool.slug]) : drawerRecentSet,
       download: undefined,
@@ -1015,12 +1051,12 @@
   }
 
   function openFocusedRailTool(slug: string) {
-    const app = launchVisibleAppBySlug.get(slug);
+    const app = railAppForSlug(slug);
     if (app) switchFocusedApp(app);
   }
 
   function saveFocusedRailTool(slug: string) {
-    const app = launchVisibleAppBySlug.get(slug);
+    const app = railAppForSlug(slug);
     if (app) void saveDrawerTool(app);
   }
 
@@ -1059,27 +1095,18 @@
       .filter((card): card is UpdateCard => Boolean(card)),
   );
 
+  // ONE registration helper for every mount entry point — drawer tile,
+  // rail, switcher sheet (dashboard + focused), gesture switcher,
+  // insights, ?app= deep links, /run boot and popstate all converge
+  // here, so an app can't get mounted without landing in openAppIds.
+  // Focused (/run) mode used to special-case `openAppIds = [appId]`,
+  // which silently unmounted the previous app on every switch — the
+  // "I opened an app, switched, and it no longer shows as running"
+  // bug. Both modes now share the LRU path below.
   function openApp(appId: string) {
     const wasAlreadyFocused = activeAppId === appId && section === 'home';
     const app = appById.get(appId);
     unsuspendApp(appId);
-
-    if (data.focused) {
-      openAppIds = [appId];
-      if (app && !receiptsByApp[appId]) {
-        receiptsByApp = {
-          ...receiptsByApp,
-          [appId]: createReceiptFor(app),
-        };
-      }
-      activeAppId = appId;
-      section = 'home';
-      if (!wasAlreadyFocused) {
-        rememberAppLaunch(app);
-        void trackAppOpen(appId);
-      }
-      return;
-    }
 
     // LRU mount cap — keep at most 8 apps live. Re-focusing an
     // already-open app moves it to the head; opening a new one past
@@ -3118,9 +3145,14 @@
       void hydrateImportedPackageFiles(importedApps);
       const knownAppIds = new Set(apps.map((app) => app.id));
       const savedOpenApps = saved.openAppIds.filter((appId) => knownAppIds.has(appId));
-      openAppIds = data.focused
-        ? (requestedApp ? [requestedApp.id] : [])
-        : savedOpenApps.length > 0 ? savedOpenApps : [];
+      // Both modes restore the persisted running set. Focused (/run)
+      // boot used to reset it to just the requested app, which both
+      // dropped the user's running tools from the switcher AND clobbered
+      // the persisted set on the next save. The requested app is focused
+      // (and registered at the LRU head) via openApp() below.
+      openAppIds = data.focused && savedOpenApps.length === 0 && requestedApp
+        ? [requestedApp.id]
+        : savedOpenApps;
       receiptsByApp = {
         ...Object.fromEntries(openAppIds.map((appId) => [appId, createReceiptFor(appById.get(appId)!)])),
         ...saved.receiptsByApp,
@@ -3639,7 +3671,7 @@
                       onOpen={() => openFocusedRailTool(tool.slug)}
                       onSave={() => saveFocusedRailTool(tool.slug)}
                       onRemove={() => removeSavedTool(tool.slug)}
-                      onClose={railOpenSlugs.includes(tool.slug)
+                      onClose={runningSlugs.has(tool.slug)
                         ? () => closeFocusedRailTool(tool.slug)
                         : undefined}
                     />
