@@ -125,6 +125,7 @@
     type ToolSwitcherSectionId,
   } from '$lib/container/tool-switcher';
   import { switcherOpen } from '$lib/stores/switcher';
+  import { isOnline } from '$lib/stores/network-status';
   import {
     ToolRow,
     toolState,
@@ -3465,7 +3466,8 @@
         type="button"
         class="focused-dock-nub"
         class:first-run={firstRunHint}
-        aria-label="Open Shippie switcher"
+        class:offline={!$isOnline}
+        aria-label={$isOnline ? 'Open Shippie switcher' : 'Open Shippie switcher — offline'}
         aria-expanded={focusedDrawerOpen}
         onclick={openFocusedSwitcher}
         onkeydown={handleFocusedNubKeydown}
@@ -3477,6 +3479,9 @@
           height="22"
           aria-hidden="true"
         />
+        {#if !$isOnline}
+          <span class="nub-offline-dot" aria-hidden="true"></span>
+        {/if}
       </button>
     </div>
     <div class="focused-frame">
@@ -4443,6 +4448,26 @@
     box-shadow: inset 3px 0 0 var(--sunset), inset -1px 0 5px rgba(0, 0, 0, 0.45);
     transform: translateX(0);
     outline: none;
+  }
+  /* Offline: dimmed glyph + a small muted dot badge so the tab itself says
+     "the network is gone" before the sheet opens. Muted palette only —
+     offline is a state, not an error. */
+  .focused-dock-nub.offline {
+    border-color: var(--border-light);
+  }
+  .focused-dock-nub.offline img {
+    opacity: 0.45;
+    filter: grayscale(1);
+  }
+  .nub-offline-dot {
+    position: absolute;
+    right: 3px;
+    bottom: 3px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-light);
+    box-shadow: 0 0 0 2px rgba(20, 18, 15, 0.9);
   }
   .focused-dock-nub.first-run {
     animation: shippie-mark-pulse 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.4s 1 both;

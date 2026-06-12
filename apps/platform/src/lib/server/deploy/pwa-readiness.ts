@@ -27,13 +27,15 @@ export async function probeWrappedUrlPwaReadiness(
   const themeColor = /<meta\s+[^>]*name\s*=\s*["']theme-color["'][^>]*content\s*=/i.test(html);
   reasons.add(themeColor ? 'theme-color-set' : 'theme-color-missing');
 
+  // The wrapper covers every gap the upstream leaves: the rewriter injects
+  // the synthesized /__shippie/manifest link when no manifest is present,
+  // icons.ts serves real install icons, and the injected SDK registers
+  // /__shippie/sw.js. None of these are failures — they're provided.
   if (!manifestHref) {
-    reasons.add('manifest-missing');
-    reasons.add('manifest-name-missing');
-    reasons.add('manifest-icons-missing');
-    reasons.add('manifest-display-missing');
-    reasons.add('service-worker-runtime-required');
-    return { status: 'estimated', reasons: [...reasons], checkedAt };
+    reasons.add('manifest-provided-by-shippie');
+    reasons.add('icons-provided-by-shippie');
+    reasons.add('service-worker-provided-by-shippie');
+    return { status: 'detected', reasons: [...reasons], checkedAt };
   }
 
   reasons.add('manifest-found');
@@ -52,19 +54,21 @@ export async function probeWrappedUrlPwaReadiness(
       ? 'manifest-display-found'
       : 'manifest-display-missing');
   } catch {
+    // Upstream declares its own manifest but the probe can't read it.
+    // The rewriter keeps the upstream link (it only injects when none is
+    // declared), so this stays a genuine gap on the upstream's side.
     reasons.add('manifest-invalid');
     reasons.add('manifest-name-missing');
     reasons.add('manifest-icons-missing');
     reasons.add('manifest-display-missing');
   }
 
-  reasons.add('service-worker-runtime-required');
+  reasons.add('service-worker-provided-by-shippie');
   const hasStaticManifestBasics =
     reasons.has('manifest-found') &&
     reasons.has('manifest-name-found') &&
     reasons.has('manifest-icons-found') &&
-    reasons.has('manifest-display-found') &&
-    reasons.has('theme-color-set');
+    reasons.has('manifest-display-found');
   return { status: hasStaticManifestBasics ? 'detected' : 'estimated', reasons: [...reasons], checkedAt };
 }
 
@@ -76,12 +80,16 @@ export function detectStaticBundlePwaReadiness(input: {
   const reasons = new Set<PwaReadinessReason>();
   const checkedAt = input.now ?? Math.floor(Date.now() / 1000);
 
-  reasons.add('manifest-found');
+  // Static bundles are served by the wrapper, which synthesizes the
+  // webmanifest (manifest.ts), install icons (icons.ts) and the service
+  // worker (sw.ts) for every app. Anything the bundle doesn't ship is
+  // provided by Shippie at serve time — never a failure.
+  reasons.add('manifest-provided-by-shippie');
   reasons.add(input.manifest.name ? 'manifest-name-found' : 'manifest-name-missing');
-  reasons.add(input.manifest.icon || bundleHasIcon(input.files) ? 'manifest-icons-found' : 'manifest-icons-missing');
+  reasons.add(input.manifest.icon || bundleHasIcon(input.files) ? 'manifest-icons-found' : 'icons-provided-by-shippie');
   reasons.add('manifest-display-found');
   reasons.add(input.manifest.theme_color ? 'theme-color-set' : 'theme-color-missing');
-  reasons.add('service-worker-runtime-required');
+  reasons.add('service-worker-provided-by-shippie');
 
   return { status: 'detected', reasons: [...reasons], checkedAt };
 }

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { cachedSlugs, downloadAppAndTrack } from '$lib/stores/cached-slugs';
   import { hydrateLauncherMemory, saveAppToDock } from '$lib/stores/launcher-memory';
+  import { isOnline } from '$lib/stores/network-status';
   import { getAppStatus, type AppDownloadProgress } from '$lib/offline/download-app';
 
   interface Props {
@@ -48,10 +49,15 @@
     }
   });
 
+  // Starting a download needs the network; the buttons below also render
+  // disabled, this guard covers programmatic/keyboard edge paths.
+  const offline = $derived(!$isOnline);
+
   async function onSaveClick(event: MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
     if (buttonState === 'downloading' || buttonState === 'verifying') return;
+    if (offline) return;
     saveAppToDock(slug);
     buttonState = 'downloading';
     errorMsg = null;
@@ -81,8 +87,11 @@
       type="button"
       class="dl-btn idle"
       onclick={onSaveClick}
-      title="Save to Dock and make available offline"
-      aria-label="Save {slug} to Dock and make available offline"
+      disabled={offline}
+      title={offline ? 'Connect to save for offline' : 'Save to Dock and make available offline'}
+      aria-label={offline
+        ? 'Connect to save for offline'
+        : `Save ${slug} to Dock and make available offline`}
     >
       ↓ Save
     </button>
@@ -101,8 +110,9 @@
       type="button"
       class="dl-btn partial"
       onclick={onSaveClick}
-      title="Some files failed to save — tap to retry"
-      aria-label="Retry saving {slug}"
+      disabled={offline}
+      title={offline ? 'Connect to save for offline' : 'Some files failed to save — tap to retry'}
+      aria-label={offline ? 'Connect to save for offline' : `Retry saving ${slug}`}
     >
       ↻ Retry
     </button>
@@ -120,8 +130,9 @@
       type="button"
       class="dl-btn error"
       onclick={onSaveClick}
-      title={errorMsg ?? 'Tap to retry'}
-      aria-label="Retry saving {slug}"
+      disabled={offline}
+      title={offline ? 'Connect to save for offline' : (errorMsg ?? 'Tap to retry')}
+      aria-label={offline ? 'Connect to save for offline' : `Retry saving ${slug}`}
     >
       ↻ Retry
     </button>
@@ -153,6 +164,10 @@
     align-items: center;
     gap: 6px;
     white-space: nowrap;
+  }
+  .dl-btn:disabled:not(.downloading) {
+    opacity: 0.55;
+    cursor: not-allowed;
   }
   .dl-btn:hover:not(:disabled) {
     border-color: var(--sage-leaf);

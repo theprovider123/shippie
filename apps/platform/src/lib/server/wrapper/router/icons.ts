@@ -4,9 +4,7 @@
  */
 import type { WrapperContext } from '../env';
 import { toResponseBody } from '../bytes';
-
-const PLACEHOLDER_PNG_BASE64 =
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkAAIAAAoAAv/lxKUAAAAASUVORK5CYII=';
+import { defaultIconBase64 } from './default-icons';
 
 function base64ToBytes(b64: string): Uint8Array {
   const bin = atob(b64);
@@ -49,11 +47,13 @@ export async function handleIcon(
     });
   }
 
-  return new Response(toResponseBody(base64ToBytes(PLACEHOLDER_PNG_BASE64)), {
+  // Final fallback: real bundled brand icons (192/512), never the old 1x1
+  // transparent placeholder — a transparent pixel breaks installability.
+  return new Response(toResponseBody(base64ToBytes(defaultIconBase64(Number(size)))), {
     status: 200,
     headers: {
       'Content-Type': 'image/png',
-      'Cache-Control': 'public, max-age=60'
+      'Cache-Control': 'public, max-age=3600'
     }
   });
 }

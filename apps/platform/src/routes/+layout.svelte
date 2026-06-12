@@ -9,6 +9,8 @@
   import Footer from '$lib/components/layout/Footer.svelte';
   import Toast from '$lib/components/ui/Toast.svelte';
   import { installOfflineRepairLoop } from '$lib/stores/cached-slugs';
+  import { isOnline } from '$lib/stores/network-status';
+  import { toast } from '$lib/stores/toast';
   import { matchesStandalone } from '$lib/util/standalone';
   import { track } from '$lib/util/track';
   import type { LayoutData } from './$types';
@@ -122,6 +124,24 @@
       && !pathname.startsWith('/run')
       && !((pathname === '/container' || pathname === '/dock') && url.searchParams.get('focused') === '1');
   }
+
+  // Offline/reconnect transition toast. Seeded with the first observed
+  // value so it never fires on initial load — only on actual transitions.
+  let lastOnline: boolean | null = null;
+  $effect(() => {
+    const online = $isOnline;
+    if (lastOnline === null) {
+      lastOnline = online;
+      return;
+    }
+    if (online === lastOnline) return;
+    lastOnline = online;
+    toast.push(
+      online
+        ? { kind: 'success', message: 'Back online' }
+        : { kind: 'info', message: "You're offline — local tools keep working" },
+    );
+  });
 
   $effect(() => {
     const mobileDockChrome = showBottomDock($page.url);

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { isOnline } from '$lib/stores/network-status';
+
   interface Props {
     user: { isAdmin?: boolean } | null | undefined;
     /** Accepted for API compatibility (dock/+page passes these); the rail no
@@ -48,6 +50,14 @@
     </nav>
 
     <div class="rail-divider" aria-hidden="true"></div>
+
+    {#if !$isOnline}
+      <!-- Quiet status, not a control: saved tools keep working offline. -->
+      <p class="rail-offline" role="status">
+        <span class="rail-ico" aria-hidden="true"><span class="offline-dot"></span></span>
+        <span class="label">Offline</span>
+      </p>
+    {/if}
 
     <nav class="rail-nav rail-secondary" aria-label="More">
       {#if user?.isAdmin}
@@ -179,6 +189,26 @@
     background: var(--border-light);
     margin: 10px 8px;
     margin-top: auto;
+  }
+
+  /* Offline chip: same row shape as a rail item, but inert + muted. */
+  .rail-offline {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    height: 32px;
+    margin: 0;
+    color: var(--text-light);
+    font-size: var(--text-small);
+  }
+
+  .offline-dot {
+    display: block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-light);
   }
 
   .rail-secondary .rail-item {

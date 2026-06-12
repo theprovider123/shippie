@@ -11,7 +11,37 @@
 import type { WrapperContext } from '../env';
 import { OFFLINE_CAPSULE_SW_HELPERS } from '@shippie/offline-capsule';
 
-const SW_TEMPLATE = (slug: string, version: string) => `// __shippie/sw.js — auto-generated
+/**
+ * Branded-lite recovery / offline page served when neither the network nor
+ * the sealed capsule can satisfy a navigation. Dependency-free inline HTML.
+ * Retries automatically when connectivity returns; the button covers the
+ * "I think I'm back online" case.
+ */
+function recoveryHtml(appName: string): string {
+  const safeName = appName
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return (
+    '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    `<title>${safeName} · Shippie</title>` +
+    '<style>html,body{margin:0;min-height:100%;background:#14120f;color:#ede4d3;font-family:system-ui,-apple-system,sans-serif}' +
+    '.wrap{min-height:100vh;display:grid;place-items:center;padding:32px;text-align:center}' +
+    '.kicker{margin:0 0 10px;font-size:0.72rem;letter-spacing:0.16em;text-transform:uppercase;color:#b8a88f}' +
+    'h1{font-size:1.35rem;margin:0 0 8px}p{margin:0 auto;max-width:34ch;color:#b8a88f;line-height:1.5}' +
+    'button{margin-top:22px;padding:10px 22px;border:1px solid #3a352d;background:transparent;color:#ede4d3;font:inherit;font-size:0.9rem;cursor:pointer}' +
+    'button:hover{border-color:#e8603c;color:#e8603c}' +
+    '</style></head><body><div class="wrap"><div>' +
+    `<p class="kicker">${safeName}</p>` +
+    '<h1>You&rsquo;re offline</h1>' +
+    '<p>This tool isn&rsquo;t fully saved on this device. Reconnect once to finish saving.</p>' +
+    '<button type="button" onclick="location.reload()">Retry</button>' +
+    '</div></div><script>addEventListener("online",function(){location.reload()})</script></body></html>'
+  );
+}
+
+const SW_TEMPLATE = (slug: string, version: string, appName: string) => `// __shippie/sw.js — auto-generated
 const LEGACY_CACHE = '${slug}-v${version}';
 const SLUG = '${slug}';
 const SYSTEM_PREFIX = '/__shippie/';
@@ -23,7 +53,7 @@ const ESSENTIAL_SYSTEM = new Set([
 ]);
 ${OFFLINE_CAPSULE_SW_HELPERS}
 
-const RECOVERY_HTML = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Refreshing app · Shippie</title><style>html,body{margin:0;min-height:100%;background:#14120f;color:#ede4d3;font-family:system-ui,-apple-system,sans-serif}.wrap{min-height:100vh;display:grid;place-items:center;padding:32px;text-align:center}h1{font-size:1.35rem;margin:0 0 8px}p{margin:0;color:#b8a88f;line-height:1.5}.bar{width:180px;height:3px;background:#3a352d;margin:22px auto 0;overflow:hidden}.bar:before{content:"";display:block;width:42%;height:100%;background:#e8603c;animation:load 1s ease-in-out infinite}@keyframes load{0%{transform:translateX(-100%)}100%{transform:translateX(240%)}}</style></head><body><div class="wrap"><div><h1>Refreshing app package</h1><p>Shippie is repairing this app\\'s local cache.</p><div class="bar"></div></div></div><script>setTimeout(function(){location.reload()},1800)</script></body></html>';
+const RECOVERY_HTML = ${JSON.stringify(recoveryHtml(appName))};
 
 function recoveryResponse() {
   return new Response(RECOVERY_HTML, {
@@ -194,8 +224,20 @@ self.addEventListener('fetch', (event) => {
 `;
 
 export async function handleSw(ctx: WrapperContext): Promise<Response> {
-  const versionStr = (await ctx.env.CACHE.get(`apps:${ctx.slug}:active`)) ?? '0';
-  return new Response(SW_TEMPLATE(ctx.slug, versionStr), {
+  const [versionStr, metaRaw] = await Promise.all([
+    ctx.env.CACHE.get(`apps:${ctx.slug}:active`),
+    ctx.env.CACHE.get(`apps:${ctx.slug}:meta`),
+  ]);
+  let appName = ctx.slug;
+  if (metaRaw) {
+    try {
+      const meta = JSON.parse(metaRaw) as { name?: string };
+      if (typeof meta.name === 'string' && meta.name.trim()) appName = meta.name.trim();
+    } catch {
+      // Bad meta JSON — slug is a fine fallback.
+    }
+  }
+  return new Response(SW_TEMPLATE(ctx.slug, versionStr ?? '0', appName), {
     status: 200,
     headers: {
       'Content-Type': 'application/javascript; charset=utf-8',

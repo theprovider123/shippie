@@ -5,6 +5,7 @@
 <script lang="ts">
   import Sheet from '$lib/components/ui/Sheet.svelte';
   import { ToolRow, toolState, type ToolDisplay } from '$lib/components/tool-surface';
+  import { isOnline } from '$lib/stores/network-status';
   import type { RailGroups, RailTool } from './rail-groups';
   import { buildToolSwitcherSections } from './tool-switcher';
 
@@ -83,6 +84,13 @@
       <a href="/tools" onclick={onClose}>Tools</a>
       <a href="/you" onclick={onClose}>You</a>
     </nav>
+
+    {#if !$isOnline}
+      <p class="offline-notice" role="status">
+        <span class="offline-dot" aria-hidden="true"></span>
+        Offline — saved tools still work
+      </p>
+    {/if}
 
     {#if searchable}
       <label class="switcher-search" aria-label="Search Dock tools">
@@ -236,6 +244,26 @@
     color: var(--text);
     border-color: var(--border);
     outline: none;
+  }
+
+  /* One quiet hairline line — offline is a state, not an alert. */
+  .offline-notice {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-light);
+    font-size: var(--text-small);
+  }
+
+  .offline-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-light);
+    flex: none;
   }
 
   .switcher-search {
