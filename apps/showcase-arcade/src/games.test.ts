@@ -10,10 +10,14 @@ import {
 } from './games';
 
 describe('arcade game registry', () => {
-  test('every surface=arcade showcase is in the cabinet (auto-coverage)', () => {
+  test('baked ARCADE_GAMES ⊇ every showcase with curation.surface=arcade (offline fallback + allowlist completeness)', () => {
     // "Add any game automatically": a new game app only needs
     // curation.surface 'arcade' in its shippie.json — this test fails the
     // build until it gets a cabinet entry here, so games can't be forgotten.
+    // It also guarantees the platform-side baked allowlist (the generated
+    // first-party-curation arcade set, which the roster endpoint / surface
+    // guard key off) only ever names slugs the cabinet can actually render,
+    // and that the offline fallback roster is complete.
     const appsDir = resolve(import.meta.dir, '../..');
     const cabinetIds = new Set(ARCADE_GAMES.map((game) => game.id));
     const missing: string[] = [];
@@ -29,7 +33,7 @@ describe('arcade game registry', () => {
       const slug = manifest.slug ?? entry.replace(/^showcase-/, '');
       if (!cabinetIds.has(slug)) missing.push(slug);
     }
-    expect(missing, `surface=arcade games missing from ARCADE_GAMES: ${missing.join(', ')}`).toEqual([]);
+    expect(missing, `surface=arcade games missing from ARCADE_GAMES (cabinet can't render + platform allowlist would point at nothing): ${missing.join(', ')}`).toEqual([]);
   });
 
   test('contains unique game ids', () => {
