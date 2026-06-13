@@ -81,7 +81,9 @@ import {
 } from './deploy-events';
 import { detectStaticBundlePwaReadiness } from './pwa-readiness';
 import { resolveSurface } from './surface-resolver';
+import { clampArcadeSurface } from './arcade-surface-guard';
 import type { Surface } from '$lib/curation/schema';
+import { publicAppUrl, runtimeSubdomainUrl } from '$lib/url-policy';
 import {
   checkArcadePurity,
   checkArcadeConnectDomains,
@@ -282,10 +284,13 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
     where: eq(schema.apps.slug, input.slug),
     columns: { id: true, surface: true, makerId: true },
   });
-  const _gateSurface = resolveSurface({
-    manifestSurface: manifest.curation?.surface,
-    formOverride: input.surfaceOverride,
-    existingSurface: _existingForGate?.surface,
+  const _gateSurface = clampArcadeSurface({
+    slug: input.slug,
+    surface: resolveSurface({
+      manifestSurface: manifest.curation?.surface,
+      formOverride: input.surfaceOverride,
+      existingSurface: _existingForGate?.surface,
+    }).surface,
   });
   if (_gateSurface.surface === 'arcade') {
     const purity = checkArcadePurity(files);
@@ -354,11 +359,14 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
   // 'featured'. Crucially, when neither manifest nor form sets a
   // surface, the existing row's value is preserved — a redeploy never
   // silently demotes an arcade game back to featured.
-  const resolvedSurface = resolveSurface({
+  const _resolved = resolveSurface({
     manifestSurface: manifest.curation?.surface,
     formOverride: input.surfaceOverride,
     existingSurface: appRow?.surface,
   });
+  const _clamped = clampArcadeSurface({ slug: input.slug, surface: _resolved.surface });
+  const resolvedSurface = { surface: _clamped.surface, source: _resolved.source };
+  const arcadeSurfaceDowngraded = _clamped.downgraded;
   const resolvedVisibilityScope = resolveDeployVisibilityScope({
     inputVisibility: input.visibilityScope,
     manifestVisibility: manifest.visibility,
@@ -744,6 +752,10 @@ export async function deployStatic(input: DeployStaticInput): Promise<DeployStat
   // Non-blocking: a failed flush should never break the deploy itself.
   await flushEvents(input.r2, input.slug, version, emitter);
 
+  if (arcadeSurfaceDowngraded) {
+    console.warn('[deploy] arcade surface downgraded for non-baked slug', input.slug);
+  }
+
   return {
     success: true,
     version,
@@ -970,22 +982,11 @@ function compactConnectionGuardForMeta(report: ConnectionGuardReport): Pick<
  *   publicOrigin = "http://localhost:5173"      → "http://localhost:5173/chiwit"
  */
 export function resolveLiveUrl(publicOrigin: string, slug: string): string {
-  try {
-    const u = new URL(publicOrigin);
-    return new URL(`/${encodeURIComponent(slug)}`, u).toString();
-  } catch {
-    return `https://shippie.app/${encodeURIComponent(slug)}`;
-  }
+  return publicAppUrl(publicOrigin, slug);
 }
 
 export function resolveRuntimeSubdomainUrl(publicOrigin: string, slug: string): string {
-  try {
-    const u = new URL(publicOrigin);
-    const portSuffix = u.port ? `:${u.port}` : '';
-    return `${u.protocol}//${slug}.${u.hostname}${portSuffix}/`;
-  } catch {
-    return `https://${slug}.shippie.app/`;
-  }
+  return runtimeSubdomainUrl(publicOrigin, slug);
 }
 
 /**
@@ -1641,21 +1642,23 @@ async function packageDomainsForApp(
 }
 
 export function packageDomainsFromVerifiedRows(
-  slug: string,
+  _slug: string,
   rows: readonly VerifiedDomainRow[],
 ): PackageDomains {
-  const fallback = `https://${slug}.shippie.app`;
   const urls = rows
     .map((row) => ({
       ...row,
       url: `https://${row.domain}`,
     }))
     .sort((a, b) => a.domain.localeCompare(b.domain));
-  const canonical = urls.find((row) => row.isCanonical)?.url ?? fallback;
+  const canonical = urls.find((row) => row.isCanonical)?.url;
   const custom = urls
     .map((row) => row.url)
     .filter((url) => url !== canonical);
-  return custom.length > 0 ? { canonical, custom } : { canonical };
+  return {
+    ...(canonical ? { canonical } : {}),
+    ...(custom.length > 0 ? { custom } : {}),
+  };
 }
 
 function packageTrustReportFromDeployReport(report: DeployReport): TrustReport {
