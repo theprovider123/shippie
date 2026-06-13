@@ -4822,6 +4822,9 @@
   .focused-list {
     display: grid;
     border-top: 1px solid var(--border-light);
+    /* Vertical scroll only — stop a sideways flick in the switcher list
+       from triggering the browser back-gesture / pull-to-refresh. */
+    touch-action: pan-y;
   }
   .focused-section-more {
     margin: 0;

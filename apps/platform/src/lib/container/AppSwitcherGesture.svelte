@@ -617,19 +617,22 @@
   .backdrop {
     position: fixed;
     inset: 0;
-    /* Constant paint (tint + blur); only opacity animates — keeps the
-       fade compositor-only instead of re-blurring every frame. */
+    /* Only opacity animates (inline transition) so the fade stays
+       compositor-only — never re-blurring every frame. The blur layer
+       lives on .open below: keeping it on the closed backdrop would
+       leave a permanent composited layer painting behind every app for
+       zero visual benefit (it is invisible at opacity 0). */
     background: rgba(20, 18, 15, 0.35);
     pointer-events: none;
     z-index: 50;
     opacity: 0;
-    backdrop-filter: blur(1px);
-    -webkit-backdrop-filter: blur(1px);
     will-change: opacity;
   }
   .backdrop.open {
     pointer-events: auto;
     opacity: 1;
+    backdrop-filter: blur(1px);
+    -webkit-backdrop-filter: blur(1px);
   }
 
   /* Drawer: the app-switcher panel itself. Slides in from the
