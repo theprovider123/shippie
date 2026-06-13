@@ -3,7 +3,22 @@ import { loadContainerPageData } from '$server/container-page-data';
 import { curatedApps } from '$lib/container/state';
 import { getDrizzleClient } from '$server/db/client';
 import { curationOverrides } from '$server/db/queries/apps';
+import { listAccountDock, type AccountDockState } from '$server/dock/account-dock';
 import type { CurationOverride } from '$lib/launcher';
+
+/** Account-scoped saved tools for the signed-in user (cross-device dock). */
+async function accountDock(
+  platform: App.Platform | undefined,
+  userId: string | null,
+): Promise<AccountDockState | null> {
+  if (!platform?.env.DB || !userId) return null;
+  try {
+    return await listAccountDock(getDrizzleClient(platform.env.DB), userId);
+  } catch {
+    // Table absent on a stale DB / query error — dock stays local-only.
+    return null;
+  }
+}
 
 /**
  * Live D1 curation state as serialisable entries — `load` can't return
@@ -31,7 +46,7 @@ export const load: PageServerLoad = async ({ platform, url, locals, request, set
   // a stale shell can point at a stale chunk graph and strand the user
   // on the generic SvelteKit error screen after a deploy.
   setHeaders({ 'cache-control': 'no-store' });
-  const [pageData, curationOverrideEntriesList] = await Promise.all([
+  const [pageData, curationOverrideEntriesList, accountDockState] = await Promise.all([
     loadContainerPageData({
       platform,
       url,
@@ -40,10 +55,12 @@ export const load: PageServerLoad = async ({ platform, url, locals, request, set
       request,
     }),
     curationOverrideEntries(platform),
+    accountDock(platform, locals.user?.id ?? null),
   ]);
   return {
     ...pageData,
     curationOverrideEntries: curationOverrideEntriesList,
+    accountDock: accountDockState,
     user: locals.user
       ? {
           email: locals.user.email,

@@ -30,6 +30,52 @@ const DEFAULT_MEMORY: LauncherMemory = {
 
 export const launcherMemory = writable<LauncherMemory>(DEFAULT_MEMORY);
 
+/**
+ * Mirror a save/remove to the account-scoped dock (cross-device).
+ * Fire-and-forget: localStorage already holds the change, so a failed or
+ * offline sync never blocks the UI. The session cookie authenticates;
+ * anonymous users 401 and stay local-only. Browser-only.
+ */
+function syncDockChange(slug: string, action: 'save' | 'remove'): void {
+  if (typeof fetch === 'undefined' || typeof window === 'undefined') return;
+  void fetch('/api/dock', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ slug, action }),
+    keepalive: true,
+  }).catch(() => {
+    // Offline / signed-out: local save stands; next online load reconciles.
+  });
+}
+
+/**
+ * Merge the account dock (from the server load) into local memory on
+ * hydrate: union local + server-saved, minus server tombstones, so a
+ * cross-device add AND remove both land. Writes the merged set back so
+ * the local store and the account agree. Recents/launch counts are
+ * device-personal and never touched.
+ */
+export function mergeAccountDock(saved: string[], removed: string[]): void {
+  const removedSet = new Set(removed);
+  launcherMemory.update((memory) => {
+    const union: string[] = [];
+    const seen = new Set<string>();
+    // Server-saved first (newest-first from the query), then any
+    // local-only saves not yet mirrored — both filtered by tombstones.
+    for (const slug of [...saved, ...memory.saved]) {
+      if (seen.has(slug) || removedSet.has(slug)) continue;
+      seen.add(slug);
+      union.push(slug);
+    }
+    if (union.length === memory.saved.length && union.every((s, i) => s === memory.saved[i])) {
+      return memory; // No change — avoid a redundant write.
+    }
+    const next = { ...memory, saved: union, pinned: union };
+    writeStoredMemory(next);
+    return next;
+  });
+}
+
 function readStoredMemory(): string | null {
   if (typeof localStorage !== 'undefined') {
     try {
@@ -144,6 +190,7 @@ export function saveAppToDock(slug: string): void {
     const saved = [slug, ...memory.saved];
     const next = { ...memory, saved, pinned: saved };
     writeStoredMemory(next);
+    syncDockChange(slug, 'save');
     return next;
   });
 }
@@ -154,6 +201,7 @@ export function removeSavedApp(slug: string): void {
     const saved = memory.saved.filter((item) => item !== slug);
     const next = { ...memory, saved, pinned: saved };
     writeStoredMemory(next);
+    syncDockChange(slug, 'remove');
     return next;
   });
 }
@@ -176,6 +224,7 @@ export function toggleSavedApp(slug: string): void {
       : [slug, ...memory.saved];
     const next = { ...memory, saved, pinned: saved };
     writeStoredMemory(next);
+    syncDockChange(slug, exists ? 'remove' : 'save');
     return next;
   });
 }

@@ -43,3 +43,4 @@ export * from './proof-events';
 export * from './app-feeds';
 export * from './app-reports';
 export * from './app-slug-redirects';
+export * from './user-dock';
