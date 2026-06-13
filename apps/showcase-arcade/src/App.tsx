@@ -9,6 +9,7 @@ import {
   normalizeGameId,
   type ArcadeGame,
 } from './games';
+import { fetchRoster, resolveVisibleIds, type RosterState } from './roster';
 
 const MEMORY_KEY = 'shippie:arcade:v1';
 const OUTER_APP_ID = 'app_arcade';
@@ -110,6 +111,7 @@ export function App() {
   const [selectedId, setSelectedId] = useState(() => normalizeGameId(memory.selectedGame));
   const [loadedId, setLoadedId] = useState<string | null>(null);
   const [focusMode, setFocusMode] = useState(false);
+  const [roster, setRoster] = useState<RosterState>({ kind: 'cold', enabled: [], blocked: [] });
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   const screenRef = useRef<HTMLDivElement | null>(null);
   const selected = gameById(selectedId) ?? ARCADE_GAMES[0]!;
@@ -118,6 +120,9 @@ export function App() {
     const search = typeof window === 'undefined' ? '' : window.location.search;
     return childRuntimeSrc(selected.id, search);
   }, [selected.id]);
+
+  const bakedIds = useMemo(() => ARCADE_GAMES.map((g) => g.id), []);
+  const visibleIds = useMemo(() => new Set(resolveVisibleIds(bakedIds, roster)), [bakedIds, roster]);
 
   function patchMemory(updater: (previous: ArcadeMemory) => ArcadeMemory) {
     setMemory((previous) => {
@@ -160,6 +165,16 @@ export function App() {
     const target = frameRef.current ?? screenRef.current;
     await target?.requestFullscreen?.().catch(() => undefined);
   }
+
+  useEffect(() => {
+    let active = true;
+    const origin = typeof window === 'undefined' ? '' : window.location.origin;
+    const load = () => { void fetchRoster(origin).then((r) => { if (active) setRoster(r); }); };
+    load();
+    const onVis = () => { if (document.visibilityState === 'visible') load(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => { active = false; document.removeEventListener('visibilitychange', onVis); };
+  }, []);
 
   useEffect(() => {
     declareArcadeInputRegion();
@@ -247,6 +262,15 @@ export function App() {
     return () => window.removeEventListener('message', onMessage);
   }, [selectedId]);
 
+  const selectedHidden = !visibleIds.has(selected.id) && roster.kind !== 'cold';
+  useEffect(() => {
+    if (selectedHidden) {
+      const firstVisible = ARCADE_GAMES.find((g) => visibleIds.has(g.id));
+      if (firstVisible && firstVisible.id !== selected.id) selectGame(firstVisible.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedHidden]);
+
   const totalCompletions = Object.values(memory.games).reduce((sum, game) => sum + game.completions, 0);
   const playedCount = Object.values(memory.games).filter((game) => game.opens > 0).length;
 
@@ -266,37 +290,41 @@ export function App() {
 
       <main className="machine">
         <nav className="game-rail" aria-label="Games">
-          {ARCADE_LANES.map((lane) => (
-            <section className="lane" key={lane.id} aria-label={lane.title}>
-              <div className="lane-head">
-                <strong>{lane.title}</strong>
-                <span>{lane.subtitle}</span>
-              </div>
-              <div className="lane-list">
-                {gamesForLane(lane.id).map((game) => {
-                  const active = game.id === selected.id;
-                  const stats = memory.games[game.id];
-                  return (
-                    <button
-                      key={game.id}
-                      className="game-pick"
-                      data-active={active ? 'true' : 'false'}
-                      type="button"
-                      onClick={() => selectGame(game.id)}
-                      style={cssVars(game)}
-                      aria-current={active ? 'true' : undefined}
-                    >
-                      <span className="pick-mark" aria-hidden="true">{game.initials}</span>
-                      <span className="pick-copy">
-                        <strong>{game.name}</strong>
-                        <small>{stats?.completions ? `${stats.completions} clear${stats.completions === 1 ? '' : 's'}` : game.loop}</small>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
+          {ARCADE_LANES.map((lane) => {
+            const games = gamesForLane(lane.id).filter((g) => visibleIds.has(g.id));
+            if (games.length === 0) return null;
+            return (
+              <section className="lane" key={lane.id} aria-label={lane.title}>
+                <div className="lane-head">
+                  <strong>{lane.title}</strong>
+                  <span>{lane.subtitle}</span>
+                </div>
+                <div className="lane-list">
+                  {games.map((game) => {
+                    const active = game.id === selected.id;
+                    const stats = memory.games[game.id];
+                    return (
+                      <button
+                        key={game.id}
+                        className="game-pick"
+                        data-active={active ? 'true' : 'false'}
+                        type="button"
+                        onClick={() => selectGame(game.id)}
+                        style={cssVars(game)}
+                        aria-current={active ? 'true' : undefined}
+                      >
+                        <span className="pick-mark" aria-hidden="true">{game.initials}</span>
+                        <span className="pick-copy">
+                          <strong>{game.name}</strong>
+                          <small>{stats?.completions ? `${stats.completions} clear${stats.completions === 1 ? '' : 's'}` : game.loop}</small>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
         </nav>
 
         <section className="cabinet" aria-label={`${selected.name} game cabinet`}>
@@ -312,6 +340,7 @@ export function App() {
             <div className="selected-title">
               <p>{selected.loop} / {selected.tempo}</p>
               <h2>{selected.name}</h2>
+              {selectedHidden && <p className="cabinet-note">that one isn&apos;t in the cabinet right now</p>}
             </div>
             <button
               className="icon-button fullscreen-button"
@@ -377,7 +406,7 @@ export function App() {
           </div>
           <p className="panel-label">Quick slots</p>
           <ol className="quick-list" aria-label="Quick switch">
-            {ARCADE_GAMES.slice(0, 8).map((game) => (
+            {ARCADE_GAMES.filter((g) => visibleIds.has(g.id)).slice(0, 8).map((game) => (
               <li key={game.id}>
                 <button type="button" onClick={() => selectGame(game.id)} data-active={game.id === selected.id ? 'true' : 'false'}>
                   <span>{game.shortName}</span>
