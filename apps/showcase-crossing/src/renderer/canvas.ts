@@ -74,7 +74,7 @@ export function drawFrame(
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
-  const { cellPx, topBandH, bottomBandH } = computeLayout(
+  const { cellPx, topBandH } = computeLayout(
     canvas.width / dpr,
     canvas.height / dpr,
   );
@@ -117,10 +117,12 @@ export function drawFrame(
     }
   }
 
-  // ── Bottom band (grass verge continuation below start row) ────────
-  if (bottomBandH > 0) {
-    drawBottomBand(ctx, topBandH, cellPx, bottomBandH, W);
-  }
+  // ── Bottom band (grass verge below the board) ────────────────────
+  // Fill from the board bottom all the way to the canvas bottom: this
+  // covers the reserved TIMER_ROWS cell (always present) plus any portrait
+  // letterbox band, so no dark background strip is ever left exposed.
+  const bottomBandY = topBandH + (HUD_ROWS + ROWS) * cellPx;
+  drawBottomBand(ctx, topBandH, cellPx, H - bottomBandY, W);
 
   // ── Frog ─────────────────────────────────────────────────────────
   if (state.phase !== 'game-over' && state.phase !== 'attract') {
