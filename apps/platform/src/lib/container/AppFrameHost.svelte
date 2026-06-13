@@ -219,7 +219,15 @@
     {/if}
   {/key}
   {#if frameStates[app.id]?.status === 'booting' && !locallyPainted}
-    <div class="frame-loader" role="status" aria-live="polite">
+    <!-- Faint wash of the app's own accent so a dark-themed tool doesn't
+         flash a neutral cream loader before its first paint — reads as the
+         app already arriving. 9% keeps the loader + label legible. -->
+    <div
+      class="frame-loader"
+      role="status"
+      aria-live="polite"
+      style:background={`color-mix(in srgb, ${app.accent} 9%, var(--bg))`}
+    >
       <RocketLoader size="lg" label={`Opening ${app.name}`} />
       <p class="frame-loader-label">Opening {app.name}…</p>
     </div>
