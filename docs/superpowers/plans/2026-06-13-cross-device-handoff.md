@@ -89,7 +89,14 @@ trust story.
 
 ## Sequencing
 
-1. **Layer 1 dock sync** — independent, shippable alone, immediately makes "my tools are
-   here" true. (Recommended first regardless of the Layer 2 decision.)
-2. **Layer 2 continuity** — after the posture decision; reuses access-transfer/transfer.
-3. Tighten the per-device vs account-synced copy in `/you` and the dock sync note.
+1. **Layer 1 dock sync** — ✅ SHIPPED 2026-06-13 (worker `1a5f6456`, migration 0067, commit
+   `82a387d7`). D1 `user_dock` + `/api/dock` + `mergeAccountDock` on hydrate. Saved tools
+   follow the account; recents/launch-counts/offline copies stay per-device.
+2. **Layer 2 continuity — chosen transport: Hybrid (try P2P, fall back to encrypted relay).**
+   Next build. Reuse `proximity/transfer.ts` for the P2P snapshot and `access-transfer.ts`
+   (ECDH + KV, 5-min TTL) for the relay fallback. UX target ≤2 clicks: laptop shows
+   "Continue from your phone" (code/QR); phone taps "Send"; laptop restores into local-db.
+   Known v1 edge to handle: an offline re-save that hasn't synced yet can be subtracted by a
+   server tombstone on next load (rare; user re-saves).
+3. Tighten the per-device vs account-synced copy in `/you` and the dock sync note
+   ("Saved tools follow your account; offline copies stay per device").
