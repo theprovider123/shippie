@@ -291,6 +291,9 @@
 
       <div class="data-actions">
         <a href="/dock?section=data" class="secondary-action primary-action">Manage data</a>
+        {#if data.user}
+          <a href="/handoff" class="secondary-action">Continue from phone</a>
+        {/if}
         <button type="button" class="secondary-action" disabled={storagePinned || storagePinning} onclick={pinStorage}>
           {storagePinned ? 'Offline protected' : storagePinning ? 'Protecting…' : 'Keep offline'}
         </button>
