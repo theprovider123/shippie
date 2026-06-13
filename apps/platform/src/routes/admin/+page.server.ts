@@ -24,6 +24,26 @@ import { recordAudit } from '$server/admin/audit';
 import { notifyMakerOfTakedown } from '$server/admin/notify-maker';
 import { writeSuspension, clearSuspension, patchAppMeta } from '$server/deploy/kv-write';
 import { bustSuspensionCache } from '$server/wrapper/platform-client';
+import { bakedArcadeGameSlugs } from '$server/arcade/roster';
+
+/**
+ * When an admin publishes an app to 'public', we auto-lift a stuck
+ * 'archived' surface so the app actually appears in marketplace listings.
+ * However, baked arcade games use 'archived' as the deliberate
+ * "pulled from cabinet" state — publishing visibility must not silently
+ * re-add them to the arcade.
+ */
+export function shouldAutoLiftArchived(
+  slug: string,
+  beforeSurface: string,
+  newVisibility: string,
+): boolean {
+  if (newVisibility !== 'public' || beforeSurface !== 'archived') return false;
+  // Baked arcade games use archived as the deliberate "pulled from cabinet"
+  // state; publishing visibility must not silently re-add them.
+  if (bakedArcadeGameSlugs().has(slug)) return false;
+  return true;
+}
 
 export type AdminAppRow = {
   id: string;
@@ -35,6 +55,7 @@ export type AdminAppRow = {
   makerEmail: string;
   latestDeployStatus: string | null;
   visibilityScope: string;
+  surface: string;
   isArchived: boolean;
   themeColor: string;
   upvoteCount: number;
@@ -74,6 +95,7 @@ export const load: PageServerLoad = async (event) => {
       apps: [] as AdminAppRow[],
       categories: [] as string[],
       filters: { q: '', category: 'all', status: 'all' as StatusFilter, sort: 'created:desc' },
+      bakedArcadeSlugs: [...bakedArcadeGameSlugs()],
     };
   }
 
@@ -123,6 +145,7 @@ export const load: PageServerLoad = async (event) => {
       makerEmail: schema.users.email,
       latestDeployStatus: schema.apps.latestDeployStatus,
       visibilityScope: schema.apps.visibilityScope,
+      surface: schema.apps.surface,
       isArchived: schema.apps.isArchived,
       themeColor: schema.apps.themeColor,
       upvoteCount: schema.apps.upvoteCount,
@@ -150,6 +173,7 @@ export const load: PageServerLoad = async (event) => {
     makerEmail: r.makerEmail ?? '',
     latestDeployStatus: r.latestDeployStatus,
     visibilityScope: r.visibilityScope,
+    surface: r.surface ?? 'featured',
     isArchived: r.isArchived,
     themeColor: r.themeColor,
     upvoteCount: r.upvoteCount,
@@ -160,6 +184,7 @@ export const load: PageServerLoad = async (event) => {
     apps,
     categories: categoryRows.map((c) => c.category).filter((c): c is string => !!c).sort(),
     filters: { q, category, status, sort: `${sortKey}:${sortDir}` },
+    bakedArcadeSlugs: [...bakedArcadeGameSlugs()],
   };
 };
 
@@ -202,8 +227,8 @@ export const actions: Actions = {
     }
 
     // When publishing to public, lift a stuck 'archived' surface so the app
-    // actually appears in marketplace listings.
-    const newSurface = (visibility === 'public' && before.surface === 'archived') ? 'featured' : undefined;
+    // actually appears in marketplace listings (skipped for baked arcade games).
+    const newSurface = shouldAutoLiftArchived(before.slug, before.surface, visibility) ? 'featured' : undefined;
 
     await db
       .update(schema.apps)
@@ -236,6 +261,45 @@ export const actions: Actions = {
       after: { visibilityScope: visibility, ...(newSurface ? { surface: newSurface } : {}) },
     });
 
+    return { ok: true };
+  },
+  setArcade: async (event) => {
+    const admin = requireAdmin(event);
+    if (!event.platform?.env.DB) return fail(503, { error: 'database unavailable' });
+    const db = getDrizzleClient(event.platform.env.DB);
+    const form = await event.request.formData();
+    const id = String(form.get('id') ?? '');
+    const inArcade = String(form.get('in_arcade') ?? '') === 'true';
+    if (!id) return fail(400, { error: 'missing app id' });
+
+    const [before] = await db
+      .select({ id: schema.apps.id, slug: schema.apps.slug, surface: schema.apps.surface })
+      .from(schema.apps).where(eq(schema.apps.id, id)).limit(1);
+    if (!before) return fail(404, { error: 'app not found' });
+
+    if (!bakedArcadeGameSlugs().has(before.slug)) {
+      return fail(400, { error: 'not a baked arcade game' });
+    }
+    const newSurface = inArcade ? 'arcade' : 'archived';
+    if (before.surface === newSurface) return { ok: true, noop: true };
+
+    await db.update(schema.apps)
+      .set({ surface: newSurface, updatedAt: new Date().toISOString() })
+      .where(eq(schema.apps.id, id));
+
+    const cache = event.platform?.env.CACHE;
+    if (cache) {
+      try { await patchAppMeta(cache, before.slug, { slug: before.slug }); }
+      catch (err) { console.error('[admin.setArcade] KV sync failed — reconcile-kv will repair', err); }
+    }
+    await recordAudit(db, {
+      actorUserId: admin.id,
+      action: 'admin.app.set_arcade',
+      targetTable: 'apps',
+      targetId: id,
+      before: { surface: before.surface },
+      after: { surface: newSurface },
+    });
     return { ok: true };
   },
 };

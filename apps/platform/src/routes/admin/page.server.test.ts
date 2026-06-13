@@ -124,8 +124,14 @@ mockModule('$server/db/client', () => ({
   },
 }));
 
+// Provide a minimal baked-arcade-slugs set for tests.
+// 'snake' is the canonical baked arcade game in the test suite.
+mockModule('$server/arcade/roster', () => ({
+  bakedArcadeGameSlugs: () => new Set(['snake']),
+}));
+
 // Import AFTER the mock is registered.
-const { load, actions } = await import('./+page.server');
+const { load, actions, shouldAutoLiftArchived } = await import('./+page.server');
 
 const NO_PLATFORM = Symbol('no-platform');
 
@@ -430,5 +436,18 @@ describe('admin /+page.server suspension enforcement', () => {
     expect((result as { ok: boolean }).ok).toBe(true);
     expect(data['apps:foo:suspended']).toBeUndefined();
     expect(log.some((e) => e.sql.includes('DELETE FROM reserved_slugs'))).toBe(true);
+  });
+});
+
+describe('archived → featured auto-lift', () => {
+  it('does NOT auto-lift a baked arcade game (archived = deliberately pulled)', () => {
+    expect(shouldAutoLiftArchived('snake', 'archived', 'public')).toBe(false);
+  });
+  it('auto-lifts a normal archived app published public', () => {
+    expect(shouldAutoLiftArchived('some-maker-app', 'archived', 'public')).toBe(true);
+  });
+  it('never lifts when not publishing public or not archived', () => {
+    expect(shouldAutoLiftArchived('some-maker-app', 'featured', 'public')).toBe(false);
+    expect(shouldAutoLiftArchived('some-maker-app', 'archived', 'unlisted')).toBe(false);
   });
 });

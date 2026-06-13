@@ -50,7 +50,7 @@
   <a href="/admin" class="reset">Reset</a>
 </form>
 
-<AppsTable apps={data.apps} sort={data.filters.sort} />
+<AppsTable apps={data.apps} sort={data.filters.sort} bakedArcadeSlugs={data.bakedArcadeSlugs} />
 
 <style>
   .header { margin-bottom: 1.5rem; }

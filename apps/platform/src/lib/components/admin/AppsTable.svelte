@@ -7,9 +7,11 @@
   let {
     apps,
     sort,
+    bakedArcadeSlugs = [],
   }: {
     apps: AdminAppRow[];
     sort: string;
+    bakedArcadeSlugs?: string[];
   } = $props();
 
   const currentSort = $derived((sort ?? 'created:desc').split(':') as [SortKey, SortDir]);
@@ -131,6 +133,13 @@
                 {app.isArchived ? 'Unarchive' : 'Archive'}
               </button>
             </form>
+            {#if bakedArcadeSlugs.includes(app.slug)}
+              <form method="POST" action="?/setArcade" class="inline">
+                <input type="hidden" name="id" value={app.id} />
+                <input type="hidden" name="in_arcade" value={app.surface === 'arcade' ? 'false' : 'true'} />
+                <button type="submit" class="btn-text">{app.surface === 'arcade' ? 'Pull from arcade' : 'Add to arcade'}</button>
+              </form>
+            {/if}
             <a href={`/apps/${app.slug}`} target="_blank" rel="noopener" class="btn-text">View</a>
             <a href={`/maker/apps/${app.slug}`} class="btn-text">Manage</a>
           </td>
