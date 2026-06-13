@@ -28,6 +28,7 @@ interface AppRow {
   slug: string;
   isArchived: boolean;
   visibilityScope: string;
+  surface?: string;
   makerId?: string;
   takedownReason?: string | null;
   suspensionReason?: string | null;
@@ -91,6 +92,7 @@ function fakeDrizzle() {
               if (row) {
                 if ('isArchived' in values) row.isArchived = values.isArchived as boolean;
                 if ('visibilityScope' in values) row.visibilityScope = values.visibilityScope as string;
+                if ('surface' in values) row.surface = values.surface as string;
               }
               void predicate;
               return Promise.resolve();
@@ -437,6 +439,122 @@ describe('admin /+page.server suspension enforcement', () => {
     expect((result as { ok: boolean }).ok).toBe(true);
     expect(data['apps:foo:suspended']).toBeUndefined();
     expect(log.some((e) => e.sql.includes('DELETE FROM reserved_slugs'))).toBe(true);
+  });
+});
+
+describe('admin /+page.server setArcade action', () => {
+  it('503s when DB binding is missing', async () => {
+    resetDbState();
+    const fd = new FormData();
+    fd.append('id', 'app-1');
+    fd.append('in_arcade', 'true');
+    const event = makeEvent({ formData: fd, platform: NO_PLATFORM });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await actions.setArcade!(event as any);
+    expect((result as { status: number }).status).toBe(503);
+  });
+
+  it('400s when id is missing', async () => {
+    resetDbState();
+    const fd = new FormData();
+    fd.append('in_arcade', 'true');
+    const event = makeEvent({ formData: fd });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await actions.setArcade!(event as any);
+    expect((result as { status: number }).status).toBe(400);
+    expect(dbState.updates).toHaveLength(0);
+    expect(dbState.audits).toHaveLength(0);
+  });
+
+  it('404s when the app row does not exist', async () => {
+    resetDbState([]); // empty — no rows
+    const fd = new FormData();
+    fd.append('id', 'app-ghost');
+    fd.append('in_arcade', 'true');
+    const event = makeEvent({ formData: fd });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await actions.setArcade!(event as any);
+    expect((result as { status: number }).status).toBe(404);
+    expect(dbState.updates).toHaveLength(0);
+  });
+
+  it('400s with "not a baked arcade game" for a non-baked slug', async () => {
+    resetDbState([{ id: 'app-1', slug: 'palate', isArchived: false, visibilityScope: 'public', surface: 'featured' }]);
+    const fd = new FormData();
+    fd.append('id', 'app-1');
+    fd.append('in_arcade', 'true');
+    const event = makeEvent({ formData: fd });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await actions.setArcade!(event as any);
+    expect((result as { status: number }).status).toBe(400);
+    const data = result as { data?: { error?: string } };
+    expect(data.data?.error ?? (result as Record<string, unknown>).error).toContain('not a baked arcade game');
+    expect(dbState.updates).toHaveLength(0);
+    expect(dbState.audits).toHaveLength(0);
+  });
+
+  it('noop when in_arcade=true and snake is already surface=arcade', async () => {
+    resetDbState([{ id: 'app-1', slug: 'snake', isArchived: false, visibilityScope: 'public', surface: 'arcade' }]);
+    const fd = new FormData();
+    fd.append('id', 'app-1');
+    fd.append('in_arcade', 'true');
+    const event = makeEvent({ formData: fd });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await actions.setArcade!(event as any);
+    expect((result as { ok: boolean; noop: boolean }).ok).toBe(true);
+    expect((result as { ok: boolean; noop: boolean }).noop).toBe(true);
+    // No DB mutation when already in target state.
+    expect(dbState.updates).toHaveLength(0);
+    expect(dbState.audits).toHaveLength(0);
+  });
+
+  it('pull: in_arcade=false on arcade snake → surface becomes archived', async () => {
+    resetDbState([{ id: 'app-1', slug: 'snake', isArchived: false, visibilityScope: 'public', surface: 'arcade' }]);
+    const fd = new FormData();
+    fd.append('id', 'app-1');
+    fd.append('in_arcade', 'false');
+    const event = makeEvent({ formData: fd });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await actions.setArcade!(event as any);
+    expect((result as { ok: boolean }).ok).toBe(true);
+    expect((result as { noop?: boolean }).noop).toBeUndefined();
+    // D1 update was called with surface='archived'.
+    expect(dbState.updates).toHaveLength(1);
+    expect(dbState.updates[0].surface).toBe('archived');
+    // Audit row written with correct action and before/after.
+    expect(dbState.audits).toHaveLength(1);
+    expect(dbState.audits[0].action).toBe('admin.app.set_arcade');
+    expect(dbState.audits[0].targetType).toBe('apps');
+    expect(dbState.audits[0].targetId).toBe('app-1');
+    expect(dbState.audits[0].metadata).toEqual({
+      before: { surface: 'arcade' },
+      after: { surface: 'archived' },
+    });
+    // In-memory row updated.
+    expect(dbState.rows[0].surface).toBe('archived');
+  });
+
+  it('add: in_arcade=true on archived snake → surface becomes arcade', async () => {
+    resetDbState([{ id: 'app-1', slug: 'snake', isArchived: false, visibilityScope: 'public', surface: 'archived' }]);
+    const fd = new FormData();
+    fd.append('id', 'app-1');
+    fd.append('in_arcade', 'true');
+    const event = makeEvent({ formData: fd });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await actions.setArcade!(event as any);
+    expect((result as { ok: boolean }).ok).toBe(true);
+    expect((result as { noop?: boolean }).noop).toBeUndefined();
+    // D1 update was called with surface='arcade'.
+    expect(dbState.updates).toHaveLength(1);
+    expect(dbState.updates[0].surface).toBe('arcade');
+    // Audit row written.
+    expect(dbState.audits).toHaveLength(1);
+    expect(dbState.audits[0].action).toBe('admin.app.set_arcade');
+    expect(dbState.audits[0].metadata).toEqual({
+      before: { surface: 'archived' },
+      after: { surface: 'arcade' },
+    });
+    expect(dbState.rows[0].surface).toBe('arcade');
   });
 });
 
