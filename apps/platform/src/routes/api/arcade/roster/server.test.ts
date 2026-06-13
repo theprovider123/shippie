@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { GET, rev } from './+server';
+import { GET, _rev } from './+server';
 
-describe('rev()', () => {
+describe('_rev()', () => {
   it('is stable regardless of input order and changes with content', () => {
-    expect(rev(['a', 'b'], [])).toBe(rev(['b', 'a'], []));
-    expect(rev(['a'], [])).not.toBe(rev(['a'], ['b']));
-    expect(typeof rev([], [])).toBe('string');
+    expect(_rev(['a', 'b'], [])).toBe(_rev(['b', 'a'], []));
+    expect(_rev(['a'], [])).not.toBe(_rev(['a'], ['b']));
+    expect(typeof _rev([], [])).toBe('string');
   });
 });
 
