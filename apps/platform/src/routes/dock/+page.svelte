@@ -1478,11 +1478,14 @@
     const paintChecks = [2_500, 8_000, 16_000].map((delay) =>
       window.setTimeout(() => markFrameReady(appId, node), delay),
     );
+    // Hard timeout sits AFTER the last paint check (16s) so a tool that
+    // paints between 15–16s gets revealed instead of being errored out
+    // by a timeout that used to fire first.
     const timeout = window.setTimeout(() => {
       if (frameStates[appId]?.status === 'booting') {
         markFrameError(appId, 'This tool took too long to open.');
       }
-    }, 15_000);
+    }, 17_000);
 
     return {
       destroy() {
@@ -2522,6 +2525,9 @@
     const { [appId]: _rows, ...nextRows } = rowsByApp;
     receiptsByApp = nextReceipts;
     rowsByApp = nextRows;
+    // Persist — otherwise the forgotten receipt resurrects on next reload
+    // (every other receipt/data mutation persists; this one was missing it).
+    persistContainerState(nextRows);
   }
 
   function importPackageForReceipt(appId: string) {
@@ -3003,8 +3009,20 @@
     transferRegistry.refresh(apps);
   });
 
+  let quotaWarned = false;
+
   function persistContainerState(nextRowsByApp: Record<string, LocalRow[]> = rowsByApp) {
     if (!storageReady) return;
+    // Prune dismissed-insight stamps older than the 7-day window before
+    // they are written back — the render filter already ignores them, but
+    // left in the blob they accumulate forever and eat the quota.
+    const now = Date.now();
+    const freshDismissals = Object.fromEntries(
+      Object.entries(dismissedInsightIds).filter(([, ts]) => now - ts < SEVEN_DAYS),
+    );
+    if (Object.keys(freshDismissals).length !== Object.keys(dismissedInsightIds).length) {
+      dismissedInsightIds = freshDismissals;
+    }
     const state: ContainerState = {
       openAppIds,
       importedApps,
@@ -3013,14 +3031,27 @@
       rowsByApp: nextRowsByApp,
       intentGrants,
       transferGrants,
-      dismissedInsightIds,
+      dismissedInsightIds: freshDismissals,
     };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch {
+      quotaWarned = false;
+    } catch (err) {
       // localStorage may be blocked (iOS PWA partitioning, private
-      // browsing, or quota exceeded). Persistence fails silently;
-      // session state continues in memory until the user reloads.
+      // browsing, or quota exceeded). Session state continues in memory
+      // until reload. On a genuine quota error, tell the user once so the
+      // silent data-loss-on-reload isn't a mystery — repeat saves stay
+      // quiet until a save succeeds again.
+      const quotaHit =
+        err instanceof DOMException &&
+        (err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED' || err.code === 22);
+      if (quotaHit && !quotaWarned) {
+        quotaWarned = true;
+        toast.push({
+          kind: 'error',
+          message: 'This device is out of storage — recent changes may not survive a reload. Remove a saved tool to free space.',
+        });
+      }
     }
   }
 

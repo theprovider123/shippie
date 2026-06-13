@@ -29,6 +29,27 @@
   let showRawExport = $state(false);
   let showInstallRecords = $state(false);
 
+  // Brief in-flight guards so a double-tap can't fire two encrypt/restore
+  // passes (which duplicates receipts on restore). The callbacks surface
+  // their result via props, so a short lockout covers the tap window
+  // without needing to thread completion state back through.
+  let creating = $state(false);
+  let restoring = $state(false);
+
+  function guardedCreate() {
+    if (creating) return;
+    creating = true;
+    onCreateBackup();
+    setTimeout(() => (creating = false), 800);
+  }
+
+  function guardedRestore() {
+    if (restoring || !restorePayload) return;
+    restoring = true;
+    onRestore();
+    setTimeout(() => (restoring = false), 800);
+  }
+
   function downloadBackup() {
     if (!backupExport) return;
     const blob = new Blob([backupExport], { type: 'application/json' });
@@ -87,7 +108,7 @@
         autocomplete="new-password"
       />
     </label>
-    <button class="primary" onclick={onCreateBackup}>Create encrypted backup</button>
+    <button class="primary" onclick={guardedCreate} disabled={creating}>{creating ? 'Encrypting…' : 'Create encrypted backup'}</button>
     {#if backupError}
       <p class="error">{backupError}</p>
     {/if}
@@ -123,7 +144,7 @@
         autocomplete="current-password"
       />
     </label>
-    <button class="primary" onclick={onRestore} disabled={!restorePayload}>Restore locally</button>
+    <button class="primary" onclick={guardedRestore} disabled={!restorePayload || restoring}>{restoring ? 'Restoring…' : 'Restore locally'}</button>
     {#if restoreStatus}
       <p class="status">{restoreStatus}</p>
     {/if}
