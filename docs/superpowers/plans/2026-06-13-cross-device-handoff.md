@@ -93,10 +93,24 @@ trust story.
    `82a387d7`). D1 `user_dock` + `/api/dock` + `mergeAccountDock` on hydrate. Saved tools
    follow the account; recents/launch-counts/offline copies stay per-device.
 2. **Layer 2 continuity — chosen transport: Hybrid (try P2P, fall back to encrypted relay).**
-   Next build. Reuse `proximity/transfer.ts` for the P2P snapshot and `access-transfer.ts`
-   (ECDH + KV, 5-min TTL) for the relay fallback. UX target ≤2 clicks: laptop shows
-   "Continue from your phone" (code/QR); phone taps "Send"; laptop restores into local-db.
-   Known v1 edge to handle: an offline re-save that hasn't synced yet can be subtracted by a
-   server tombstone on next load (rare; user re-saves).
+   - ✅ **Relay leg SHIPPED 2026-06-13** (worker `725de0a2`, commit `f23cf863`). The
+     works-anywhere fallback is live and is the user-facing path end to end:
+     `/handoff` (laptop receive: ECDH offer → QR → poll → decrypt → apply → open) and
+     `/handoff/[id]` (phone send: read offer → encrypt local snapshot → post). Crypto
+     `handoff-crypto.ts` (ECDH P-256 → AES-256-GCM; recipient private key never leaves the
+     laptop), snapshot `handoff-snapshot.ts` (dock + one app's rows over the localStorage
+     blobs; curated app id deterministic → v1 scoped to first-party apps), relay
+     `handoff-relay.ts` + `/api/handoff*` (account-namespaced KV, 5-min TTL, bundle requires
+     pending offer, one-time consume). Entry from `/you` → "Continue from phone". 14 unit
+     tests (crypto round-trip/tamper/wrong-key, snapshot build/apply/merge, relay
+     lifecycle/account-isolation/validation); auth gating smoke-verified in prod.
+   - ⏳ **Direct-P2P fast path = remaining enhancement.** WebRTC via `proximity/transfer.ts`,
+     with the existing handoff relay carrying SDP/ICE signaling, then falling back to the
+     encrypted-relay bundle on punch-through failure. Deferred deliberately: the relay
+     already delivers the outcome E2E-encrypted, the P2P leg's marginal privacy gain for a
+     one-shot small-state handoff is modest (signaling still transits the server), and live
+     WebRTC can't be meaningfully verified headlessly. Build when there's real-device time.
+   - **Live E2E is the real-device check** (camera scan + two signed-in devices) — not
+     headlessly testable.
 3. Tighten the per-device vs account-synced copy in `/you` and the dock sync note
    ("Saved tools follow your account; offline copies stay per device").
