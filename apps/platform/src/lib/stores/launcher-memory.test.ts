@@ -4,6 +4,7 @@ import {
   clearLauncherMemory,
   hydrateLauncherMemory,
   launcherMemory,
+  mergeAccountDock,
   removeSavedApp,
   saveAppToDock,
   toggleSavedApp,
@@ -159,5 +160,37 @@ describe('launcher memory', () => {
     clearLauncherMemory();
 
     expect(get(launcherMemory)).toEqual(emptyMemory);
+  });
+
+  describe('mergeAccountDock (cross-device)', () => {
+    test('seeds a fresh device with the account dock', () => {
+      stubGlobal('localStorage', { getItem: () => null, setItem: () => {} });
+      mergeAccountDock(['palate', 'golazo'], []);
+      expect(get(launcherMemory).saved).toEqual(['palate', 'golazo']);
+      expect(get(launcherMemory).pinned).toEqual(['palate', 'golazo']);
+    });
+
+    test('unions account saves with local-only saves, account first, deduped', () => {
+      stubGlobal('localStorage', { getItem: () => null, setItem: () => {} });
+      launcherMemory.set({ ...emptyMemory, saved: ['coffee', 'golazo'], pinned: ['coffee', 'golazo'] });
+      mergeAccountDock(['palate', 'golazo'], []);
+      expect(get(launcherMemory).saved).toEqual(['palate', 'golazo', 'coffee']);
+    });
+
+    test('a tombstone removes a locally-saved slug (cross-device remove)', () => {
+      stubGlobal('localStorage', { getItem: () => null, setItem: () => {} });
+      launcherMemory.set({ ...emptyMemory, saved: ['coffee', 'golazo'], pinned: ['coffee', 'golazo'] });
+      mergeAccountDock(['palate'], ['golazo']);
+      expect(get(launcherMemory).saved).toEqual(['palate', 'coffee']);
+    });
+
+    test('is a no-op when the merged set already matches', () => {
+      let writes = 0;
+      stubGlobal('localStorage', { getItem: () => null, setItem: () => { writes += 1; } });
+      launcherMemory.set({ ...emptyMemory, saved: ['palate'], pinned: ['palate'] });
+      mergeAccountDock(['palate'], []);
+      expect(get(launcherMemory).saved).toEqual(['palate']);
+      expect(writes).toBe(0);
+    });
   });
 });

@@ -143,6 +143,7 @@
     removeSavedApp,
     forgetRecentApp,
     saveAppToDock,
+    mergeAccountDock,
   } from '$lib/stores/launcher-memory';
   import { ensureAppOffline } from '$lib/stores/cached-slugs';
   import { toast } from '$lib/stores/toast';
@@ -3161,6 +3162,11 @@
 
   onMount(() => {
     hydrateLauncherMemory();
+    // Fold the account-scoped dock (server load) into local memory so a
+    // freshly signed-in device shows "my tools" without re-saving them.
+    if (data.accountDock) {
+      mergeAccountDock(data.accountDock.saved, data.accountDock.removed);
+    }
     launcherHydrated = true;
     const stopCatalogSync = startCatalogSync({
       onUpdate: () => {
