@@ -25,25 +25,7 @@ import { notifyMakerOfTakedown } from '$server/admin/notify-maker';
 import { writeSuspension, clearSuspension, patchAppMeta } from '$server/deploy/kv-write';
 import { bustSuspensionCache } from '$server/wrapper/platform-client';
 import { bakedArcadeGameSlugs } from '$server/arcade/roster';
-
-/**
- * When an admin publishes an app to 'public', we auto-lift a stuck
- * 'archived' surface so the app actually appears in marketplace listings.
- * However, baked arcade games use 'archived' as the deliberate
- * "pulled from cabinet" state — publishing visibility must not silently
- * re-add them to the arcade.
- */
-export function shouldAutoLiftArchived(
-  slug: string,
-  beforeSurface: string,
-  newVisibility: string,
-): boolean {
-  if (newVisibility !== 'public' || beforeSurface !== 'archived') return false;
-  // Baked arcade games use archived as the deliberate "pulled from cabinet"
-  // state; publishing visibility must not silently re-add them.
-  if (bakedArcadeGameSlugs().has(slug)) return false;
-  return true;
-}
+import { shouldAutoLiftArchived } from './arcade-auto-lift';
 
 export type AdminAppRow = {
   id: string;

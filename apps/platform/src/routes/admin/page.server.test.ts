@@ -131,7 +131,8 @@ mockModule('$server/arcade/roster', () => ({
 }));
 
 // Import AFTER the mock is registered.
-const { load, actions, shouldAutoLiftArchived } = await import('./+page.server');
+const { load, actions } = await import('./+page.server');
+const { shouldAutoLiftArchived } = await import('./arcade-auto-lift');
 
 const NO_PLATFORM = Symbol('no-platform');
 
